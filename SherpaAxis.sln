@@ -2,6 +2,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Devices", "src\SherpaAxis.Devices\SherpaAxis.Devices.csproj", "{37048C4A-87D6-5BB5-8C87-228A74658C31}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.FeelVR", "src\SherpaAxis.FeelVR\SherpaAxis.FeelVR.csproj", "{6AF343B9-FA97-5C50-A33E-180FFF51300A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Tests", "tests\SherpaAxis.Tests\SherpaAxis.Tests.csproj", "{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +16,13 @@ Global
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

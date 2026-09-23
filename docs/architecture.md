@@ -7,7 +7,18 @@ The SDK version is pinned in `global.json`; project references define the depend
 
 - **Devices** owns HID discovery, capabilities and asynchronous input handles.
   `IInputReportSource` separates transport from consumers.
+- **FeelVR** matches the pedal collection, decodes reports and reconnects acquisition.
+
+## Input and native configuration
+
+FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is
+usage page 1, usage 4. Report 1 is nine bytes: unsigned little-endian throttle
+(16 bits), brake (32 bits), clutch (16 bits). Valid logical maxima are 16,384
+for throttle/clutch and 16,777,216 for brake. These are firmware-calibrated
+device values; they cannot reveal sensor input clipped by hardware calibration.
 
 ## Build and validation
 
 Run `dotnet restore --locked-mode` and `dotnet build -c Release --no-restore`.
+
+Run `dotnet test -c Release --no-build` for the available automated tests.
