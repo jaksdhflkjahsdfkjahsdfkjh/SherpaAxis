@@ -1,0 +1,17 @@
+research/
+**/bin/
+**/obj/
+.vs/
+TestResults/
+publish/
+*.user
+*.suo
+*.pcap
+*.pcapng
+*.dmp
+*.bin
+*.hex
+*.dfu
+*.dll
+*.exe
+*.pdb
