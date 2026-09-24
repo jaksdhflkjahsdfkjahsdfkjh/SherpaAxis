@@ -8,6 +8,7 @@ The SDK version is pinned in `global.json`; project references define the depend
 - **Devices** owns HID discovery, capabilities and asynchronous input handles.
   `IInputReportSource` separates transport from consumers.
 - **FeelVR** matches the pedal collection, decodes reports and reconnects acquisition.
+- **Cli** provides local device diagnostics and capture commands.
 
 ## Input and native configuration
 
