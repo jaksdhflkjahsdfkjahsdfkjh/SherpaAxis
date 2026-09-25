@@ -18,6 +18,11 @@ usage page 1, usage 4. Report 1 is nine bytes: unsigned little-endian throttle
 for throttle/clutch and 16,777,216 for brake. These are firmware-calibrated
 device values; they cannot reveal sensor input clipped by hardware calibration.
 
+The configuration collection is usage page `FF00`, usage 1. Feature report 3
+is 17 bytes: signed little-endian minimum/maximum pairs, 16 bits each for
+throttle and clutch and 32 bits each for brake. Feature reads validate report
+identity and length independently of joystick input.
+
 ## Build and validation
 
 Run `dotnet restore --locked-mode` and `dotnet build -c Release --no-restore`.
