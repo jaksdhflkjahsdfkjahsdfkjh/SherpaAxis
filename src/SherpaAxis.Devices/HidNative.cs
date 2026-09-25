@@ -55,4 +55,13 @@ internal static class HidNative
 
     [DllImport("hid.dll", ExactSpelling = true)]
     internal static extern int HidP_GetCaps(nint data, out Capabilities capabilities);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DeviceIoControl(SafeFileHandle handle, uint code,
+        nint input, uint inputLength, nint output, uint outputLength, nint transferred, nint overlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool CancelIoEx(SafeFileHandle handle, nint overlapped);
 }

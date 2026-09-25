@@ -4,7 +4,7 @@ using SherpaAxis.FeelVR;
 
 if (args.Length == 0 || args is ["--help"])
 {
-    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]");
+    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]");
     return args.Length == 0 ? 1 : 0;
 }
 
@@ -31,9 +31,15 @@ try
         return collections.Count == 0 ? 2 : 0;
     }
 
+    if (args[0] == "snapshot")
+    {
+        await CalibrationSnapshotCommand.RunAsync(new CalibrationSnapshotReader(source, new WindowsHidFeatureReader()), args[1..]).ConfigureAwait(false);
+        return 0;
+    }
+
     if (args[0] != "monitor")
     {
-        throw new ArgumentException("Expected list or monitor. Use --help for syntax.");
+        throw new ArgumentException("Expected list, monitor, or snapshot. Use --help for syntax.");
     }
 
     var options = MonitorOptions.Parse(args[1..]);
@@ -57,7 +63,12 @@ try
         Console.CancelKeyPress -= onCancel;
     }
 }
-catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+catch (OperationCanceledException)
+{
+    Console.Error.WriteLine("Cancelled.");
+    return 130;
+}
+catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or TimeoutException)
 {
     Console.Error.WriteLine(exception.Message);
     return 1;
