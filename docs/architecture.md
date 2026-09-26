@@ -10,6 +10,9 @@ The SDK version is pinned in `global.json`; project references define the depend
 - **FeelVR** matches the pedal collection, decodes reports and reconnects acquisition.
 - **Cli** provides local device diagnostics and capture commands.
 
+  Capture acquisition is independent of console display and CSV storage. Accepted
+  rows drain on normal shutdown; a failed writer cancels acquisition.
+
 ## Input and native configuration
 
 FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is
