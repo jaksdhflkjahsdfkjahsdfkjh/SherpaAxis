@@ -55,8 +55,8 @@ try
     try
     {
         var monitor = new PedalMonitor(source, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
-        var samples = await AxisCapture.RunAsync(monitor, options, duration.Token).ConfigureAwait(false);
-        return interrupted ? 130 : samples == 0 ? 2 : 0;
+        var result = await AxisCapture.RunAsync(monitor, options, duration.Token).ConfigureAwait(false);
+        return result.Error is not null ? 1 : interrupted ? 130 : result.AcquiredSamples == 0 ? 2 : 0;
     }
     finally
     {

@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SherpaAxis.FeelVR/SherpaAxis.FeelVR.csproj" />
+    <InternalsVisibleTo Include="SherpaAxis.Cli.Tests" />
   </ItemGroup>
 </Project>

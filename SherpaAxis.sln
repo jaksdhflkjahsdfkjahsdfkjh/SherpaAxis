@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Devices", "src\S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.FeelVR", "src\SherpaAxis.FeelVR\SherpaAxis.FeelVR.csproj", "{6AF343B9-FA97-5C50-A33E-180FFF51300A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli.Tests", "tests\SherpaAxis.Cli.Tests\SherpaAxis.Cli.Tests.csproj", "{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Tests", "tests\SherpaAxis.Tests\SherpaAxis.Tests.csproj", "{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}"
 EndProject
 Global
@@ -26,6 +28,10 @@ Global
 		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6AF343B9-FA97-5C50-A33E-180FFF51300A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
