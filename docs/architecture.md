@@ -12,6 +12,8 @@ The SDK version is pinned in `global.json`; project references define the depend
 
   Capture acquisition is independent of console display and CSV storage. Accepted
   rows drain on normal shutdown; a failed writer cancels acquisition.
+- **Core** owns axis mapping, input deadzones and response curves. It has no
+  vendor, transport, persistence or UI dependencies. See [processing](processing.md).
 
 ## Input and native configuration
 

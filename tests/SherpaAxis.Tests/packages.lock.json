@@ -93,6 +93,9 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "sherpaaxis.core": {
+        "type": "Project"
+      },
       "sherpaaxis.devices": {
         "type": "Project"
       },

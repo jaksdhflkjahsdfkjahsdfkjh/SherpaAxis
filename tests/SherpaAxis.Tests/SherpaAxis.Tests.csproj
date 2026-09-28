@@ -12,6 +12,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/SherpaAxis.Core/SherpaAxis.Core.csproj" />
     <ProjectReference Include="../../src/SherpaAxis.FeelVR/SherpaAxis.FeelVR.csproj" />
   </ItemGroup>
   <ItemGroup>
