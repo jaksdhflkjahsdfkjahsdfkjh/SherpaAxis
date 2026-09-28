@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli", "src\SherpaAxis.Cli\SherpaAxis.Cli.csproj", "{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Core", "src\SherpaAxis.Core\SherpaAxis.Core.csproj", "{585D9F09-44FD-515B-80B8-F9E46FC454A1}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Devices", "src\SherpaAxis.Devices\SherpaAxis.Devices.csproj", "{37048C4A-87D6-5BB5-8C87-228A74658C31}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.FeelVR", "src\SherpaAxis.FeelVR\SherpaAxis.FeelVR.csproj", "{6AF343B9-FA97-5C50-A33E-180FFF51300A}"
@@ -20,6 +22,10 @@ Global
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{585D9F09-44FD-515B-80B8-F9E46FC454A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{585D9F09-44FD-515B-80B8-F9E46FC454A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{585D9F09-44FD-515B-80B8-F9E46FC454A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{585D9F09-44FD-515B-80B8-F9E46FC454A1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37048C4A-87D6-5BB5-8C87-228A74658C31}.Release|Any CPU.ActiveCfg = Release|Any CPU
