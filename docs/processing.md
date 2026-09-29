@@ -19,3 +19,17 @@ the released input minus the calibration's released endpoint. Subtracting it
 translates both endpoints without changing the span or gain. The absolute offset
 is bounded by the configured maximum, which defaults to zero. Processing samples
 does not infer physical release. `ResetBaseline` clears the correction.
+
+## Offline replay
+
+Replay opens no HID handles. Use input/output paths and bounds in the selected
+axis's units, for example:
+
+```powershell
+dotnet run --project src/SherpaAxis.Cli -c Release -- replay --input capture.csv --csv processed.csv --minimum 100 --maximum 1000
+```
+
+The complete monitor CSV is validated, including rows outside a selected
+interval. Timestamps and positive connection numbers must be nondecreasing.
+A new connection clears the explicit baseline. Output files are never overwritten.
+Cancellation/storage errors may leave incomplete output and return an error.
