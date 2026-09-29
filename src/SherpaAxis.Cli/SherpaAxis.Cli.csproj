@@ -5,6 +5,7 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../SherpaAxis.Core/SherpaAxis.Core.csproj" />
     <ProjectReference Include="../SherpaAxis.FeelVR/SherpaAxis.FeelVR.csproj" />
     <InternalsVisibleTo Include="SherpaAxis.Cli.Tests" />
   </ItemGroup>

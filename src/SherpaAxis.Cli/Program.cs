@@ -4,18 +4,24 @@ using SherpaAxis.FeelVR;
 
 if (args.Length == 0 || args is ["--help"])
 {
-    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]");
+    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]\nSherpaAxis replay --input capture.csv --csv new-file.csv --minimum value --maximum value [--axis brake|throttle|clutch] [--invert true|false] [--baseline released-value --max-correction counts] [--deadzone-low fraction] [--deadzone-high fraction] [--exponent value] [--from seconds] [--to seconds]");
     return args.Length == 0 ? 1 : 0;
-}
-
-if (!OperatingSystem.IsWindows())
-{
-    Console.Error.WriteLine("HID monitoring requires Windows.");
-    return 1;
 }
 
 try
 {
+    if (args[0] == "replay")
+    {
+        ReplayCommand.Execute(ReplayOptions.Parse(args[1..]));
+        return 0;
+    }
+
+    if (!OperatingSystem.IsWindows())
+    {
+        Console.Error.WriteLine("HID monitoring requires Windows.");
+        return 1;
+    }
+
     var source = new WindowsHidInputSource();
     if (args is ["list"])
     {
@@ -39,7 +45,7 @@ try
 
     if (args[0] != "monitor")
     {
-        throw new ArgumentException("Expected list, monitor, or snapshot. Use --help for syntax.");
+        throw new ArgumentException("Expected list, monitor, snapshot, or replay. Use --help for syntax.");
     }
 
     var options = MonitorOptions.Parse(args[1..]);
