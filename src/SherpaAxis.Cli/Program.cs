@@ -4,7 +4,7 @@ using SherpaAxis.FeelVR;
 
 if (args.Length == 0 || args is ["--help"])
 {
-    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]\nSherpaAxis replay --input capture.csv --csv new-file.csv --minimum value --maximum value [--axis brake|throttle|clutch] [--invert true|false] [--baseline released-value --max-correction counts] [--deadzone-low fraction] [--deadzone-high fraction] [--exponent value] [--from seconds] [--to seconds]");
+    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]\nSherpaAxis replay --input capture.csv --csv new-file.csv --minimum value --maximum value [--axis brake|throttle|clutch] [--invert true|false] [--baseline released-value --max-correction counts] [--deadzone-low fraction] [--deadzone-high fraction] [--exponent value] [--from seconds] [--to seconds] [--filter-ms time-constant] [--filter-reset-ms gap]");
     return args.Length == 0 ? 1 : 0;
 }
 

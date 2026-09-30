@@ -34,7 +34,7 @@ internal static class ReplayCommand
         var processor = options.CreateProcessor();
         var connection = 0;
         long count = 0;
-        output.WriteLine($"elapsed_seconds,connection,{options.Axis}_device_axis,baseline_correction,corrected_input,normalized,corrected_normalized,after_deadzone,output");
+        output.WriteLine($"elapsed_seconds,connection,{options.Axis}_device_axis,baseline_correction,corrected_input,normalized,corrected_normalized,after_deadzone,output,filtered_input,filtered_normalized,filter_reset");
         foreach (var sample in ReplaySample.Read(input, cancellationToken))
         {
             if (sample.ElapsedSeconds < options.From || sample.ElapsedSeconds > options.To)
@@ -59,9 +59,9 @@ internal static class ReplayCommand
                 "clutch" => sample.Axes.Clutch,
                 _ => sample.Axes.Brake
             };
-            var result = processor.Process(value);
+            var result = processor.Process(value, sample.ElapsedSeconds);
             output.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                $"{sample.ElapsedSeconds:R},{connection},{value},{result.BaselineCorrection:R},{result.CorrectedInput:R},{result.Normalized:R},{result.CorrectedNormalized:R},{result.AfterDeadzone:R},{result.Output:R}"));
+                $"{sample.ElapsedSeconds:R},{connection},{value},{result.BaselineCorrection:R},{result.CorrectedInput:R},{result.Normalized:R},{result.CorrectedNormalized:R},{result.AfterDeadzone:R},{result.Output:R},{result.FilteredInput:R},{result.FilteredNormalized:R},{(result.FilterReset ? 1 : 0)}"));
             count++;
         }
 

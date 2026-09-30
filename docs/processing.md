@@ -20,6 +20,16 @@ translates both endpoints without changing the span or gain. The absolute offset
 is bounded by the configured maximum, which defaults to zero. Processing samples
 does not infer physical release. `ResetBaseline` clears the correction.
 
+## Filtering
+
+Filtering is disabled when no `LowPassFilterSettings` is supplied. Enabled
+filters require finite, nonnegative, nondecreasing monotonic timestamps.
+Exponential smoothing uses `1 - exp(-dt / tau)`; the first sample and a gap at
+or above `resetAfterSeconds` seed from current input. Equal timestamps do not
+advance filter history. Baseline confirmation/reset clears processor filter history.
+
+Available algorithms: `Exponential`.
+
 ## Offline replay
 
 Replay opens no HID handles. Use input/output paths and bounds in the selected
