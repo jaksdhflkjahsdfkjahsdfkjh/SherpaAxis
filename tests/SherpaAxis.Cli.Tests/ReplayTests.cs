@@ -59,6 +59,60 @@ public sealed class ReplayTests
         Assert.Equal(2, ReplayCommand.Run(input, output, Options(), CancellationToken.None));
     }
 
+    [Fact]
+    public void FilteringRetainsOriginalStagesAndAddsTimeBasedDiagnostics()
+    {
+        using var input = Input("0,1,0,100,0\n0.01,1,0,200,0\n0.02,1,0,200,0\n");
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        ReplayCommand.Run(input, output, Options("--filter-ms", "10"), CancellationToken.None);
+        var rows = Rows(output);
+        Assert.Equal("filtered_input", rows[0][9]);
+        Assert.Equal("1", rows[1][11]);
+        Assert.Equal("0", rows[2][11]);
+        Assert.Equal("200", rows[2][2]);
+        Assert.Equal("1", rows[2][6]);
+        Assert.Equal(1 - Math.Exp(-1), double.Parse(rows[2][8], CultureInfo.InvariantCulture), 12);
+        Assert.Equal(1 - Math.Exp(-2), double.Parse(rows[3][10], CultureInfo.InvariantCulture), 12);
+    }
+
+    [Fact]
+    public void ReconnectClearsBothTheFilterAndManualCorrection()
+    {
+        using var input = Input("0,1,0,95,0\n0.01,1,0,195,0\n0.02,2,0,150,0\n");
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        ReplayCommand.Run(input, output, Options("--filter-ms", "10", "--baseline", "95", "--max-correction", "10"), CancellationToken.None);
+        var rows = Rows(output);
+        Assert.Equal("0", rows[3][3]);
+        Assert.Equal("150", rows[3][9]);
+        Assert.Equal("0.5", rows[3][8]);
+        Assert.Equal("1", rows[3][11]);
+    }
+
+    [Fact]
+    public void FilterGapResetPreservesTheManualCorrection()
+    {
+        using var input = Input("0,1,0,95,0\n0.2,1,0,145,0\n");
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        ReplayCommand.Run(input, output, Options("--filter-ms", "10", "--filter-reset-ms", "50",
+            "--baseline", "95", "--max-correction", "10"), CancellationToken.None);
+        var rows = Rows(output);
+        Assert.Equal("-5", rows[2][3]);
+        Assert.Equal("150", rows[2][9]);
+        Assert.Equal("0.5", rows[2][8]);
+        Assert.Equal("1", rows[2][11]);
+    }
+
+    [Fact]
+    public void WindowStartsWithFreshFilterState()
+    {
+        using var input = Input("0,1,0,100,0\n0.01,1,0,150,0\n");
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        ReplayCommand.Run(input, output, Options("--filter-ms", "10", "--from", "0.01"), CancellationToken.None);
+        var rows = Rows(output);
+        Assert.Equal("150", rows[1][9]);
+        Assert.Equal("1", rows[1][11]);
+    }
+
     [Theory]
     [InlineData("0.01,1,0,100,\n")]
     [InlineData("0.01,1,0,100\n")]
@@ -128,7 +182,7 @@ public sealed class ReplayTests
             using var output = new StringWriter(CultureInfo.CurrentCulture);
             ReplayCommand.Run(input, output, Options("--exponent", "2.0"), CancellationToken.None);
             var rows = Rows(output);
-            Assert.Equal(9, rows[1].Length);
+            Assert.Equal(12, rows[1].Length);
             Assert.Equal(.01, double.Parse(rows[1][8], CultureInfo.InvariantCulture), 12);
         }
         finally
@@ -184,7 +238,10 @@ public sealed class ReplayTests
             ["--exponent", "0"], ["--deadzone-low", ".5", "--deadzone-high", ".5"],
             ["--from", "2", "--to", "1"], ["--from", "-1"], ["--to", "Infinity"],
             ["--axis", "invalid"], ["--invert", "yes"], ["--unknown", "1"],
-            ["--from", "1", "--from", "2"], ["--to"]
+            ["--from", "1", "--from", "2"], ["--to"],
+            ["--filter-ms", "-1"], ["--filter-ms", "NaN"], ["--filter-reset-ms", "10"],
+            ["--filter-ms", "0", "--filter-reset-ms", "10"],
+            ["--filter-ms", "10", "--filter-reset-ms", "0"]
         ];
         foreach (var options in invalid)
         {

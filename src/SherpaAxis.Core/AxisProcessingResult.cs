@@ -7,4 +7,7 @@ public readonly record struct AxisProcessingResult(
     double CorrectedNormalized,
     double AfterDeadzone,
     double Output,
-    double BaselineCorrection);
+    double BaselineCorrection,
+    double FilteredInput,
+    double FilteredNormalized,
+    bool FilterReset);

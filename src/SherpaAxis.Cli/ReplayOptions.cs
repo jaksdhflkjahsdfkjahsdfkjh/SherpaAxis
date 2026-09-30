@@ -5,15 +5,16 @@ namespace SherpaAxis.Cli;
 
 internal sealed record ReplayOptions(string InputPath, string OutputPath, string Axis,
     AxisCalibration Calibration, AxisDeadzone Deadzone, ResponseCurve Curve,
-    double? Baseline, double MaximumCorrection, double From, double To)
+    double? Baseline, double MaximumCorrection, double From, double To, LowPassFilterSettings? FilterSettings)
 {
-    public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve, MaximumCorrection);
+    public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve, MaximumCorrection, FilterSettings);
 
     public static ReplayOptions Parse(string[] arguments)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         string[] allowed = ["--input", "--csv", "--axis", "--minimum", "--maximum", "--invert",
-            "--baseline", "--max-correction", "--deadzone-low", "--deadzone-high", "--exponent", "--from", "--to"];
+            "--baseline", "--max-correction", "--deadzone-low", "--deadzone-high", "--exponent", "--from", "--to",
+            "--filter-ms", "--filter-reset-ms"];
         for (var index = 0; index < arguments.Length; index += 2)
         {
             var option = arguments[index];
@@ -62,7 +63,15 @@ internal sealed record ReplayOptions(string InputPath, string OutputPath, string
         var curve = ResponseCurve.Power(Number("--exponent", 1));
         double? baseline = values.ContainsKey("--baseline") ? Number("--baseline") : null;
         var maximumCorrection = Number("--max-correction", 0);
-        var processor = new AxisProcessor(calibration, deadzone, curve, maximumCorrection);
+        var filterMilliseconds = Number("--filter-ms", 0);
+        if (filterMilliseconds < 0 || (filterMilliseconds == 0 && values.ContainsKey("--filter-reset-ms")))
+        {
+            throw new ArgumentException("--filter-ms must be nonnegative; --filter-reset-ms requires an enabled filter.");
+        }
+
+        var filterSettings = filterMilliseconds == 0 ? null : new LowPassFilterSettings(
+            filterMilliseconds / 1000, Number("--filter-reset-ms", 100) / 1000);
+        var processor = new AxisProcessor(calibration, deadzone, curve, maximumCorrection, filterSettings);
         if (baseline.HasValue)
         {
             processor.ConfirmReleasedBaseline(baseline.Value);
@@ -76,6 +85,6 @@ internal sealed record ReplayOptions(string InputPath, string OutputPath, string
         }
 
         return new(Required("--input"), Required("--csv"), axis, calibration, deadzone, curve,
-            baseline, maximumCorrection, from, to);
+            baseline, maximumCorrection, from, to, filterSettings);
     }
 }
