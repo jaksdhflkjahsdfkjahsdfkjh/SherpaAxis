@@ -27,3 +27,16 @@ last successful writer. Interruption may leave a temporary file.
 Profiles contain settings only: no baseline offset, filter history, device path
 or release permission. Loading creates fresh processing state. See
 [processing](processing.md) for runtime ownership.
+
+## CLI
+
+```powershell
+dotnet run --project src/SherpaAxis.Cli -c Release -- profile create --json example.json --name "Example" --axis brake --minimum 100 --maximum 1000
+dotnet run --project src/SherpaAxis.Cli -c Release -- profile validate --input example.json
+dotnet run --project src/SherpaAxis.Cli -c Release -- replay --input capture.csv --csv processed.csv --profile example.json --axis brake
+```
+
+`set-axis` replaces one complete axis configuration. `export` validates and
+writes a canonical copy. Profile output paths require new files unless
+`--overwrite true` is explicit; parent directories must exist. Replay rejects
+processing overrides when a profile is supplied.

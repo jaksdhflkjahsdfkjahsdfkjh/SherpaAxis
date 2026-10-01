@@ -4,7 +4,7 @@ namespace SherpaAxis.Cli;
 
 internal static class ReplayCommand
 {
-    public static void Execute(ReplayOptions options)
+    public static async Task ExecuteAsync(ReplayOptions options)
     {
         using var cancellation = new CancellationTokenSource();
         ConsoleCancelEventHandler onCancel = (_, cancel) =>
@@ -15,6 +15,7 @@ internal static class ReplayCommand
         Console.CancelKeyPress += onCancel;
         try
         {
+            options = await options.ResolveAsync(cancellation.Token).ConfigureAwait(false);
             using var input = new StreamReader(options.InputPath);
             using var file = new FileStream(options.OutputPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
             using var output = new StreamWriter(file);

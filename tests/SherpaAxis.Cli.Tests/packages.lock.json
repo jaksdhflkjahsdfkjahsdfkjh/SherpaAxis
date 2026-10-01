@@ -97,7 +97,8 @@
         "type": "Project",
         "dependencies": {
           "SherpaAxis.Core": "[1.0.0, )",
-          "SherpaAxis.FeelVR": "[1.0.0, )"
+          "SherpaAxis.FeelVR": "[1.0.0, )",
+          "SherpaAxis.Profiles": "[1.0.0, )"
         }
       },
       "sherpaaxis.core": {
@@ -110,6 +111,12 @@
         "type": "Project",
         "dependencies": {
           "SherpaAxis.Devices": "[1.0.0, )"
+        }
+      },
+      "sherpaaxis.profiles": {
+        "type": "Project",
+        "dependencies": {
+          "SherpaAxis.Core": "[1.0.0, )"
         }
       }
     }

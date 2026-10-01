@@ -4,7 +4,23 @@ using SherpaAxis.FeelVR;
 
 if (args.Length == 0 || args is ["--help"])
 {
-    Console.WriteLine("SherpaAxis list\nSherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]\nSherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]\nSherpaAxis replay --input capture.csv --csv new-file.csv --minimum value --maximum value [--axis brake|throttle|clutch] [--invert true|false] [--baseline released-value --max-correction counts] [--deadzone-low fraction] [--deadzone-high fraction] [--exponent value] [--from seconds] [--to seconds] [--filter-ms time-constant] [--filter-reset-ms gap]");
+    Console.WriteLine("""
+        SherpaAxis list
+        SherpaAxis monitor [--seconds 1..3600] [--csv new-file.csv] [--device HID-path]
+        SherpaAxis snapshot [--json new-file.json] [--device vendor-HID-path]
+        SherpaAxis replay --input capture.csv --csv new-file.csv [--axis brake|throttle|clutch]
+          (--profile profile.json OR --minimum value --maximum value [processing options])
+          [--baseline released-value] [--from seconds] [--to seconds]
+        Processing options: [--invert true|false] [--max-correction counts] [--deadzone-low fraction]
+          [--deadzone-high fraction] [--exponent value] [--filter-ms time-constant] [--filter-reset-ms gap]
+        SherpaAxis profile create --json new.json --name name --axis brake|throttle|clutch
+          --minimum value --maximum value [processing options] [--overwrite true|false]
+        SherpaAxis profile validate --input profile.json
+        SherpaAxis profile set-axis --input profile.json --json new.json --axis brake|throttle|clutch
+          --minimum value --maximum value [processing options] [--overwrite true|false]
+        SherpaAxis profile export --input profile.json --json new.json [--name name] [--overwrite true|false]
+        Without --profile, replay --baseline also requires --max-correction.
+        """);
     return args.Length == 0 ? 1 : 0;
 }
 
@@ -12,7 +28,13 @@ try
 {
     if (args[0] == "replay")
     {
-        ReplayCommand.Execute(ReplayOptions.Parse(args[1..]));
+        await ReplayCommand.ExecuteAsync(ReplayOptions.Parse(args[1..])).ConfigureAwait(false);
+        return 0;
+    }
+
+    if (args[0] == "profile")
+    {
+        await ProfileCommand.ExecuteAsync(args[1..]).ConfigureAwait(false);
         return 0;
     }
 
@@ -45,7 +67,7 @@ try
 
     if (args[0] != "monitor")
     {
-        throw new ArgumentException("Expected list, monitor, snapshot, or replay. Use --help for syntax.");
+        throw new ArgumentException("Expected list, monitor, snapshot, replay, or profile. Use --help for syntax.");
     }
 
     var options = MonitorOptions.Parse(args[1..]);

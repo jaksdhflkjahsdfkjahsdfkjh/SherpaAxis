@@ -208,7 +208,7 @@ public sealed class ReplayTests
     }
 
     [Fact]
-    public void ExistingOutputIsNeverOverwritten()
+    public async Task ExistingOutputIsNeverOverwritten()
     {
         var inputPath = Path.Combine(AppContext.BaseDirectory, $"replay-input-{Guid.NewGuid():N}.csv");
         var outputPath = Path.Combine(AppContext.BaseDirectory, $"replay-output-{Guid.NewGuid():N}.csv");
@@ -217,7 +217,7 @@ public sealed class ReplayTests
             File.WriteAllText(inputPath, ReplaySample.Header + "\n0.01,1,0,100,0\n");
             File.WriteAllText(outputPath, "keep");
             var options = Options() with { InputPath = inputPath, OutputPath = outputPath };
-            Assert.Throws<IOException>(() => ReplayCommand.Execute(options));
+            await Assert.ThrowsAsync<IOException>(() => ReplayCommand.ExecuteAsync(options));
             Assert.Equal("keep", File.ReadAllText(outputPath));
         }
         finally
