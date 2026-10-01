@@ -43,3 +43,6 @@ The complete monitor CSV is validated, including rows outside a selected
 interval. Timestamps and positive connection numbers must be nondecreasing.
 A new connection clears the explicit baseline. Output files are never overwritten.
 Cancellation/storage errors may leave incomplete output and return an error.
+
+`--profile path.json --axis brake` can replace explicit processing overrides.
+Use [profiles](profiles.md) to persist settings; runtime offsets are never saved.
