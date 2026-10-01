@@ -14,6 +14,8 @@ The SDK version is pinned in `global.json`; project references define the depend
   rows drain on normal shutdown; a failed writer cancels acquisition.
 - **Core** owns axis mapping, input deadzones and response curves. It has no
   vendor, transport, persistence or UI dependencies. See [processing](processing.md).
+- **Profiles** validates and persists immutable processing settings. It references
+  Core, with no Windows or UI dependency. See [profile format](profiles.md).
 
 ## Input and native configuration
 

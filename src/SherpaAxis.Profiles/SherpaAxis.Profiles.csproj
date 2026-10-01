@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../SherpaAxis.Core/SherpaAxis.Core.csproj" />
+  </ItemGroup>
+</Project>
