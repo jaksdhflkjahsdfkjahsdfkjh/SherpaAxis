@@ -30,6 +30,19 @@ advance filter history. Baseline confirmation/reset clears processor filter hist
 
 Available algorithms: `Exponential`.
 
+## Session ownership
+
+`AxisSession` bounds correction speed in input units and final output change
+per second. A baseline request changes the target; each sample separately
+supplies `releaseConfirmed`. Without permission the target is held. Start,
+connection changes and sampling gaps clear correction and filter history.
+Duplicate timestamps do not advance transitions.
+
+The session filters original input before subtracting its gradually applied
+offset, avoiding filter resets during correction transitions. `AxisProcessor`
+applies its immediate offset before filtering. Both normalize, apply deadzones
+and evaluate the curve afterwards.
+
 ## Offline replay
 
 Replay opens no HID handles. Use input/output paths and bounds in the selected
