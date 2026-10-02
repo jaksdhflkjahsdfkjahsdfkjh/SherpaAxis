@@ -23,4 +23,7 @@ public sealed class AxisProfile
     public LowPassFilterSettings? Filter { get; }
 
     public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve.Curve, MaximumBaselineCorrection, Filter);
+
+    public AxisSession CreateSession(AxisSessionSettings settings) => new(Calibration, settings, Deadzone, Curve.Curve,
+        MaximumBaselineCorrection, Filter);
 }
