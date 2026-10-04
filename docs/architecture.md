@@ -16,6 +16,9 @@ The SDK version is pinned in `global.json`; project references define the depend
   vendor, transport, persistence or UI dependencies. See [processing](processing.md).
 - **Profiles** validates and persists immutable processing settings. It references
   Core, with no Windows or UI dependency. See [profile format](profiles.md).
+- **App** is a WPF desktop application. View models expose editor and graph state;
+  device acquisition runs independently of dispatcher refresh. The processing
+  model provides bounded snapshots for drawing.
 
 ## Input and native configuration
 

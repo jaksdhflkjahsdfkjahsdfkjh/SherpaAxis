@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "sherpaaxis.core": {
+        "type": "Project"
+      },
+      "sherpaaxis.devices": {
+        "type": "Project"
+      },
+      "sherpaaxis.feelvr": {
+        "type": "Project",
+        "dependencies": {
+          "SherpaAxis.Devices": "[1.0.0, )"
+        }
+      },
+      "sherpaaxis.profiles": {
+        "type": "Project",
+        "dependencies": {
+          "SherpaAxis.Core": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

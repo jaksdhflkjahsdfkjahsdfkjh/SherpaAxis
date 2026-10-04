@@ -1,0 +1,196 @@
+<Window x:Class="SherpaAxis.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
+        xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels"
+        Title="SherpaAxis — Pedal Workbench" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
+        WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Muted" Color="#95A9C1" />
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#22334C" />
+            <Setter Property="Foreground" Value="#E8EFF8" />
+            <Setter Property="BorderBrush" Value="#354862" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="13,9" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" CornerRadius="6" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.8" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.6" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#45D6BB" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#45D6BB" /><Setter Property="Foreground" Value="#092A29" /><Setter Property="BorderBrush" Value="#45D6BB" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#0D1728" /><Setter Property="Foreground" Value="#E8EFF8" />
+            <Setter Property="BorderBrush" Value="#34465F" /><Setter Property="CaretBrush" Value="#45D6BB" />
+            <Setter Property="Padding" Value="9,7" /><Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="SelectionBrush" Value="#365975" />
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="Padding" Value="10,7" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+                <Border x:Name="Item" Background="#18273C" Padding="{TemplateBinding Padding}"><ContentPresenter /></Border>
+                <ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#304B69" /></Trigger></ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="MinHeight" Value="36" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
+                <Grid>
+                    <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" /></ControlTemplate></ToggleButton.Template>
+                    </ToggleButton>
+                    <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="10,7,27,7" IsHitTestVisible="False" />
+                    <TextBlock Text="⌄" Foreground="#95A9C1" HorizontalAlignment="Right" Margin="0,4,10,0" IsHitTestVisible="False" />
+                    <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+                        <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" BorderBrush="#34465F" BorderThickness="1" Background="#18273C">
+                            <ScrollViewer MaxHeight="300"><StackPanel IsItemsHost="True" /></ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Muted}" /><Setter Property="FontSize" Value="12" /><Setter Property="Margin" Value="0,0,0,5" /></Style>
+        <Style x:Key="Section" TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="15" /><Setter Property="Margin" Value="0,22,0,12" /></Style>
+        <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#D4E1EF" /><Setter Property="Margin" Value="0,10,0,0" /></Style>
+    </Window.Resources>
+    <Grid Margin="26,22,26,18">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,20">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" IsEnabled="{Binding CanEdit}">
+                <Button Content="New profile" Click="NewProfileClick" /><Button Content="Open profile…" Click="OpenProfileClick" />
+                <Button Content="Save profile as…" Click="SaveProfileClick" Margin="0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Path Data="M 0,25 L 15,0 L 30,25 L 21,25 L 15,14 L 8,25 Z" Fill="#45D6BB" Width="32" Height="30" Stretch="Uniform" Margin="0,0,12,0" />
+                <StackPanel><TextBlock Text="SherpaAxis" FontSize="25" FontWeight="SemiBold" /><TextBlock Text="PEDAL WORKBENCH" Foreground="{StaticResource Muted}" FontSize="10" /></StackPanel>
+                <Border Background="#15382F" CornerRadius="4" Padding="9,5" Margin="18,0,0,0" VerticalAlignment="Center"><TextBlock Text="SOFTWARE PREVIEW" Foreground="#78E3C6" FontSize="10" FontWeight="SemiBold" /></Border>
+            </StackPanel>
+        </DockPanel>
+        <Border Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="15,12" Margin="0,0,0,18">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" MaxWidth="370">
+                    <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DFBC7A" /><Style.Triggers><DataTrigger Binding="{Binding IsReceiving}" Value="True"><Setter Property="Foreground" Value="#78E3C6" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                    <TextBlock Text="{Binding SourceName}" Foreground="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanEdit}">
+                    <Button Content="Start live" Style="{StaticResource Primary}" Click="StartLiveClick" />
+                    <Button Content="Open capture…" Click="OpenCaptureClick" />
+                    <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.PlaybackSpeeds}" SelectedItem="{Binding PlaybackSpeed}" Width="64" Margin="0,0,5,0" AutomationProperties.Name="Playback speed" />
+                    <TextBlock Text="×" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,12,0" />
+                    <Button Content="Stop" Click="StopClick" />
+                    <Button Content="Read hardware" Click="ReadHardwareClick" ToolTip="Read the stored calibration bounds without changing the device" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <Grid Grid.Row="2" x:Name="WorkbenchContent">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="370" /></Grid.ColumnDefinitions>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="640">
+                <Grid.RowDefinitions><RowDefinition Height="137" /><RowDefinition Height="*" /><RowDefinition Height="202" /></Grid.RowDefinitions>
+                <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-12,15">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                        <Button Tag="{Binding Axis}" Click="SelectAxisClick" Padding="16,14" Margin="0,0,12,0" Background="#142136" BorderBrush="#293D57" HorizontalContentAlignment="Stretch">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <DockPanel><TextBlock Text="{Binding OutputText}" DockPanel.Dock="Right" Foreground="#69DFC4" HorizontalAlignment="Right" /><TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource Muted}" /></DockPanel>
+                                <TextBlock Grid.Row="1" Text="{Binding Input}" FontSize="25" FontWeight="SemiBold" Margin="0,4,0,5">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsFresh}" Value="False"><Setter Property="Opacity" Value="0.45" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Row="2"><ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Background="#25364F" Foreground="#45D6BB" BorderThickness="0" /><TextBlock Text="{Binding Filtered}" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,6,0,0" /></StackPanel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="18,15" Margin="0,0,0,15">
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <DockPanel><TextBlock Text="Signal history" FontSize="17" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><CheckBox Content="Counts" IsChecked="{Binding PlotCounts}" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" ToolTip="Show original device counts on an automatically scaled axis" /><StackPanel Orientation="Horizontal"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding PlotCounts}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="● Input" Foreground="#91A5BE" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Filtered" Foreground="#AF94F6" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Output" Foreground="#45D6BB" FontSize="11" Margin="14,0,0,0" /></StackPanel></StackPanel></DockPanel>
+                        <controls:SignalPlot Grid.Row="1" Samples="{Binding History}" CountsMode="{Binding PlotCounts}" Margin="0,20,0,6" MinHeight="140" />
+                        <TextBlock Grid.Row="2" Text="{Binding SampleInfo}" FontSize="11" Foreground="{StaticResource Muted}" />
+                    </Grid>
+                </Border>
+                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*" /><ColumnDefinition Width="15" /><ColumnDefinition Width="1.1*" /></Grid.ColumnDefinitions>
+                    <Border Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12">
+                        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Applied response curve" FontWeight="SemiBold" /><controls:SignalPlot Grid.Row="1" Samples="{Binding Curve}" IsCurve="True" Margin="0,12,0,0" /></Grid>
+                    </Border>
+                    <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12" IsEnabled="{Binding CanEdit}">
+                        <StackPanel><TextBlock Text="Manual correction" FontWeight="SemiBold" /><TextBlock Text="{Binding CorrectionInfo}" FontSize="12" Margin="0,9,0,0" /><TextBlock Text="{Binding ResetInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal"><Button Content="Confirm baseline" Click="ConfirmBaselineClick" FontSize="11" Padding="9,6" /><Button Content="Disable" Click="DisableCorrectionClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
+                            <Button x:Name="ReleaseHold" Content="Hold to apply · pedal released" Margin="0,9,0,0" FontSize="11" Padding="8,7"
+                                    PreviewMouseLeftButtonDown="ReleaseMouseDown" PreviewMouseLeftButtonUp="ReleaseMouseUp" LostMouseCapture="ReleaseLostCapture"
+                                    PreviewKeyDown="ReleaseKeyDown" PreviewKeyUp="ReleaseKeyUp" LostKeyboardFocus="ReleaseLostFocus" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+            </ScrollViewer>
+            <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="18,15,18,0">
+                        <DockPanel><Button DockPanel.Dock="Right" Content="Apply" Style="{StaticResource Primary}" Click="ApplyClick" Margin="12,0,0,0" IsEnabled="{Binding CanEdit}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="Selected pedal" /></DockPanel>
+                        <TextBlock Text="{Binding AxisTitle}" FontSize="18" FontWeight="SemiBold" Margin="0,15,0,3" /><TextBlock Text="Software settings · Apply activates all axes" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="18,0,18,18" IsEnabled="{Binding CanEdit}">
+                            <TextBlock Text="Profile name" Style="{StaticResource Label}" /><TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" />
+                            <TextBlock Text="Software calibration" Style="{StaticResource Section}" />
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Minimum · device-axis units" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software minimum" /><Button Content="Use current" Click="CaptureMinimumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Maximum" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software maximum" /><Button Content="Use current" Click="CaptureMaximumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
+                            </Grid>
+                            <CheckBox Content="Invert axis" IsChecked="{Binding Editor.Inverted}" />
+                            <TextBlock Text="Observed this connection" Style="{StaticResource Label}" Margin="0,12,0,3" /><TextBlock Text="{Binding ObservedRange}" FontSize="12" Margin="0,0,0,8" />
+                            <StackPanel Orientation="Horizontal"><Button Content="Use observed range" Click="ObservedRangeClick" FontSize="11" Padding="9,6" /><Button Content="Defaults" Click="DefaultsClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
+                            <TextBlock Text="Response &amp; filtering" Style="{StaticResource Section}" />
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Lower deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lower deadzone percent" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent" /></StackPanel>
+                            </Grid>
+                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Curve" Style="{StaticResource Label}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding Editor.CurveKind}" AutomationProperties.Name="Response curve" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Power exponent" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Exponent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Power exponent" /></StackPanel>
+                            </Grid>
+                            <TextBlock Text="Custom points · 0..1 input:output pairs" Style="{StaticResource Label}" Margin="0,12,0,5" />
+                            <TextBox Text="{Binding Editor.Points, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="56" AutomationProperties.Name="Custom curve points" />
+                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Filter τ (ms) · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter milliseconds" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Filter reset gap (ms)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter reset milliseconds" /></StackPanel>
+                            </Grid>
+                            <TextBlock Text="Correction settings" Style="{StaticResource Section}" />
+                            <TextBlock Text="Max correction · counts · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.MaximumCorrection, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum correction" />
+                            <TextBlock Text="Session limits · not stored in schema 1 profiles" Foreground="#DFBC7A" FontSize="11" Margin="0,12,0,9" TextWrapping="Wrap" />
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Correction counts / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction count rate" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Output fraction / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionOutputRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction output rate" /></StackPanel>
+                            </Grid>
+                            <TextBlock Text="Session reset gap (ms)" Style="{StaticResource Label}" Margin="0,12,0,5" /><TextBox Text="{Binding Editor.SessionGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Session reset milliseconds" />
+                            <TextBlock Text="Hardware calibration · read only" Style="{StaticResource Section}" />
+                            <Button Content="Read hardware calibration" Click="ReadHardwareClick" Margin="0,0,0,10" />
+                            <TextBlock Text="{Binding HardwareInfo}" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="Live counts are firmware-calibrated device axes. A zero can hide released-brake drift. Hardware bounds are not software input bounds." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+        <Border Grid.Row="3" Background="#17273B" CornerRadius="6" Padding="12,9" Margin="0,15,0,0"><TextBlock Text="{Binding Message}" Foreground="#BDCEE1" FontSize="12" TextWrapping="Wrap" /></Border>
+    </Grid>
+</Window>
