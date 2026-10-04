@@ -1,5 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.App", "src\SherpaAxis.App\SherpaAxis.App.csproj", "{B32A81DF-0E88-5828-8313-3D0C44B3F77F}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli", "src\SherpaAxis.Cli\SherpaAxis.Cli.csproj", "{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Core", "src\SherpaAxis.Core\SherpaAxis.Core.csproj", "{585D9F09-44FD-515B-80B8-F9E46FC454A1}"
@@ -9,6 +11,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.FeelVR", "src\SherpaAxis.FeelVR\SherpaAxis.FeelVR.csproj", "{6AF343B9-FA97-5C50-A33E-180FFF51300A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Profiles", "src\SherpaAxis.Profiles\SherpaAxis.Profiles.csproj", "{A47FDABB-A576-58C4-95D9-6C0AC2D2D9BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.App.Tests", "tests\SherpaAxis.App.Tests\SherpaAxis.App.Tests.csproj", "{469413B9-71B6-5158-BC0B-A7C9D592CC6D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli.Tests", "tests\SherpaAxis.Cli.Tests\SherpaAxis.Cli.Tests.csproj", "{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}"
 EndProject
@@ -20,6 +24,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -40,6 +48,10 @@ Global
 		{A47FDABB-A576-58C4-95D9-6C0AC2D2D9BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A47FDABB-A576-58C4-95D9-6C0AC2D2D9BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A47FDABB-A576-58C4-95D9-6C0AC2D2D9BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{469413B9-71B6-5158-BC0B-A7C9D592CC6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{469413B9-71B6-5158-BC0B-A7C9D592CC6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{469413B9-71B6-5158-BC0B-A7C9D592CC6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{469413B9-71B6-5158-BC0B-A7C9D592CC6D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B54DD9C-05F2-5737-B467-B81D9A4AC73D}.Release|Any CPU.ActiveCfg = Release|Any CPU
