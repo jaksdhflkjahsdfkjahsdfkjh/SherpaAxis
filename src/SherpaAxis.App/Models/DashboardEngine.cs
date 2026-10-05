@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SherpaAxis.Core;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
@@ -15,6 +16,13 @@ public sealed class DashboardEngine
     private long count;
     private double firstTime;
     private double elapsed;
+    private IDashboardRecording? recording;
+    private RecordedConfiguration? configuration;
+    private long configurationRevision;
+    private RecordingSource source = new("unspecified");
+    private RecordedHardware? hardware;
+    private bool sourceActive;
+    private double sourceElapsed;
 
     public DashboardEngine(TimeProvider? clock = null)
     {
@@ -35,6 +43,9 @@ public sealed class DashboardEngine
         var replacements = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis,
             axis => (profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis))))
                 .CreateSession(limits[axis]));
+        var snapshot = new RecordedConfiguration(JsonSerializer.Deserialize<JsonElement>(ProfileJson.Serialize(profile)),
+            Array.AsReadOnly(limits.Select(pair => new RecordedAxisLimits(pair.Key, pair.Value.MaximumCorrectionPerSecond,
+                pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
         lock (sync)
         {
             foreach (var (axis, session) in replacements)
@@ -48,17 +59,29 @@ public sealed class DashboardEngine
 
                 axes[axis] = replacement;
             }
+
+            configuration = snapshot;
+            configurationRevision++;
+            Event("configuration-applied", configuration);
         }
     }
 
-    public void Begin()
+    public void Begin(RecordingSource? sourceContext = null)
     {
         lock (sync)
         {
+            Event("source-restarted");
+            recording?.Complete("source-restarted");
+            recording = null;
+            sourceActive = true;
+            sourceElapsed = 0;
             ClearConnection();
+            source = sourceContext ?? new("unspecified");
+            hardware = null;
             connection = 0;
             state = PedalConnectionState.Waiting;
             detail = "Waiting for samples";
+            Event("source-started", source);
         }
     }
 
@@ -66,6 +89,10 @@ public sealed class DashboardEngine
     {
         lock (sync)
         {
+            Event("source-ended", new { Message = message });
+            recording?.Complete(message.StartsWith("Source error:", StringComparison.Ordinal) ? "source-error" : message);
+            recording = null;
+            sourceActive = false;
             state = PedalConnectionState.Waiting;
             detail = message;
             foreach (var axis in axes.Values)
@@ -81,8 +108,14 @@ public sealed class DashboardEngine
         ArgumentNullException.ThrowIfNull(item);
         lock (sync)
         {
+            sourceElapsed = item.Elapsed.TotalSeconds;
             state = item.State;
             detail = item.Detail;
+            if (item.Axes is null)
+            {
+                recording?.RecordEvent(new("connection-state", item.Elapsed.TotalSeconds, configurationRevision,
+                    new { item.State, item.ConnectionNumber, item.Detail }));
+            }
             if (item.State != PedalConnectionState.Connected || item.ConnectionNumber != connection)
             {
                 ClearConnection();
@@ -127,6 +160,9 @@ public sealed class DashboardEngine
                     }
                 }
             }
+
+            recording?.RecordSample(new(elapsed, connection, configurationRevision, input,
+                axes[PedalAxis.Throttle].Current!.Value, axes[PedalAxis.Brake].Current!.Value, axes[PedalAxis.Clutch].Current!.Value));
         }
     }
 
@@ -141,6 +177,7 @@ public sealed class DashboardEngine
             }
 
             values.Session.ConfirmReleasedBaseline(values.Current!.Value.Processing.Input);
+            Event("baseline-requested", new { Axis = axis, ReleasedInput = values.Current.Value.Processing.Input, values.Session.TargetCorrection });
         }
     }
 
@@ -149,6 +186,7 @@ public sealed class DashboardEngine
         lock (sync)
         {
             axes[axis].Session.DisableCompensation();
+            Event("compensation-disable-requested", new { Axis = axis });
         }
     }
 
@@ -167,12 +205,78 @@ public sealed class DashboardEngine
     {
         lock (sync)
         {
+            var wasAuthorized = axes.Values.Any(axis => axis.AuthorizedAt.HasValue);
             foreach (var values in axes.Values)
             {
                 values.AuthorizedAt = null;
             }
+
+            if (wasAuthorized)
+            {
+                Event("release-control-revoked");
+            }
         }
     }
+
+    public void AttachRecording(IDashboardRecording target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        lock (sync)
+        {
+            if (recording is not null)
+            {
+                throw new InvalidOperationException("Finish the current recording before starting another.");
+            }
+
+            if (!sourceActive)
+            {
+                throw new InvalidOperationException("Start live input or playback before recording.");
+            }
+
+            recording = target;
+            Event("recording-started", new
+            {
+                Source = source,
+                InputUnits = "firmware-device-axis-counts",
+                HardwareMode = "notContinuouslyVerified",
+                Configuration = configuration,
+                HardwareSnapshot = hardware,
+                Connection = connection,
+                RuntimeSeed = axes.ToDictionary(pair => pair.Key, pair => new
+                {
+                    LastResult = pair.Value.Current,
+                    pair.Value.Session.BaselineCorrection,
+                    pair.Value.Session.TargetCorrection,
+                    LastSampleTime = pair.Value.Current.HasValue ? (double?)elapsed : null,
+                    ReleasePermissionRemainingMilliseconds = pair.Value.AuthorizedAt.HasValue
+                        ? Math.Max(0, 150 - clock.GetElapsedTime(pair.Value.AuthorizedAt.Value).TotalMilliseconds) : 0
+                }),
+                LastSourceTime = sourceElapsed
+            });
+        }
+    }
+
+    public void DetachRecording(string reason = "user-finished")
+    {
+        lock (sync)
+        {
+            Event("recording-stop-requested", new { Reason = reason });
+            recording?.Complete(reason);
+            recording = null;
+        }
+    }
+
+    public void RecordHardware(CalibrationSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        lock (sync)
+        {
+            hardware = new(snapshot.CapturedAtUtc, snapshot.Calibration, connection);
+            Event("hardware-calibration-read", hardware);
+        }
+    }
+
+    private void Event(string kind, object? details = null) => recording?.RecordEvent(new(kind, sourceElapsed, configurationRevision, details));
 
     public DashboardFrame Snapshot(PedalAxis selectedAxis)
     {
@@ -191,6 +295,7 @@ public sealed class DashboardEngine
 
     private void ClearConnection()
     {
+        hardware = null;
         count = 0;
         firstTime = elapsed = 0;
         foreach (var axis in axes.Values)
