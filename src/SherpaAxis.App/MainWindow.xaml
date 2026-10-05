@@ -86,9 +86,10 @@
         </DockPanel>
         <Border Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="15,12" Margin="0,0,0,18">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" MaxWidth="370">
+                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" MaxWidth="240">
                     <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DFBC7A" /><Style.Triggers><DataTrigger Binding="{Binding IsReceiving}" Value="True"><Setter Property="Foreground" Value="#78E3C6" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                     <TextBlock Text="{Binding SourceName}" Foreground="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding RecordingInfo}" Foreground="#EEB5C1" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding RecordingInfo}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanEdit}">
                     <Button Content="Start live" Style="{StaticResource Primary}" Click="StartLiveClick" />
@@ -97,6 +98,8 @@
                     <TextBlock Text="×" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,12,0" />
                     <Button Content="Stop" Click="StopClick" />
                     <Button Content="Read hardware" Click="ReadHardwareClick" ToolTip="Read the stored calibration bounds without changing the device" />
+                    <Button Content="● Record…" Click="RecordClick" Background="#633348" BorderBrush="#9D526B" IsEnabled="{Binding CanRecord}" />
+                    <Button Content="Finish" Click="FinishRecordingClick" IsEnabled="{Binding CanFinishRecording}" ToolTip="Finish recording and keep the live preview running" />
                 </StackPanel>
             </DockPanel>
         </Border>

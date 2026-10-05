@@ -26,6 +26,9 @@ public partial class MainWindow : Window, IAsyncDisposable
     private bool closing;
     private bool disposed;
     private Task? activeOperation;
+    private RecordingSession? recording;
+    private string? recordingPath;
+    private bool recordingNoticeShown;
 
     public MainWindow()
     {
@@ -58,14 +61,83 @@ public partial class MainWindow : Window, IAsyncDisposable
             viewModel.ShowMessage($"Source failed: {failure}");
         }
 
+        UpdateRecordingStatus();
         viewModel.Refresh();
+        if (recording?.Status is { IsComplete: true } status && !recordingNoticeShown)
+        {
+            recordingNoticeShown = true;
+            viewModel.ShowMessage(status.Failure is { } error ? $"Recording failed: {error.Message} Files may be partial."
+                : $"Recording complete: {status.WrittenSamples:N0} reports in {Path.GetFileName(recordingPath)} and companion files.");
+        }
+    }
+
+    private void UpdateRecordingStatus()
+    {
+        var status = recording?.Status;
+        viewModel.CanRecord = source.IsRunning && (status is null || status.IsComplete) && viewModel.CanEdit;
+        viewModel.CanFinishRecording = status is { IsComplete: false } && viewModel.CanEdit;
+        viewModel.RecordingInfo = status is null ? "Not recording" : status.Failure is not null ? "Recording FAILED · files may be partial"
+            : status.IsComplete ? $"Saved {status.WrittenSamples:N0} reports" : status.IsStopping ? "Finishing recording…" : $"● Recording · {status.AcceptedSamples:N0} reports";
+    }
+
+    private async void RecordClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "SherpaAxis recording (*.csv)|*.csv",
+            DefaultExt = ".csv",
+            OverwritePrompt = false,
+            InitialDirectory = Directory.Exists("research") ? Path.GetFullPath("research") : "",
+            FileName = FormattableString.Invariant($"pedals-{DateTime.Now:yyyyMMdd-HHmmss}.csv"),
+            Title = "Record input CSV, processed CSV, and session events (new files only)"
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            await FinishRecordingAsync();
+            if (!source.IsRunning)
+            {
+                throw new InvalidOperationException("Start live input or playback before recording.");
+            }
+
+            recording = await RecordingSession.CreateAsync(dialog.FileName, lifetime.Token);
+            recordingPath = dialog.FileName;
+            recordingNoticeShown = false;
+            try { engine.AttachRecording(recording); }
+            catch (Exception exception) when (IsExpected(exception))
+            {
+                recording.Abort(exception);
+                await recording.StopAsync();
+                throw;
+            }
+
+            viewModel.ShowMessage("Recording every report. Active settings and session events are saved alongside the input and processed CSVs.");
+        });
+    }
+
+    private async void FinishRecordingClick(object sender, RoutedEventArgs e) => await RunAsync(FinishRecordingAsync);
+
+    private Task FinishRecordingAsync() => FinishRecordingAsync("user-finished");
+
+    private async Task FinishRecordingAsync(string reason)
+    {
+        engine.DetachRecording(reason);
+        if (recording is not null)
+        {
+            await recording.StopAsync();
+        }
     }
 
     private async void StartLiveClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         StopHold();
+        await FinishRecordingAsync("source-switch");
         var monitor = new PedalMonitor(new WindowsHidInputSource(), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
-        await source.StartAsync(token => monitor.WatchAsync(cancellationToken: token));
+        await source.StartAsync(token => monitor.WatchAsync(cancellationToken: token), new("live-device-axis"));
         viewModel.SourceName = "Live · FEEL-VR device axes";
         viewModel.HardwareInfo = "Not read for this live session. Read hardware calibration to inspect current stored bounds.";
         viewModel.ShowMessage("Live read-only input. Start with device-range defaults; hardware RAW profiles may use different units.");
@@ -82,8 +154,9 @@ public partial class MainWindow : Window, IAsyncDisposable
         await RunAsync(async () =>
         {
             StopHold();
+            await FinishRecordingAsync("source-switch");
             var speed = viewModel.PlaybackSpeed;
-            await source.StartAsync(token => CapturePlayback.ReadAsync(dialog.FileName, speed, token));
+            await source.StartAsync(token => CapturePlayback.ReadAsync(dialog.FileName, speed, token), new("capture-replay", Path.GetFileName(dialog.FileName), speed));
             viewModel.SourceName = $"Replay · {Path.GetFileName(dialog.FileName)} · {speed}×";
             viewModel.ShowMessage("Playback uses recorded timestamps for processing. Confirm release only in independently known released intervals.");
         });
@@ -94,6 +167,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         StopHold();
         await source.StopAsync();
         engine.End("Stopped");
+        await FinishRecordingAsync();
     });
 
     private void SelectAxisClick(object sender, RoutedEventArgs e)
@@ -156,6 +230,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     {
         var reader = new CalibrationSnapshotReader(new WindowsHidInputSource(), new WindowsHidFeatureReader());
         var snapshot = await Task.Run(() => reader.ReadAsync(TimeSpan.FromSeconds(2), cancellationToken: lifetime.Token));
+        engine.RecordHardware(snapshot);
         static string Range(HardwareCalibrationRange range) => FormattableString.Invariant($"{range.Minimum} → {range.Maximum}{(range.HasUsableRange ? "" : " (invalid range)")}");
         viewModel.HardwareInfo = $"Read {snapshot.CapturedAtUtc.ToLocalTime():HH:mm:ss}\nThrottle  {Range(snapshot.Calibration.Throttle)}\nBrake  {Range(snapshot.Calibration.Brake)}\nClutch  {Range(snapshot.Calibration.Clutch)}\nSnapshot only; changes in FEEL-VR Control require another read.";
         viewModel.ShowMessage($"Read-only hardware snapshot · Throttle {Range(snapshot.Calibration.Throttle)} · Brake {Range(snapshot.Calibration.Brake)} · Clutch {Range(snapshot.Calibration.Clutch)}");
@@ -274,6 +349,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         await source.DisposeAsync();
+        await FinishRecordingAsync();
         lifetime.Dispose();
         GC.SuppressFinalize(this);
     }
