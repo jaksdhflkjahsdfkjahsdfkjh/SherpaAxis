@@ -28,6 +28,9 @@ public sealed class DashboardViewModel : ObservableObject
     public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
     public double PlaybackSpeed { get; set; } = 1;
     public bool CanEdit { get; set; } = true;
+    public bool CanRecord { get; set; }
+    public bool CanFinishRecording { get; set; }
+    public string RecordingInfo { get; set; } = "Not recording";
     public bool PlotCounts
     {
         get => plotCounts;

@@ -12,13 +12,13 @@ public sealed class DashboardSource(DashboardEngine engine) : IAsyncDisposable
     public bool IsRunning => worker is { IsCompleted: false };
     public string? Failure => worker?.Exception?.GetBaseException().Message;
 
-    public async Task StartAsync(Func<CancellationToken, IAsyncEnumerable<PedalMonitorEvent>> source)
+    public async Task StartAsync(Func<CancellationToken, IAsyncEnumerable<PedalMonitorEvent>> source, RecordingSource? context = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         await StopAsync().ConfigureAwait(false);
         cancellation = new();
         var token = cancellation.Token;
-        engine.Begin();
+        engine.Begin(context);
         worker = Task.Run(() => PumpAsync(source(token), token), CancellationToken.None);
     }
 
@@ -63,6 +63,11 @@ public sealed class DashboardSource(DashboardEngine engine) : IAsyncDisposable
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or TimeoutException)
         {
             message = $"Source error: {exception.Message}";
+        }
+        catch
+        {
+            message = "Source error: unexpected source failure.";
+            throw;
         }
         finally
         {
