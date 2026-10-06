@@ -19,6 +19,9 @@ The SDK version is pinned in `global.json`; project references define the depend
 - **App** is a WPF desktop application. View models expose editor and graph state;
   device acquisition runs independently of dispatcher refresh. The processing
   model provides bounded snapshots for drawing.
+- **Bridge** owns the dynamically loaded vJoy SDK and a latest-output worker.
+  Driver writes run outside the processing lock. Source changes, configuration
+  changes and stale input disarm output before the device is released.
 
 ## Input and native configuration
 

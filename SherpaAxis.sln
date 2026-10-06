@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.App", "src\SherpaAxis.App\SherpaAxis.App.csproj", "{B32A81DF-0E88-5828-8313-3D0C44B3F77F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Bridge", "src\SherpaAxis.Bridge\SherpaAxis.Bridge.csproj", "{17D6743D-EE8B-5A2E-A36F-0AAFA82DF0E0}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli", "src\SherpaAxis.Cli\SherpaAxis.Cli.csproj", "{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Core", "src\SherpaAxis.Core\SherpaAxis.Core.csproj", "{585D9F09-44FD-515B-80B8-F9E46FC454A1}"
@@ -28,6 +30,10 @@ Global
 		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B32A81DF-0E88-5828-8313-3D0C44B3F77F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17D6743D-EE8B-5A2E-A36F-0AAFA82DF0E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17D6743D-EE8B-5A2E-A36F-0AAFA82DF0E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17D6743D-EE8B-5A2E-A36F-0AAFA82DF0E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17D6743D-EE8B-5A2E-A36F-0AAFA82DF0E0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C8344BF-FB9D-5CEA-A17C-6751D8576FA7}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SherpaAxis.Bridge;
 using SherpaAxis.Core;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
@@ -23,6 +24,7 @@ public sealed class DashboardEngine
     private RecordedHardware? hardware;
     private bool sourceActive;
     private double sourceElapsed;
+    private IProcessedOutputSink? output;
 
     public DashboardEngine(TimeProvider? clock = null)
     {
@@ -48,6 +50,7 @@ public sealed class DashboardEngine
                 pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
         lock (sync)
         {
+            SuspendOutput("processing settings changed");
             foreach (var (axis, session) in replacements)
             {
                 var replacement = new AxisState(session);
@@ -89,6 +92,7 @@ public sealed class DashboardEngine
     {
         lock (sync)
         {
+            SuspendOutput("input source ended");
             Event("source-ended", new { Message = message });
             recording?.Complete(message.StartsWith("Source error:", StringComparison.Ordinal) ? "source-error" : message);
             recording = null;
@@ -141,6 +145,7 @@ public sealed class DashboardEngine
                 var result = values.Session.Process(raw, elapsed, connection, released);
                 if (result.ResetReason != AxisSessionResetReason.None)
                 {
+                    if (result.ResetReason == AxisSessionResetReason.SamplingGap) { SuspendOutput("sampling gap"); }
                     values.History.Clear();
                     values.LastPlotAt = null;
                     values.AuthorizedAt = null;
@@ -163,8 +168,41 @@ public sealed class DashboardEngine
 
             recording?.RecordSample(new(elapsed, connection, configurationRevision, input,
                 axes[PedalAxis.Throttle].Current!.Value, axes[PedalAxis.Brake].Current!.Value, axes[PedalAxis.Clutch].Current!.Value));
+            output?.Submit(CurrentOutput());
         }
     }
+
+    public void AttachOutput(IProcessedOutputSink sink)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+        lock (sync)
+        {
+            if (!sourceActive || source.Kind != "live-device-axis" || axes.Values.Any(axis => !IsFresh(axis) || clock.GetElapsedTime(axis.LastSampleAt!.Value) >= TimeSpan.FromMilliseconds(100)))
+            {
+                throw new InvalidOperationException("Virtual output requires fresh live pedal input. Replay cannot feed a controller.");
+            }
+            SuspendOutput("output replaced");
+            output = sink;
+            output.Submit(CurrentOutput());
+            Event("virtual-output-enabled", new { Mapping = "throttle:X,brake:Y,clutch:Z" });
+        }
+    }
+
+    public void SuspendOutput(string reason)
+    {
+        lock (sync)
+        {
+            if (output is not null)
+            {
+                output.Invalidate(reason);
+                output = null;
+                Event("virtual-output-disabled", new { Reason = reason });
+            }
+        }
+    }
+
+    private PedalOutput CurrentOutput() => new(axes[PedalAxis.Throttle].Current!.Value.Processing.Output,
+        axes[PedalAxis.Brake].Current!.Value.Processing.Output, axes[PedalAxis.Clutch].Current!.Value.Processing.Output);
 
     public void ConfirmBaseline(PedalAxis axis)
     {
@@ -295,6 +333,7 @@ public sealed class DashboardEngine
 
     private void ClearConnection()
     {
+        SuspendOutput("connection changed");
         hardware = null;
         count = 0;
         firstTime = elapsed = 0;
