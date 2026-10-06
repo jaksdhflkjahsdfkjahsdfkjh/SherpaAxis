@@ -96,9 +96,13 @@
       "sherpaaxis.app": {
         "type": "Project",
         "dependencies": {
+          "SherpaAxis.Bridge": "[1.0.0, )",
           "SherpaAxis.FeelVR": "[1.0.0, )",
           "SherpaAxis.Profiles": "[1.0.0, )"
         }
+      },
+      "sherpaaxis.bridge": {
+        "type": "Project"
       },
       "sherpaaxis.core": {
         "type": "Project"
