@@ -105,7 +105,7 @@ public sealed class ProfileJsonTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(2)]
+    [InlineData(3)]
     [InlineData(-1)]
     public void UnsupportedSchemaVersionsAreRejected(int version)
     {

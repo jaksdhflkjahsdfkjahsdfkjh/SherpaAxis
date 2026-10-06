@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
 using SherpaAxis.App.ViewModels;
+using SherpaAxis.Bridge;
 using SherpaAxis.Devices;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
@@ -29,6 +30,9 @@ public partial class MainWindow : Window, IAsyncDisposable
     private RecordingSession? recording;
     private string? recordingPath;
     private bool recordingNoticeShown;
+    private readonly ProfileLibrary library = new(ProfileLibrary.DefaultDirectory);
+    private bool editingCurve;
+    private OutputBridge? bridge;
 
     public MainWindow()
     {
@@ -43,6 +47,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         DataContext = viewModel;
         refresh = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, RefreshTick, Dispatcher);
         refresh.Start();
+        Loaded += LoadLibrary;
     }
 
     private void RefreshTick(object? sender, EventArgs e)
@@ -62,6 +67,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         UpdateRecordingStatus();
+        viewModel.OutputInfo = bridge?.Status ?? "Output disabled";
         viewModel.Refresh();
         if (recording?.Status is { IsComplete: true } status && !recordingNoticeShown)
         {
@@ -135,6 +141,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     private async void StartLiveClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         StopHold();
+        viewModel.CancelCalibration();
         await FinishRecordingAsync("source-switch");
         var monitor = new PedalMonitor(new WindowsHidInputSource(), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
         await source.StartAsync(token => monitor.WatchAsync(cancellationToken: token), new("live-device-axis"));
@@ -154,6 +161,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         await RunAsync(async () =>
         {
             StopHold();
+            viewModel.CancelCalibration();
             await FinishRecordingAsync("source-switch");
             var speed = viewModel.PlaybackSpeed;
             await source.StartAsync(token => CapturePlayback.ReadAsync(dialog.FileName, speed, token), new("capture-replay", Path.GetFileName(dialog.FileName), speed));
@@ -185,6 +193,9 @@ public partial class MainWindow : Window, IAsyncDisposable
     private void CaptureMaximumClick(object sender, RoutedEventArgs e) => Run(() => viewModel.CaptureEndpoint(true));
     private void ObservedRangeClick(object sender, RoutedEventArgs e) => Run(viewModel.UseObservedRange);
     private void DefaultsClick(object sender, RoutedEventArgs e) => viewModel.ResetEditor();
+    private void CalibrateReleasedClick(object sender, RoutedEventArgs e) => Run(viewModel.CaptureReleased);
+    private void CalibratePressedClick(object sender, RoutedEventArgs e) => Run(viewModel.CapturePressed);
+    private void CancelCalibrationClick(object sender, RoutedEventArgs e) => viewModel.CancelCalibration();
     private void ConfirmBaselineClick(object sender, RoutedEventArgs e) => Run(() =>
     {
         engine.ConfirmBaseline(viewModel.SelectedAxis);
@@ -195,36 +206,6 @@ public partial class MainWindow : Window, IAsyncDisposable
         engine.DisableCompensation(viewModel.SelectedAxis);
         viewModel.ShowMessage("Zero correction requested. Hold the release control while released to ramp the applied correction back to zero.");
     });
-
-    private async void OpenProfileClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog { Filter = "SherpaAxis profile (*.json)|*.json", Title = "Open processing profile" };
-        if (dialog.ShowDialog(this) == true)
-        {
-            await RunAsync(async () =>
-            {
-                var profile = await ProfileStore.LoadAsync(dialog.FileName, lifetime.Token);
-                StopHold();
-                viewModel.Load(profile);
-            });
-        }
-    }
-
-    private async void SaveProfileClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SaveFileDialog { Filter = "SherpaAxis profile (*.json)|*.json", DefaultExt = ".json", FileName = "pedals.json", Title = "Save processing profile", OverwritePrompt = true };
-        if (dialog.ShowDialog(this) == true)
-        {
-            await RunAsync(async () =>
-            {
-                var (profile, _) = viewModel.ValidateEditors();
-                await ProfileStore.SaveAsync(dialog.FileName, profile, overwrite: true, cancellationToken: lifetime.Token);
-                StopHold();
-                viewModel.Apply();
-                viewModel.ShowMessage($"Saved {Path.GetFileName(dialog.FileName)} and applied software settings. Runtime correction and session limits are not saved.");
-            });
-        }
-    }
 
     private async void ReadHardwareClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
@@ -310,7 +291,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     }
 
     private static bool IsExpected(Exception exception) => exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException
-        or InvalidOperationException or TimeoutException or OperationCanceledException;
+        or InvalidOperationException or TimeoutException or OperationCanceledException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException;
 
     private async void WindowClosing(object? sender, CancelEventArgs e)
     {
@@ -349,6 +330,8 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         await source.DisposeAsync();
+        engine.SuspendOutput("window closed");
+        if (bridge is not null) { await bridge.DisposeAsync(); }
         await FinishRecordingAsync();
         lifetime.Dispose();
         GC.SuppressFinalize(this);

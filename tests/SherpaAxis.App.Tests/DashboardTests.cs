@@ -182,7 +182,7 @@ public sealed class DashboardTests
         Assert.Equal(16384, profile.Axes[PedalAxis.Throttle].Calibration.Maximum);
         var restored = ProfileJson.Deserialize(ProfileJson.Serialize(profile));
         model.Load(restored);
-        Assert.Equal("1000", model.Editor.CorrectionRate);
+        Assert.Equal("20", model.Editor.CorrectionRate);
         Assert.Equal("10", model.Editor.MaximumCorrection);
     }
 

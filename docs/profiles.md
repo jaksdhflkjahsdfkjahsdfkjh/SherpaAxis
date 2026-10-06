@@ -1,7 +1,7 @@
 # Processing profiles
 
 `SherpaAxis.Profiles` stores immutable per-axis settings as UTF-8 JSON. New
-files use schema 1.
+files use schema 2. Earlier schemas 1 through 1 remain readable.
 
 A profile has `schemaVersion`, a display `name` and an `axes` object keyed by
 `throttle`, `brake` or `clutch`. Axis entries store `calibration` (minimum,
@@ -11,6 +11,11 @@ maximum, inverted), `deadzone` (lower, upper), `curve`, `filter` and
 Curve kinds are `linear`, `power` with `exponent`, and `piecewiseLinear`
 with input/output `points`. A curve allows at most 1,024 points. Disabled filters
 are null; enabled filters store `timeConstantSeconds` and `resetAfterSeconds`.
+
+Schema 2 adds filter `kind` and `windowSamples`, plus optional axis `session`
+settings: `maximumCorrectionPerSecond`, `maximumCorrectionOutputPerSecond`
+and `resetAfterSeconds`. Schema 1 rejects these extra fields. Filter kinds:
+`Exponential`, `TwoStageExponential`, `MovingAverage`, `Median`.
 
 ## Validation and persistence
 
@@ -40,3 +45,9 @@ dotnet run --project src/SherpaAxis.Cli -c Release -- replay --input capture.csv
 writes a canonical copy. Profile output paths require new files unless
 `--overwrite true` is explicit; parent directories must exist. Replay rejects
 processing overrides when a profile is supplied.
+
+## Desktop library
+
+The desktop library keeps named profiles separate from runtime state.
+Apply activates editor settings; saving persists the profile. Display names
+are not trusted as filesystem paths.
