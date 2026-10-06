@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using SherpaAxis.App.Models;
 using SherpaAxis.Core;
@@ -13,6 +14,8 @@ public sealed class DashboardViewModel : ObservableObject
     private PedalAxis selectedAxis = PedalAxis.Brake;
     private string profileName = "Device-axis preview";
     private bool plotCounts;
+    private ProfileTab? selectedProfile;
+    private CalibrationDraft? calibration;
 
     public DashboardViewModel(DashboardEngine engine)
     {
@@ -24,13 +27,26 @@ public sealed class DashboardViewModel : ObservableObject
 
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = Enum.GetValues<PedalAxis>().Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
-    public static IReadOnlyList<string> CurveKinds { get; } = ["Linear", "Power", "Custom"];
+    public static IReadOnlyList<string> CurveKinds { get; } = ["Linear", "Progressive", "Aggressive", "S curve", "Late bite", "Early bite", "Power", "Custom"];
+    public static IReadOnlyList<FilterChoice> FilterKinds { get; } =
+    [
+        new("Exponential", "Exponential"), new("TwoStageExponential", "Two-stage exponential"),
+        new("MovingAverage", "Moving average"), new("Median", "Median")
+    ];
+    public ObservableCollection<ProfileTab> ProfileTabs { get; } = [];
+    public ProfileTab? SelectedProfile => selectedProfile;
+    public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
+    public IReadOnlyList<PlotSample> DraftCurve { get; private set; } = [];
+    public string CalibrationInfo { get; private set; } = "Release this pedal, then capture released. Software calibration only.";
     public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
     public double PlaybackSpeed { get; set; } = 1;
     public bool CanEdit { get; set; } = true;
     public bool CanRecord { get; set; }
     public bool CanFinishRecording { get; set; }
     public string RecordingInfo { get; set; } = "Not recording";
+    public string OutputInfo { get; set; } = "Output disabled";
+    public string VJoyPath { get; set; } = Bridge.VJoyController.DefaultLibraryPath;
+    public string VJoyDevice { get; set; } = "1";
     public bool PlotCounts
     {
         get => plotCounts;
@@ -40,7 +56,7 @@ public sealed class DashboardViewModel : ObservableObject
     public string ProfileName
     {
         get => profileName;
-        set { profileName = value; Changed(); }
+        set { profileName = value; if (selectedProfile is not null) { selectedProfile.Name = value; } Changed(); }
     }
 
     public PedalAxis SelectedAxis
@@ -50,16 +66,19 @@ public sealed class DashboardViewModel : ObservableObject
         {
             engine.RevokeRelease();
             selectedAxis = value;
+            CancelCalibration();
             Changed();
             Changed(nameof(Editor));
             Changed(nameof(AxisTitle));
             UpdateCurve();
+            RefreshDraftCurve();
             Refresh();
         }
     }
 
     public AxisEditor Editor => editors[selectedAxis];
     public string AxisTitle => SelectedAxis + " processing";
+    public string ActiveProfileInfo => "Applied: " + applied.Name;
     public string SourceName { get; set; } = "No source selected";
     public string Status { get; private set; } = "Stopped";
     public bool IsReceiving { get; private set; }
@@ -131,6 +150,10 @@ public sealed class DashboardViewModel : ObservableObject
     public void Load(PedalProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
+        StoreDraft();
+        CancelCalibration();
+        selectedProfile = new ProfileTab { Name = profile.Name };
+        ProfileTabs.Add(selectedProfile);
         var defaults = DashboardEngine.DefaultProfile();
         foreach (var axis in AxisNames)
         {
@@ -139,8 +162,10 @@ public sealed class DashboardViewModel : ObservableObject
 
         ProfileName = profile.Name;
         Apply();
+        RefreshDraftCurve();
+        Changed(nameof(SelectedProfile));
         Changed(nameof(Editor));
-        ShowMessage("Profile loaded. Missing axes use device-range defaults; session transition limits use app defaults. Check capture units before testing.");
+        ShowMessage("Profile loaded. Missing axes use device-range defaults. Check that calibration matches this input source.");
     }
 
     public void CaptureEndpoint(bool maximum)
@@ -178,6 +203,7 @@ public sealed class DashboardViewModel : ObservableObject
     {
         editors[selectedAxis] = AxisEditor.FromProfile(DashboardEngine.DefaultProfile().Axes[selectedAxis]);
         Changed(nameof(Editor));
+        RefreshDraftCurve();
         ShowMessage("Device-range defaults are in the editor. Apply to activate them.");
     }
 
@@ -185,6 +211,94 @@ public sealed class DashboardViewModel : ObservableObject
     {
         Message = message;
         Changed(nameof(Message));
+    }
+
+    public void SwitchProfile(ProfileTab tab)
+    {
+        ArgumentNullException.ThrowIfNull(tab);
+        if (tab == selectedProfile || !ProfileTabs.Contains(tab)) { return; }
+        StoreDraft();
+        engine.RevokeRelease();
+        engine.SuspendOutput("profile switched");
+        CancelCalibration();
+        selectedProfile = tab;
+        foreach (var (axis, editor) in tab.Editors) { editors[axis] = editor with { }; }
+        ProfileName = tab.Name;
+        try { Apply(); }
+        catch (ArgumentException exception) { ShowMessage($"Draft restored; previous processing remains active until Apply: {exception.Message}"); }
+        RefreshDraftCurve();
+        Changed(string.Empty);
+    }
+
+    public void RefreshDraftCurve()
+    {
+        try
+        {
+            var curve = Editor.BuildCurve();
+            DraftPoints = CurvePresets.Handles(curve);
+            var processor = new AxisProfile(new(0, 1), curve: curve).CreateProcessor();
+            DraftCurve = Enumerable.Range(0, 201).Select(i => new PlotSample(i / 200d, 0, 0, processor.Process(i / 200d).Output)).ToArray();
+        }
+        catch (ArgumentException) { DraftPoints = []; DraftCurve = []; }
+        Changed(nameof(DraftPoints));
+        Changed(nameof(DraftCurve));
+    }
+
+    public void EditCurve(IEnumerable<CurvePoint> points)
+    {
+        Editor.SetCurvePoints(points);
+        RefreshDraftCurve();
+        Changed(nameof(Editor));
+        ShowMessage("Curve edited. Apply activates it; Save profile keeps it for later.");
+    }
+
+    public void CaptureReleased()
+    {
+        engine.SuspendOutput("calibration started");
+        var (frame, axis) = FreshAxis();
+        calibration = new(selectedAxis, frame.Connection, axis.Result!.Value.Processing.Input);
+        CalibrationInfo = "Released captured. Press to your desired full-scale force/travel, hold, then capture pressed.";
+        Changed(nameof(CalibrationInfo));
+    }
+
+    public void CapturePressed()
+    {
+        if (calibration is null || calibration.Axis != selectedAxis) { throw new InvalidOperationException("Capture released for this pedal first."); }
+        var (frame, axis) = FreshAxis();
+        var result = calibration.Complete(frame.Connection, axis.Result!.Value.Processing.Input);
+        editors[selectedAxis] = Editor with
+        {
+            Minimum = result.Minimum.ToString("R", CultureInfo.InvariantCulture),
+            Maximum = result.Maximum.ToString("R", CultureInfo.InvariantCulture),
+            Inverted = result.Inverted
+        };
+        CancelCalibration();
+        CalibrationInfo = "Calibration ready in the editor. Review endpoints and Apply; Save profile to persist.";
+        Changed(nameof(Editor));
+        Changed(nameof(CalibrationInfo));
+    }
+
+    public void CancelCalibration()
+    {
+        calibration = null;
+        CalibrationInfo = "Release this pedal, then capture released. Software calibration only.";
+        Changed(nameof(CalibrationInfo));
+    }
+
+    private (DashboardFrame Frame, AxisFrame Axis) FreshAxis()
+    {
+        var frame = engine.Snapshot(selectedAxis);
+        var axis = frame.Axes.Single(a => a.Axis == selectedAxis);
+        if (!axis.IsFresh || axis.Result is null) { throw new InvalidOperationException("Start live input and wait for fresh samples before calibration."); }
+        return (frame, axis);
+    }
+
+    private void StoreDraft()
+    {
+        if (selectedProfile is null) { return; }
+        selectedProfile.Name = ProfileName;
+        selectedProfile.Editors.Clear();
+        foreach (var (axis, editor) in editors) { selectedProfile.Editors.Add(axis, editor with { }); }
     }
 
     private void UpdateCurve()

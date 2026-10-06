@@ -81,13 +81,14 @@
             <StackPanel Orientation="Horizontal">
                 <Path Data="M 0,25 L 15,0 L 30,25 L 21,25 L 15,14 L 8,25 Z" Fill="#45D6BB" Width="32" Height="30" Stretch="Uniform" Margin="0,0,12,0" />
                 <StackPanel><TextBlock Text="SherpaAxis" FontSize="25" FontWeight="SemiBold" /><TextBlock Text="PEDAL WORKBENCH" Foreground="{StaticResource Muted}" FontSize="10" /></StackPanel>
-                <Border Background="#15382F" CornerRadius="4" Padding="9,5" Margin="18,0,0,0" VerticalAlignment="Center"><TextBlock Text="SOFTWARE PREVIEW" Foreground="#78E3C6" FontSize="10" FontWeight="SemiBold" /></Border>
+                <Border Background="#15382F" CornerRadius="4" Padding="9,5" Margin="18,0,0,0" VerticalAlignment="Center"><TextBlock Text="PEDAL WORKBENCH" Foreground="#78E3C6" FontSize="10" FontWeight="SemiBold" /></Border>
             </StackPanel>
         </DockPanel>
         <Border Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="15,12" Margin="0,0,0,18">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" MaxWidth="240">
                     <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DFBC7A" /><Style.Triggers><DataTrigger Binding="{Binding IsReceiving}" Value="True"><Setter Property="Foreground" Value="#78E3C6" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                    <TextBlock Text="{Binding OutputInfo}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding OutputInfo}" />
                     <TextBlock Text="{Binding SourceName}" Foreground="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding RecordingInfo}" Foreground="#EEB5C1" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding RecordingInfo}" />
                 </StackPanel>
@@ -103,10 +104,30 @@
                 </StackPanel>
             </DockPanel>
         </Border>
-        <Grid Grid.Row="2" x:Name="WorkbenchContent">
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <DockPanel Margin="0,0,0,12" IsEnabled="{Binding CanEdit}">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Save to library" Click="SaveLibraryClick" FontSize="12" Padding="10,6"/>
+                    <Button Content="Duplicate" Click="DuplicateProfileClick" FontSize="12" Padding="10,6"/>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}" SelectionChanged="ProfileTabChanged"
+                         Background="#111D2E" Foreground="#E8EFF8" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled" DisplayMemberPath="Name" AutomationProperties.Name="Profile tabs">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="12,8"/><Setter Property="Foreground" Value="#E8EFF8"/>
+                        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Tab" Background="#18273C" CornerRadius="5" Margin="0,0,5,0" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+                            <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="#365975"/></Trigger></ControlTemplate.Triggers>
+                        </ControlTemplate></Setter.Value></Setter>
+                    </Style></ListBox.ItemContainerStyle>
+                </ListBox>
+            </DockPanel>
+        <Grid Grid.Row="1" x:Name="WorkbenchContent">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="370" /></Grid.ColumnDefinitions>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="640">
+            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="560">
                 <Grid.RowDefinitions><RowDefinition Height="137" /><RowDefinition Height="*" /><RowDefinition Height="202" /></Grid.RowDefinitions>
                 <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-12,15">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -132,7 +153,8 @@
                 </Border>
                 <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*" /><ColumnDefinition Width="15" /><ColumnDefinition Width="1.1*" /></Grid.ColumnDefinitions>
                     <Border Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12">
-                        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Applied response curve" FontWeight="SemiBold" /><controls:SignalPlot Grid.Row="1" Samples="{Binding Curve}" IsCurve="True" Margin="0,12,0,0" /></Grid>
+                        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Curve editor · draft" FontWeight="SemiBold"/><TextBlock Text="Drag • double-click adds • right-click removes
+Dashed: applied including deadzones • Apply activates" Foreground="#95A9C1" FontSize="9" TextWrapping="Wrap"/></StackPanel><controls:CurveEditor x:Name="ResponseEditor" Grid.Row="1" Points="{Binding DraftPoints, Mode=OneWay}" Preview="{Binding DraftCurve}" Applied="{Binding Curve}" Edited="CurveEdited" Margin="0,6,0,0" IsEnabled="{Binding CanEdit}" AutomationProperties.Name="Draggable response curve"/></Grid>
                     </Border>
                     <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12" IsEnabled="{Binding CanEdit}">
                         <StackPanel><TextBlock Text="Manual correction" FontWeight="SemiBold" /><TextBlock Text="{Binding CorrectionInfo}" FontSize="12" Margin="0,9,0,0" /><TextBlock Text="{Binding ResetInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap" />
@@ -149,12 +171,14 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="18,15,18,0">
                         <DockPanel><Button DockPanel.Dock="Right" Content="Apply" Style="{StaticResource Primary}" Click="ApplyClick" Margin="12,0,0,0" IsEnabled="{Binding CanEdit}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="Selected pedal" /></DockPanel>
-                        <TextBlock Text="{Binding AxisTitle}" FontSize="18" FontWeight="SemiBold" Margin="0,15,0,3" /><TextBlock Text="Software settings · Apply activates all axes" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
+                        <TextBlock Text="{Binding AxisTitle}" FontSize="18" FontWeight="SemiBold" Margin="0,15,0,3" /><TextBlock Text="{Binding ActiveProfileInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="18,0,18,18" IsEnabled="{Binding CanEdit}">
                             <TextBlock Text="Profile name" Style="{StaticResource Label}" /><TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" />
                             <TextBlock Text="Software calibration" Style="{StaticResource Section}" />
+                            <TextBlock Text="{Binding CalibrationInfo}" Foreground="#95A9C1" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <WrapPanel Margin="0,0,0,10"><Button Content="1 · Released" Click="CalibrateReleasedClick" FontSize="11" Padding="8,6"/><Button Content="2 · Pressed" Click="CalibratePressedClick" FontSize="11" Padding="8,6"/><Button Content="Cancel" Click="CancelCalibrationClick" FontSize="11" Padding="8,6"/></WrapPanel>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <StackPanel><TextBlock Text="Minimum · device-axis units" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software minimum" /><Button Content="Use current" Click="CaptureMinimumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Text="Maximum" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software maximum" /><Button Content="Use current" Click="CaptureMaximumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
@@ -168,23 +192,37 @@
                                 <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent" /></StackPanel>
                             </Grid>
                             <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Curve" Style="{StaticResource Label}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding Editor.CurveKind}" AutomationProperties.Name="Response curve" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Power exponent" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Exponent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Power exponent" /></StackPanel>
+                                <StackPanel><TextBlock Text="Curve" Style="{StaticResource Label}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding Editor.CurveKind, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="CurveSettingsChanged" AutomationProperties.Name="Response curve" /></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Power exponent" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Exponent, UpdateSourceTrigger=PropertyChanged}" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Power exponent" /></StackPanel>
                             </Grid>
                             <TextBlock Text="Custom points · 0..1 input:output pairs" Style="{StaticResource Label}" Margin="0,12,0,5" />
-                            <TextBox Text="{Binding Editor.Points, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="56" AutomationProperties.Name="Custom curve points" />
+                            <TextBox Text="{Binding Editor.Points, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="56" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Custom curve points" />
+                            <CheckBox Content="Enable selected filter" IsChecked="{Binding Editor.FilterEnabled}" Margin="0,12,0,8"/>
+                            <TextBlock Text="Filter type" Style="{StaticResource Label}" Margin="0,0,0,5"/>
+                            <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding Editor.FilterKind}" SelectedValuePath="Kind" DisplayMemberPath="Name" AutomationProperties.Name="Filter type"/>
+                            <TextBlock Text="Window samples · odd 3..101 · average/median" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                            <TextBox Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter window samples"/>
                             <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <StackPanel><TextBlock Text="Filter τ (ms) · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter milliseconds" /></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Text="Filter reset gap (ms)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter reset milliseconds" /></StackPanel>
                             </Grid>
                             <TextBlock Text="Correction settings" Style="{StaticResource Section}" />
                             <TextBlock Text="Max correction · counts · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.MaximumCorrection, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum correction" />
-                            <TextBlock Text="Session limits · not stored in schema 1 profiles" Foreground="#DFBC7A" FontSize="11" Margin="0,12,0,9" TextWrapping="Wrap" />
+                            <TextBlock Text="Session transition limits" Foreground="#DFBC7A" FontSize="11" Margin="0,12,0,9" TextWrapping="Wrap" />
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <StackPanel><TextBlock Text="Correction counts / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction count rate" /></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Text="Output fraction / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionOutputRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction output rate" /></StackPanel>
                             </Grid>
                             <TextBlock Text="Session reset gap (ms)" Style="{StaticResource Label}" Margin="0,12,0,5" /><TextBox Text="{Binding Editor.SessionGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Session reset milliseconds" />
+                            <TextBlock Text="Virtual controller · vJoy" Style="{StaticResource Section}"/>
+                            <TextBlock Text="{Binding OutputInfo}" Foreground="#DFBC7A" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <TextBlock Text="Installed x64 vJoyInterface.dll" Style="{StaticResource Label}"/>
+                            <TextBox Text="{Binding VJoyPath, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy library path"/>
+                            <Button Content="Browse DLL…" Click="BrowseVJoyClick" FontSize="11" Padding="8,5" Margin="0,5,0,8"/>
+                            <TextBlock Text="Dedicated vJoy device ID · 1..16" Style="{StaticResource Label}"/>
+                            <TextBox Text="{Binding VJoyDevice, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy device ID"/>
+                            <WrapPanel Margin="0,8,0,8"><Button Content="Enable vJoy" Click="EnableOutputClick" FontSize="11" Padding="8,6"/><Button Content="Disable output" Click="DisableOutputClick" FontSize="11" Padding="8,6"/></WrapPanel>
+                            <TextBlock Text="Throttle → X · Brake → Y · Clutch → Z. Live input only. Apply, calibration, profile/source changes and stale input stop output. Enable again after reviewing changes." Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap"/>
                             <TextBlock Text="Hardware calibration · read only" Style="{StaticResource Section}" />
                             <Button Content="Read hardware calibration" Click="ReadHardwareClick" Margin="0,0,0,10" />
                             <TextBlock Text="{Binding HardwareInfo}" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" />
@@ -193,6 +231,7 @@
                     </ScrollViewer>
                 </DockPanel>
             </Border>
+        </Grid>
         </Grid>
         <Border Grid.Row="3" Background="#17273B" CornerRadius="6" Padding="12,9" Margin="0,15,0,0"><TextBlock Text="{Binding Message}" Foreground="#BDCEE1" FontSize="12" TextWrapping="Wrap" /></Border>
     </Grid>

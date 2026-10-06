@@ -16,6 +16,13 @@ public sealed record AxisEditor
     public string Points { get; set; } = "0:0; 0.5:0.5; 1:1";
     public string FilterMilliseconds { get; set; } = "0";
     public string FilterGapMilliseconds { get; set; } = "100";
+    public string FilterKind { get; set; } = "Exponential";
+    public string FilterWindowSamples { get; set; } = "5";
+    public bool FilterEnabled
+    {
+        get => double.TryParse(FilterMilliseconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0;
+        set { if (!value) { FilterMilliseconds = "0"; } else if (!FilterEnabled) { FilterMilliseconds = "10"; } }
+    }
     public string MaximumCorrection { get; set; } = "0";
     public string CorrectionRate { get; set; } = "1000";
     public string CorrectionOutputRate { get; set; } = "0.05";
@@ -35,17 +42,27 @@ public sealed record AxisEditor
             throw new ArgumentException("Filter gap must be positive.");
         }
 
-        var curve = CurveKind switch
+        var curve = BuildCurve();
+        if (!Enum.TryParse<SignalFilterKind>(FilterKind, out var kind) || !Enum.IsDefined(kind))
         {
-            "Linear" => ProfileCurve.Linear,
-            "Power" => ProfileCurve.Power(Number(Exponent, "Exponent")),
-            "Custom" => ProfileCurve.PiecewiseLinear(ParsePoints()),
-            _ => throw new ArgumentException("Select a supported curve.")
-        };
+            throw new ArgumentException("Select a supported filter.");
+        }
+        if (!int.TryParse(FilterWindowSamples, NumberStyles.None, CultureInfo.InvariantCulture, out var window))
+        {
+            throw new ArgumentException("Filter window requires an odd integer from 3 to 101.");
+        }
         return new(new(Number(Minimum, "Minimum"), Number(Maximum, "Maximum"), Inverted),
             new(Number(LowerDeadzone, "Lower deadzone") / 100, Number(UpperDeadzone, "Upper deadzone") / 100),
-            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap));
+            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap, kind, window), BuildSessionSettings());
     }
+
+    public ProfileCurve BuildCurve() => CurveKind switch
+    {
+        "Linear" => ProfileCurve.Linear,
+        "Power" => ProfileCurve.Power(Number(Exponent, "Exponent")),
+        "Custom" => ProfileCurve.PiecewiseLinear(ParsePoints()),
+        _ => CurvePresets.Create(CurveKind)
+    };
 
     public AxisSessionSettings BuildSessionSettings() => new(Number(CorrectionRate, "Correction rate"),
         Number(CorrectionOutputRate, "Correction output rate"), Number(SessionGapMilliseconds, "Session gap") / 1000);
@@ -67,8 +84,20 @@ public sealed record AxisEditor
                 : "0:0; 0.5:0.5; 1:1",
             FilterMilliseconds = Format((profile.Filter?.TimeConstantSeconds ?? 0) * 1000),
             FilterGapMilliseconds = Format((profile.Filter?.ResetAfterSeconds ?? .1) * 1000),
-            MaximumCorrection = Format(profile.MaximumBaselineCorrection)
+            FilterKind = (profile.Filter?.Kind ?? SignalFilterKind.Exponential).ToString(),
+            FilterWindowSamples = (profile.Filter?.WindowSamples ?? 5).ToString(CultureInfo.InvariantCulture),
+            MaximumCorrection = Format(profile.MaximumBaselineCorrection),
+            CorrectionRate = Format(profile.Session?.MaximumCorrectionPerSecond ?? 1000),
+            CorrectionOutputRate = Format(profile.Session?.MaximumCorrectionOutputPerSecond ?? .05),
+            SessionGapMilliseconds = Format((profile.Session?.ResetAfterSeconds ?? .1) * 1000)
         };
+    }
+
+    public void SetCurvePoints(IEnumerable<CurvePoint> points)
+    {
+        var curve = ProfileCurve.PiecewiseLinear(points);
+        Points = string.Join("; ", curve.Points.Select(p => $"{Format(p.Input)}:{Format(p.Output)}"));
+        CurveKind = "Custom";
     }
 
     private CurvePoint[] ParsePoints()

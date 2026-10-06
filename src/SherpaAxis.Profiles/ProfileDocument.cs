@@ -12,11 +12,20 @@ internal sealed class ProfileDocument
 
 internal sealed class AxisDocument
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SessionDocument? Session { get; init; }
     public required CalibrationDocument Calibration { get; init; }
     public required DeadzoneDocument Deadzone { get; init; }
     public required CurveDocument Curve { get; init; }
     public required FilterDocument? Filter { get; init; }
     public required double MaximumBaselineCorrection { get; init; }
+}
+
+internal sealed class SessionDocument
+{
+    public required double MaximumCorrectionPerSecond { get; init; }
+    public required double MaximumCorrectionOutputPerSecond { get; init; }
+    public required double ResetAfterSeconds { get; init; }
 }
 
 internal sealed class CalibrationDocument
@@ -51,6 +60,10 @@ internal sealed class CurvePointDocument
 
 internal sealed class FilterDocument
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Kind { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? WindowSamples { get; init; }
     public required double TimeConstantSeconds { get; init; }
     public required double ResetAfterSeconds { get; init; }
 }

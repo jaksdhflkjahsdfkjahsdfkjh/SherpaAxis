@@ -28,7 +28,11 @@ Exponential smoothing uses `1 - exp(-dt / tau)`; the first sample and a gap at
 or above `resetAfterSeconds` seed from current input. Equal timestamps do not
 advance filter history. Baseline confirmation/reset clears processor filter history.
 
-Available algorithms: `Exponential`.
+Available algorithms: `Exponential`, `TwoStageExponential`, `MovingAverage`, `Median`.
+
+Window sizes are odd, 3..101 reports, with growing windows during warmup.
+Pure window filters use the report window; exponential stages use the time
+constant. Filtering smooths intentional movement as well as jitter and adds delay.
 
 ## Session ownership
 

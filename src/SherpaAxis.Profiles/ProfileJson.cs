@@ -6,7 +6,7 @@ namespace SherpaAxis.Profiles;
 
 public static class ProfileJson
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
     public const int MaximumFileBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions Options = new()
@@ -30,7 +30,7 @@ public static class ProfileJson
         {
             var document = JsonSerializer.Deserialize<ProfileDocument>(json, Options)
                 ?? throw new InvalidDataException("Expected a profile object.");
-            if (document.SchemaVersion != SchemaVersion)
+            if (document.SchemaVersion is not (1 or SchemaVersion))
             {
                 throw new InvalidDataException($"Unsupported profile schema version {document.SchemaVersion}; expected {SchemaVersion}.");
             }
@@ -43,12 +43,18 @@ public static class ProfileJson
                 {
                     throw new InvalidDataException($"Missing settings for {name}.");
                 }
+                if (document.SchemaVersion == 1 && settings.Session is not null)
+                {
+                    throw new InvalidDataException("Schema 1 does not store session transition limits.");
+                }
 
                 axes.Add(axis, new AxisProfile(
                     new AxisCalibration(settings.Calibration.Minimum, settings.Calibration.Maximum, settings.Calibration.Inverted),
                     new AxisDeadzone(settings.Deadzone.Lower, settings.Deadzone.Upper),
                     ReadCurve(settings.Curve), settings.MaximumBaselineCorrection,
-                    settings.Filter is { } filter ? new LowPassFilterSettings(filter.TimeConstantSeconds, filter.ResetAfterSeconds) : null));
+                    settings.Filter is { } filter ? ReadFilter(filter, document.SchemaVersion) : null,
+                    settings.Session is { } session ? new AxisSessionSettings(session.MaximumCorrectionPerSecond,
+                        session.MaximumCorrectionOutputPerSecond, session.ResetAfterSeconds) : null));
             }
 
             return new PedalProfile(document.Name, axes);
@@ -106,6 +112,12 @@ public static class ProfileJson
 
     private static AxisDocument ToDocument(AxisProfile axis) => new()
     {
+        Session = axis.Session is { } session ? new()
+        {
+            MaximumCorrectionPerSecond = session.MaximumCorrectionPerSecond,
+            MaximumCorrectionOutputPerSecond = session.MaximumCorrectionOutputPerSecond,
+            ResetAfterSeconds = session.ResetAfterSeconds
+        } : null,
         Calibration = new() { Minimum = axis.Calibration.Minimum, Maximum = axis.Calibration.Maximum, Inverted = axis.Calibration.Inverted },
         Deadzone = new() { Lower = axis.Deadzone.Lower, Upper = axis.Deadzone.Upper },
         Curve = new()
@@ -115,7 +127,31 @@ public static class ProfileJson
             Points = axis.Curve.Kind == "piecewiseLinear" ? axis.Curve.Points.Select(point =>
                 new CurvePointDocument { Input = point.Input, Output = point.Output }).ToArray() : null
         },
-        Filter = axis.Filter is { } filter ? new() { TimeConstantSeconds = filter.TimeConstantSeconds, ResetAfterSeconds = filter.ResetAfterSeconds } : null,
+        Filter = axis.Filter is { } filter ? new()
+        {
+            TimeConstantSeconds = filter.TimeConstantSeconds,
+            ResetAfterSeconds = filter.ResetAfterSeconds,
+            Kind = filter.Kind.ToString(),
+            WindowSamples = filter.WindowSamples
+        } : null,
         MaximumBaselineCorrection = axis.MaximumBaselineCorrection
     };
+
+    private static LowPassFilterSettings ReadFilter(FilterDocument filter, int version)
+    {
+        if (version == 1)
+        {
+            if (filter.Kind is not null || filter.WindowSamples is not null)
+            {
+                throw new InvalidDataException("Schema 1 supports only the original exponential filter fields.");
+            }
+            return new(filter.TimeConstantSeconds, filter.ResetAfterSeconds);
+        }
+        if (filter.Kind is null || !Enum.TryParse<SignalFilterKind>(filter.Kind, out var kind)
+            || !Enum.IsDefined(kind) || kind.ToString() != filter.Kind || filter.WindowSamples is null)
+        {
+            throw new InvalidDataException("Schema 2 filters require a supported kind and windowSamples.");
+        }
+        return new(filter.TimeConstantSeconds, filter.ResetAfterSeconds, kind, filter.WindowSamples.Value);
+    }
 }

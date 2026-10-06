@@ -5,7 +5,7 @@ public sealed class AxisProcessor
     private readonly AxisCalibration calibration;
     private readonly AxisDeadzone deadzone;
     private readonly ResponseCurve curve;
-    private readonly AxisLowPassFilter? filter;
+    private readonly AxisSignalFilter? filter;
 
     public AxisProcessor(AxisCalibration calibration, AxisDeadzone? deadzone = null,
         ResponseCurve? curve = null, double maximumBaselineCorrection = 0, LowPassFilterSettings? filterSettings = null)
@@ -19,7 +19,7 @@ public sealed class AxisProcessor
         this.calibration = calibration;
         this.deadzone = deadzone ?? new AxisDeadzone();
         this.curve = curve ?? ResponseCurve.Linear;
-        filter = filterSettings is null ? null : new AxisLowPassFilter(filterSettings);
+        filter = filterSettings is null ? null : new AxisSignalFilter(filterSettings);
         MaximumBaselineCorrection = maximumBaselineCorrection;
     }
 

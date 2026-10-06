@@ -6,7 +6,7 @@ public sealed class AxisSession
     private readonly AxisDeadzone deadzone;
     private readonly ResponseCurve curve;
     private readonly AxisSessionSettings settings;
-    private readonly AxisLowPassFilter? filter;
+    private readonly AxisSignalFilter? filter;
     private double? previousTime;
     private long connection;
 
@@ -24,7 +24,7 @@ public sealed class AxisSession
         this.settings = settings;
         this.deadzone = deadzone ?? new AxisDeadzone();
         this.curve = curve ?? ResponseCurve.Linear;
-        filter = filterSettings is null ? null : new AxisLowPassFilter(filterSettings);
+        filter = filterSettings is null ? null : new AxisSignalFilter(filterSettings);
         MaximumBaselineCorrection = maximumBaselineCorrection;
     }
 
