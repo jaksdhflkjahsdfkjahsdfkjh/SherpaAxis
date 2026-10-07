@@ -4,6 +4,8 @@ namespace SherpaAxis.Bridge;
 
 public sealed class VJoyController : IVirtualController
 {
+    // Keep each SDK module loaded for the process; unloading/reloading stalled repeated enables.
+    private static readonly Dictionary<string, nint> Libraries = new(StringComparer.OrdinalIgnoreCase);
     private readonly nint library;
     private readonly uint device;
     private readonly Update update;
@@ -21,7 +23,7 @@ public sealed class VJoyController : IVirtualController
         if (!Path.IsPathFullyQualified(libraryPath)) { throw new ArgumentException("Choose the installed x64 vJoyInterface.dll using an absolute path.", nameof(libraryPath)); }
         if (!File.Exists(libraryPath)) { throw new FileNotFoundException("vJoy is not installed at the selected path. Install the signed Brunner vJoy 2.2.2.0 package and configure X, Y, Z axes first.", libraryPath); }
         device = deviceId;
-        library = NativeLibrary.Load(libraryPath, typeof(VJoyController).Assembly, DllImportSearchPath.UseDllDirectoryForDependencies | DllImportSearchPath.System32);
+        library = LoadLibrary(Path.GetFullPath(libraryPath));
         try
         {
             if (Export<Enabled>("vJoyEnabled")() == 0) { throw new IOException("vJoy driver is unavailable or disabled."); }
@@ -53,7 +55,6 @@ public sealed class VJoyController : IVirtualController
         catch
         {
             if (acquired) { Export<Release>("RelinquishVJD")(device); }
-            NativeLibrary.Free(library);
             throw;
         }
     }
@@ -84,11 +85,25 @@ public sealed class VJoyController : IVirtualController
 
     private T Export<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(library, name));
 
+    private static nint LoadLibrary(string path)
+    {
+        lock (Libraries)
+        {
+            if (!Libraries.TryGetValue(path, out var handle))
+            {
+                handle = NativeLibrary.Load(path, typeof(VJoyController).Assembly,
+                    DllImportSearchPath.UseDllDirectoryForDependencies | DllImportSearchPath.System32);
+                Libraries.Add(path, handle);
+            }
+            return handle;
+        }
+    }
+
     public void Dispose()
     {
         if (disposed) { return; }
         try { if (acquired) { try { Write(default); } finally { release(device); acquired = false; } } }
-        finally { disposed = true; NativeLibrary.Free(library); }
+        finally { disposed = true; }
         GC.SuppressFinalize(this);
     }
 
