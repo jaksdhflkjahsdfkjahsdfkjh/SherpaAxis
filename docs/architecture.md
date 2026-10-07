@@ -41,3 +41,6 @@ identity and length independently of joystick input.
 Run `dotnet restore --locked-mode` and `dotnet build -c Release --no-restore`.
 
 Run `dotnet test -c Release --no-build` for the available automated tests.
+
+Native vJoy output tests are opt-in and require an available physical driver/device.
+Ordinary automated tests use fake transports and do not establish physical acceptance.
