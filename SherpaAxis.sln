@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Cli.Tests", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.Tests", "tests\SherpaAxis.Tests\SherpaAxis.Tests.csproj", "{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SherpaAxis.ReplayChecks", "tools\SherpaAxis.ReplayChecks\SherpaAxis.ReplayChecks.csproj", "{480519AC-5615-550A-96F9-264627578262}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2262D806-E03B-5E0A-8509-CFBCD44F9D9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{480519AC-5615-550A-96F9-264627578262}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{480519AC-5615-550A-96F9-264627578262}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{480519AC-5615-550A-96F9-264627578262}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{480519AC-5615-550A-96F9-264627578262}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

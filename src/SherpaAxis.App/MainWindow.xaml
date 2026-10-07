@@ -108,6 +108,7 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,12" IsEnabled="{Binding CanEdit}">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Starter profiles" Click="StarterProfilesClick" FontSize="12" Padding="10,6"/>
                     <Button Content="Save to library" Click="SaveLibraryClick" FontSize="12" Padding="10,6"/>
                     <Button Content="Duplicate" Click="DuplicateProfileClick" FontSize="12" Padding="10,6"/>
                 </StackPanel>
@@ -127,8 +128,8 @@
         <Grid Grid.Row="1" x:Name="WorkbenchContent">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="370" /></Grid.ColumnDefinitions>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="560">
-                <Grid.RowDefinitions><RowDefinition Height="137" /><RowDefinition Height="*" /><RowDefinition Height="202" /></Grid.RowDefinitions>
+            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="590">
+                <Grid.RowDefinitions><RowDefinition Height="137" /><RowDefinition Height="*" /><RowDefinition Height="285" /></Grid.RowDefinitions>
                 <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-12,15">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate><DataTemplate>
@@ -147,24 +148,28 @@
                 <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="18,15" Margin="0,0,0,15">
                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <DockPanel><TextBlock Text="Signal history" FontSize="17" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><CheckBox Content="Counts" IsChecked="{Binding PlotCounts}" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" ToolTip="Show original device counts on an automatically scaled axis" /><StackPanel Orientation="Horizontal"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding PlotCounts}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="● Input" Foreground="#91A5BE" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Filtered" Foreground="#AF94F6" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Output" Foreground="#45D6BB" FontSize="11" Margin="14,0,0,0" /></StackPanel></StackPanel></DockPanel>
-                        <controls:SignalPlot Grid.Row="1" Samples="{Binding History}" CountsMode="{Binding PlotCounts}" Margin="0,20,0,6" MinHeight="140" />
+                        <controls:SignalPlot Grid.Row="1" Samples="{Binding History}" CountsMode="{Binding PlotCounts}" Margin="0,10,0,6" MinHeight="70" />
                         <TextBlock Grid.Row="2" Text="{Binding SampleInfo}" FontSize="11" Foreground="{StaticResource Muted}" />
                     </Grid>
                 </Border>
-                <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="0.9*" /><ColumnDefinition Width="15" /><ColumnDefinition Width="1.1*" /></Grid.ColumnDefinitions>
-                    <Border Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12">
-                        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Curve editor · draft" FontWeight="SemiBold"/><TextBlock Text="Drag • double-click adds • right-click removes
-Dashed: applied including deadzones • Apply activates" Foreground="#95A9C1" FontSize="9" TextWrapping="Wrap"/></StackPanel><controls:CurveEditor x:Name="ResponseEditor" Grid.Row="1" Points="{Binding DraftPoints, Mode=OneWay}" Preview="{Binding DraftCurve}" Applied="{Binding Curve}" Edited="CurveEdited" Margin="0,6,0,0" IsEnabled="{Binding CanEdit}" AutomationProperties.Name="Draggable response curve"/></Grid>
-                    </Border>
-                    <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="16,12" IsEnabled="{Binding CanEdit}">
-                        <StackPanel><TextBlock Text="Manual correction" FontWeight="SemiBold" /><TextBlock Text="{Binding CorrectionInfo}" FontSize="12" Margin="0,9,0,0" /><TextBlock Text="{Binding ResetInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal"><Button Content="Confirm baseline" Click="ConfirmBaselineClick" FontSize="11" Padding="9,6" /><Button Content="Disable" Click="DisableCorrectionClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
-                            <Button x:Name="ReleaseHold" Content="Hold to apply · pedal released" Margin="0,9,0,0" FontSize="11" Padding="8,7"
-                                    PreviewMouseLeftButtonDown="ReleaseMouseDown" PreviewMouseLeftButtonUp="ReleaseMouseUp" LostMouseCapture="ReleaseLostCapture"
-                                    PreviewKeyDown="ReleaseKeyDown" PreviewKeyUp="ReleaseKeyUp" LostKeyboardFocus="ReleaseLostFocus" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                <Border Grid.Row="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="10,12">
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <TextBlock Text="Pedal curves · drag points · double-click adds · right-click removes · dashed = applied · Apply activates drafts" TextWrapping="Wrap" Foreground="#95A9C1" FontSize="11" Margin="6,0,0,8"/>
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanEdit}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Border BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="8" Margin="4,0">
+                                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+                                        <ComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{Binding Title}"/>
+                                        <controls:CurveEditor Grid.Row="2" Points="{Binding Points, Mode=OneWay}" Preview="{Binding Preview}" Applied="{Binding Applied}" Edited="CurveEdited" MinHeight="115" Margin="0,8,0,6" AutomationProperties.Name="{Binding Title}"/>
+                                        <Button Grid.Row="3" Content="Clear curve" Click="ClearCurveClick" FontSize="11" Padding="7,5" Margin="0" ToolTip="Restore linear response for this pedal; keep calibration, deadzones and filters"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
             </Grid>
             </ScrollViewer>
             <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9">
@@ -206,6 +211,13 @@ Dashed: applied including deadzones • Apply activates" Foreground="#95A9C1" Fo
                                 <StackPanel><TextBlock Text="Filter τ (ms) · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter milliseconds" /></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Text="Filter reset gap (ms)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter reset milliseconds" /></StackPanel>
                             </Grid>
+                        <StackPanel><TextBlock Text="Manual correction" FontWeight="SemiBold" /><TextBlock Text="{Binding CorrectionInfo}" FontSize="12" Margin="0,9,0,0" /><TextBlock Text="{Binding ResetInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal"><Button Content="Confirm baseline" Click="ConfirmBaselineClick" FontSize="11" Padding="9,6" /><Button Content="Disable" Click="DisableCorrectionClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
+                            <Button x:Name="ReleaseHold" Content="Hold to apply · pedal released" Margin="0,9,0,0" FontSize="11" Padding="8,7"
+                                    PreviewMouseLeftButtonDown="ReleaseMouseDown" PreviewMouseLeftButtonUp="ReleaseMouseUp" LostMouseCapture="ReleaseLostCapture"
+                                    PreviewKeyDown="ReleaseKeyDown" PreviewKeyUp="ReleaseKeyUp" LostKeyboardFocus="ReleaseLostFocus" />
+                        </StackPanel>
+
                             <TextBlock Text="Correction settings" Style="{StaticResource Section}" />
                             <TextBlock Text="Max correction · counts · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.MaximumCorrection, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum correction" />
                             <TextBlock Text="Session transition limits" Foreground="#DFBC7A" FontSize="11" Margin="0,12,0,9" TextWrapping="Wrap" />

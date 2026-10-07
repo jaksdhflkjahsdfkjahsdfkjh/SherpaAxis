@@ -9,6 +9,12 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
+    private void StarterProfilesClick(object sender, RoutedEventArgs e) => Run(() =>
+    {
+        StopHold();
+        foreach (var profile in StarterProfiles.Create()) { viewModel.Load(profile); }
+        viewModel.ShowMessage("Four starter profile tabs added. Device-axis calibration defaults; review curves and Save to library to keep a tab.");
+    });
     private async void ProfileTabChanged(object sender, SelectionChangedEventArgs e)
     {
         if (viewModel is not null && sender is ListBox { SelectedItem: ProfileTab tab })
