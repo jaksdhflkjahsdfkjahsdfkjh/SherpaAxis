@@ -77,7 +77,7 @@ public sealed record AxisEditor
             Inverted = profile.Calibration.Inverted,
             LowerDeadzone = Format(profile.Deadzone.Lower * 100),
             UpperDeadzone = Format(profile.Deadzone.Upper * 100),
-            CurveKind = profile.Curve.Kind switch { "power" => "Power", "piecewiseLinear" => "Custom", _ => "Linear" },
+            CurveKind = CurvePresets.Identify(profile.Curve),
             Exponent = Format(profile.Curve.Exponent ?? 1),
             Points = profile.Curve.Kind == "piecewiseLinear"
                 ? string.Join("; ", profile.Curve.Points.Select(point => $"{Format(point.Input)}:{Format(point.Output)}"))

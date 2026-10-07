@@ -27,7 +27,8 @@ public sealed class DashboardViewModel : ObservableObject
 
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = Enum.GetValues<PedalAxis>().Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
-    public static IReadOnlyList<string> CurveKinds { get; } = ["Linear", "Progressive", "Aggressive", "S curve", "Late bite", "Early bite", "Power", "Custom"];
+    public static IReadOnlyList<string> CurveKinds { get; } = [.. CurvePresets.Names, "Power", "Custom"];
+    public IReadOnlyList<PedalCurveViewModel> PedalCurves { get; } = Enum.GetValues<PedalAxis>().Select(axis => new PedalCurveViewModel(axis)).ToArray();
     public static IReadOnlyList<FilterChoice> FilterKinds { get; } =
     [
         new("Exponential", "Exponential"), new("TwoStageExponential", "Two-stage exponential"),
@@ -144,6 +145,7 @@ public sealed class DashboardViewModel : ObservableObject
         engine.Configure(profile, limits);
         applied = profile;
         UpdateCurve();
+        RefreshDraftCurve();
         ShowMessage("Applied to software preview. All correction and filter histories were cleared.");
     }
 
@@ -232,6 +234,7 @@ public sealed class DashboardViewModel : ObservableObject
 
     public void RefreshDraftCurve()
     {
+        foreach (var panel in PedalCurves) { panel.Refresh(editors[panel.Axis], AppliedCurve(panel.Axis)); }
         try
         {
             var curve = Editor.BuildCurve();
@@ -245,11 +248,33 @@ public sealed class DashboardViewModel : ObservableObject
     }
 
     public void EditCurve(IEnumerable<CurvePoint> points)
+        => EditCurve(selectedAxis, points);
+
+    public void EditCurve(PedalAxis axis, IEnumerable<CurvePoint> points)
     {
-        Editor.SetCurvePoints(points);
+        editors[axis].SetCurvePoints(points);
         RefreshDraftCurve();
         Changed(nameof(Editor));
-        ShowMessage("Curve edited. Apply activates it; Save profile keeps it for later.");
+        ShowMessage($"{axis} curve edited. Apply activates it; Save profile keeps it for later.");
+    }
+
+    public void SetCurvePreset(PedalAxis axis, string name)
+    {
+        if (!CurveKinds.Contains(name)) { throw new ArgumentException("Unknown curve preset.", nameof(name)); }
+        editors[axis].CurveKind = name;
+        RefreshDraftCurve();
+        Changed(nameof(Editor));
+        ShowMessage($"{axis}: {name} curve ready. Apply activates all pedal drafts.");
+    }
+
+    public void ClearCurve(PedalAxis axis)
+    {
+        editors[axis].CurveKind = "Linear";
+        editors[axis].Exponent = "1";
+        editors[axis].Points = "0:0; 1:1";
+        RefreshDraftCurve();
+        Changed(nameof(Editor));
+        ShowMessage($"{axis} curve cleared to linear. Calibration, deadzones and filters retained. Apply to activate.");
     }
 
     public void CaptureReleased()
@@ -303,9 +328,15 @@ public sealed class DashboardViewModel : ObservableObject
 
     private void UpdateCurve()
     {
-        var profile = applied.Axes[selectedAxis];
+        Curve = AppliedCurve(selectedAxis);
+        Changed(nameof(Curve));
+    }
+
+    private PlotSample[] AppliedCurve(PedalAxis axis)
+    {
+        var profile = applied.Axes[axis];
         var processor = new AxisProfile(profile.Calibration, profile.Deadzone, profile.Curve).CreateProcessor();
-        Curve = Enumerable.Range(0, 201).Select(index =>
+        return Enumerable.Range(0, 201).Select(index =>
         {
             var fraction = index / 200d;
             var input = profile.Calibration.Inverted ? profile.Calibration.Maximum - fraction * profile.Calibration.Span
@@ -313,6 +344,5 @@ public sealed class DashboardViewModel : ObservableObject
             input = Math.Clamp(input, profile.Calibration.Minimum, profile.Calibration.Maximum);
             return new PlotSample(fraction, fraction, fraction, processor.Process(input).Output);
         }).ToArray();
-        Changed(nameof(Curve));
     }
 }

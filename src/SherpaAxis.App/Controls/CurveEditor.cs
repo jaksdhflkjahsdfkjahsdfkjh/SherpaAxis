@@ -38,16 +38,19 @@ public sealed class CurveEditor : FrameworkElement
             drawingContext.DrawLine(grid, new(x, Plot.Top), new(x, Plot.Bottom));
             drawingContext.DrawLine(grid, new(Plot.Left, y), new(Plot.Right, y));
         }
-        if (Points is not { Count: >= 2 } points) { return; }
         DrawCurve(drawingContext, Applied, new Pen(Brushes.LightSlateGray, 1) { DashStyle = DashStyles.Dash });
+        if (Points is not { Count: >= 2 } points) { return; }
         DrawCurve(drawingContext, Preview, pen);
         for (var i = 0; i < points.Count; i++)
         {
             drawingContext.DrawEllipse(i == selected ? Brushes.White : pen.Brush, grid, Screen(points[i]), 5, 5);
         }
-        var text = new FormattedText("0                 INPUT →                 100%", CultureInfo.InvariantCulture,
+        var text = new FormattedText("INPUT →", CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, Brushes.LightSlateGray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-        drawingContext.DrawText(text, new(Plot.Left, Plot.Bottom + 4));
+        drawingContext.DrawText(text, new(Plot.Left + (Plot.Width - text.Width) / 2, Plot.Bottom + 4));
+        var end = new FormattedText("100%", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"), 10, Brushes.LightSlateGray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        drawingContext.DrawText(end, new(Plot.Right - end.Width, Plot.Bottom + 4));
     }
 
     private void DrawCurve(DrawingContext context, IReadOnlyList<PlotSample>? samples, Pen pen)
