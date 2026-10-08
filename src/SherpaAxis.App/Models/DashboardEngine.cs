@@ -158,7 +158,7 @@ public sealed class DashboardEngine
                 if (!values.LastPlotAt.HasValue || elapsed - values.LastPlotAt.Value >= .02)
                 {
                     values.LastPlotAt = elapsed;
-                    values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, result.Processing.Output, raw));
+                    values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, result.Processing.Output, raw, result.Processing.CorrectedNormalized));
                     if (values.History.Count > 600)
                     {
                         values.History.Dequeue();
@@ -322,9 +322,9 @@ public sealed class DashboardEngine
         {
             var frames = axes.Select(pair => new AxisFrame(pair.Key, pair.Value.Current, IsFresh(pair.Value),
                 double.IsFinite(pair.Value.Minimum) ? pair.Value.Minimum : null,
-                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null)).ToArray();
+                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null, pair.Value.History.ToArray())).ToArray();
             return new(state, detail, connection, count, elapsed, elapsed > firstTime ? (count - 1) / (elapsed - firstTime) : 0,
-                frames, axes[selectedAxis].History.ToArray());
+                frames, frames.Single(frame => frame.Axis == selectedAxis).History!);
         }
     }
 

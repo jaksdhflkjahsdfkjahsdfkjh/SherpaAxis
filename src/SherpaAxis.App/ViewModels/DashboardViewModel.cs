@@ -31,8 +31,10 @@ public sealed class DashboardViewModel : ObservableObject
     public IReadOnlyList<PedalCurveViewModel> PedalCurves { get; } = Enum.GetValues<PedalAxis>().Select(axis => new PedalCurveViewModel(axis)).ToArray();
     public static IReadOnlyList<FilterChoice> FilterKinds { get; } =
     [
+        new("Off", "Off / bypass"),
         new("Exponential", "Exponential"), new("TwoStageExponential", "Two-stage exponential"),
-        new("MovingAverage", "Moving average"), new("Median", "Median")
+        new("MovingAverage", "Moving average"), new("Median", "Median"),
+        new("WeightedMovingAverage", "Weighted moving average"), new("MedianExponential", "Median + exponential")
     ];
     public ObservableCollection<ProfileTab> ProfileTabs { get; } = [];
     public ProfileTab? SelectedProfile => selectedProfile;
@@ -41,23 +43,115 @@ public sealed class DashboardViewModel : ObservableObject
     public string CalibrationInfo { get; private set; } = "Release this pedal, then capture released. Software calibration only.";
     public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
     public double PlaybackSpeed { get; set; } = 1;
-    public bool CanEdit { get; set; } = true;
-    public bool CanRecord { get; set; }
-    public bool CanFinishRecording { get; set; }
-    public string RecordingInfo { get; set; } = "Not recording";
-    public string OutputInfo { get; set; } = "Output disabled";
-    public string VJoyPath { get; set; } = Bridge.VJoyController.DefaultLibraryPath;
-    public string VJoyDevice { get; set; } = "1";
+    private bool canEdit = true;
+    public bool CanEdit { get => canEdit; set => Set(ref canEdit, value); }
+    private bool canRecord;
+    public bool CanRecord { get => canRecord; set => Set(ref canRecord, value); }
+    private bool canFinishRecording;
+    public bool CanFinishRecording { get => canFinishRecording; set => Set(ref canFinishRecording, value); }
+    private string recordingInfo = "Not recording";
+    public string RecordingInfo { get => recordingInfo; set => Set(ref recordingInfo, value); }
+    private string outputInfo = "Output disabled";
+    public string OutputInfo { get => outputInfo; set => Set(ref outputInfo, value); }
+    private string vJoyPath = Bridge.VJoyController.DefaultLibraryPath;
+    private string vJoyDevice = "1";
+    public string VJoyPath { get => vJoyPath; set => Set(ref vJoyPath, value); }
+    public string VJoyDevice { get => vJoyDevice; set => Set(ref vJoyDevice, value); }
     public bool PlotCounts
     {
         get => plotCounts;
-        set { plotCounts = value; Changed(); }
+        set { plotCounts = value; GraphMode = value ? "Device counts" : "Input vs filtered"; Changed(); }
+    }
+
+    public static IReadOnlyList<string> GraphPedals { get; } = ["All pedals", "Throttle", "Brake", "Clutch"];
+    public static IReadOnlyList<string> GraphModes { get; } = ["Input vs filtered", "Output", "Input", "Filtered", "Filter difference", "Device counts"];
+    public static IReadOnlyList<double> GraphWindows { get; } = [1, 3, 6, 12];
+    public static IReadOnlyList<string> FilterTimes { get; } = ["1", "3", "5", "8", "10", "15", "20", "30", "50"];
+    public static IReadOnlyList<string> FilterWindows { get; } = ["3", "5", "7", "9", "11", "15", "21", "31"];
+    public static IReadOnlyList<string> ResetGaps { get; } = ["50", "100", "200", "500", "1000"];
+    public static IReadOnlyList<string> FilterPresetNames => FilterPresets.Names;
+    private string graphPedal = "All pedals";
+    private string graphMode = "Input vs filtered";
+    private bool graphZoom;
+    private double graphWindow = 12;
+    private string contextHint = "Hover a control for help, or focus it with Tab. Edit a pedal, then Apply settings.";
+    public string GraphPedal { get => graphPedal; set => Set(ref graphPedal, value); }
+    public string GraphMode { get => graphMode; set { if (Set(ref graphMode, value)) { Changed(nameof(GraphLegend)); } } }
+    public string GraphLegend => GraphMode switch
+    {
+        "Input vs filtered" => "Dashed: input · Color: filtered · Before curve/deadzones · Applied settings",
+        "Filter difference" => "Input minus filtered · Auto-scaled in percentage points (pp) · Before curve/deadzones",
+        "Device counts" => "Original device counts · Each pedal has its own scale · Applied settings",
+        "Output" => "Final output after filter, deadzones and curve · Applied settings",
+        _ => "Normalized signal before deadzones and curve · Applied settings"
+    };
+    public bool GraphZoom { get => graphZoom; set => Set(ref graphZoom, value); }
+    public double GraphWindow { get => graphWindow; set => Set(ref graphWindow, value); }
+    public string ContextHint { get => contextHint; set => Set(ref contextHint, value); }
+    public IReadOnlyList<PedalHistory> PedalHistories { get; private set; } = [];
+    public string FilterPreset => FilterPresets.Identify(Editor);
+    public string SelectedFilterKind => Editor.FilterEnabled ? Editor.FilterKind : "Off";
+    public bool UsesWindowFilter => Editor.FilterKind is "MovingAverage" or "Median" or "WeightedMovingAverage" or "MedianExponential";
+    public bool UsesTimeFilter => Editor.FilterKind is "Exponential" or "TwoStageExponential" or "MedianExponential";
+    public string FilterInfo => !Editor.FilterEnabled ? "Filtering is off. Choose Sharp, Balanced or Smooth, or select an algorithm to enable it." : Editor.FilterKind switch
+    {
+        "Median" => "Removes isolated spikes. Larger windows reject longer spikes and add delay.",
+        "MovingAverage" => "Averages recent reports. Larger windows smooth more and react more slowly.",
+        "WeightedMovingAverage" => "Averages recent reports with more weight on the newest samples.",
+        "MedianExponential" => "Rejects spikes first, then smooths the result. Uses both window and time constant.",
+        "TwoStageExponential" => "Two smoothing stages. Smooth transitions with more delay than one stage.",
+        _ => "One smoothing stage. A larger time constant reduces noise and slows response."
+    };
+
+    public void SetFilterPreset(string name)
+    {
+        if (name == "Custom") { NotifyFilterSettings(); return; }
+        var settings = FilterPresets.Create(name);
+        Editor.FilterMilliseconds = ((settings?.TimeConstantSeconds ?? 0) * 1000).ToString("R", CultureInfo.InvariantCulture);
+        if (settings is not null)
+        {
+            Editor.FilterKind = settings.Kind.ToString();
+            Editor.FilterWindowSamples = settings.WindowSamples.ToString(CultureInfo.InvariantCulture);
+            Editor.FilterGapMilliseconds = (settings.ResetAfterSeconds * 1000).ToString("R", CultureInfo.InvariantCulture);
+        }
+        Changed(nameof(Editor));
+        NotifyFilterSettings();
+        ShowMessage($"{SelectedAxis}: {name} filter in draft. Apply settings to see it in the graph.");
+    }
+
+    public void NotifyFilterSettings()
+    {
+        Changed(nameof(FilterPreset));
+        Changed(nameof(SelectedFilterKind));
+        Changed(nameof(UsesWindowFilter));
+        Changed(nameof(UsesTimeFilter));
+        Changed(nameof(FilterInfo));
+    }
+
+    public void SetFilterKind(string kind)
+    {
+        if (kind == "Off") { SetFilterPreset("Off"); return; }
+        if (!FilterKinds.Any(choice => choice.Kind == kind)) { throw new ArgumentException("Choose a supported filter.", nameof(kind)); }
+        Editor.FilterKind = kind;
+        Editor.FilterEnabled = true;
+        Changed(nameof(Editor));
+        NotifyFilterSettings();
+        ShowMessage($"{SelectedAxis}: filter changed in draft. Apply settings to update processing.");
+    }
+
+    private static string FilterLabel(AxisProfile axis)
+    {
+        if (axis.Filter is not { } f) { return "Filter off"; }
+        var name = FilterKinds.Single(choice => choice.Kind == f.Kind.ToString()).Name;
+        var window = f.Kind is SignalFilterKind.Median or SignalFilterKind.MovingAverage or SignalFilterKind.WeightedMovingAverage or SignalFilterKind.MedianExponential;
+        var time = f.Kind is SignalFilterKind.Exponential or SignalFilterKind.TwoStageExponential or SignalFilterKind.MedianExponential;
+        return name + (window ? $" · {f.WindowSamples} samples" : "") + (time ? FormattableString.Invariant($" · {f.TimeConstantSeconds * 1000:G} ms") : "");
     }
 
     public string ProfileName
     {
         get => profileName;
-        set { profileName = value; if (selectedProfile is not null) { selectedProfile.Name = value; } Changed(); }
+        set { if (profileName == value) { return; } profileName = value; if (selectedProfile is not null) { selectedProfile.Name = value; } Changed(); }
     }
 
     public PedalAxis SelectedAxis
@@ -65,11 +159,13 @@ public sealed class DashboardViewModel : ObservableObject
         get => selectedAxis;
         set
         {
+            if (selectedAxis == value) { return; }
             engine.RevokeRelease();
             selectedAxis = value;
             CancelCalibration();
             Changed();
             Changed(nameof(Editor));
+            NotifyFilterSettings();
             Changed(nameof(AxisTitle));
             UpdateCurve();
             RefreshDraftCurve();
@@ -80,15 +176,23 @@ public sealed class DashboardViewModel : ObservableObject
     public AxisEditor Editor => editors[selectedAxis];
     public string AxisTitle => SelectedAxis + " processing";
     public string ActiveProfileInfo => "Applied: " + applied.Name;
-    public string SourceName { get; set; } = "No source selected";
-    public string Status { get; private set; } = "Stopped";
-    public bool IsReceiving { get; private set; }
-    public string SampleInfo { get; private set; } = "Start live input or open a recorded capture";
-    public string ObservedRange { get; private set; } = "—";
-    public string CorrectionInfo { get; private set; } = "Applied 0 · target 0";
-    public string ResetInfo { get; private set; } = "No session";
+    private string sourceName = "No source selected";
+    public string SourceName { get => sourceName; set => Set(ref sourceName, value); }
+    private string status = "Stopped";
+    public string Status { get => status; private set => Set(ref status, value); }
+    private bool isReceiving;
+    public bool IsReceiving { get => isReceiving; private set => Set(ref isReceiving, value); }
+    private string sampleInfo = "Start live input or open a recorded capture";
+    public string SampleInfo { get => sampleInfo; private set => Set(ref sampleInfo, value); }
+    private string observedRange = "—";
+    public string ObservedRange { get => observedRange; private set => Set(ref observedRange, value); }
+    private string correctionInfo = "Applied 0 · target 0";
+    public string CorrectionInfo { get => correctionInfo; private set => Set(ref correctionInfo, value); }
+    private string resetInfo = "No session";
+    public string ResetInfo { get => resetInfo; private set => Set(ref resetInfo, value); }
     public string Message { get; private set; } = "Device-axis units · hardware calibration is separate · edits take effect with Apply";
-    public string HardwareInfo { get; set; } = "Not read. Use Read hardware calibration to inspect the stored bounds.";
+    private string hardwareInfo = "Not read. Use Read hardware calibration to inspect the stored bounds.";
+    public string HardwareInfo { get => hardwareInfo; set => Set(ref hardwareInfo, value); }
     public IReadOnlyList<PlotSample> History { get; private set; } = [];
     public IReadOnlyList<PlotSample> Curve { get; private set; } = [];
 
@@ -105,7 +209,7 @@ public sealed class DashboardViewModel : ObservableObject
         Status = selected.IsFresh ? "Receiving" : frame.State == FeelVR.PedalConnectionState.Connected ? "Waiting for fresh input" : frame.Detail ?? frame.State.ToString();
         if (Status.StartsWith("Source error:", StringComparison.Ordinal))
         {
-            Message = Status;
+            ShowMessage(Status);
         }
         SampleInfo = FormattableString.Invariant($"{frame.SampleCount:N0} reports · {frame.ReportsPerSecond:F0} source Hz · {frame.ElapsedSeconds:F1} s · connection {frame.Connection}");
         ObservedRange = selected.ObservedMinimum.HasValue
@@ -116,7 +220,9 @@ public sealed class DashboardViewModel : ObservableObject
             ? $"{(current.CorrectionSuspended ? "Pending · release permission required" : "Manual baseline only")} · boundary: {current.ResetReason}"
             : "No session";
         History = frame.History;
-        Changed(string.Empty);
+        PedalHistories = frame.Axes.Select(axis => new PedalHistory(axis.Axis, axis.History ?? [], FilterLabel(applied.Axes[axis.Axis]))).ToArray();
+        Changed(nameof(History));
+        Changed(nameof(PedalHistories));
     }
 
     public (PedalProfile Profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> Limits) ValidateEditors()
@@ -146,6 +252,7 @@ public sealed class DashboardViewModel : ObservableObject
         applied = profile;
         UpdateCurve();
         RefreshDraftCurve();
+        Changed(nameof(ActiveProfileInfo));
         ShowMessage("Applied to software preview. All correction and filter histories were cleared.");
     }
 
@@ -167,6 +274,7 @@ public sealed class DashboardViewModel : ObservableObject
         RefreshDraftCurve();
         Changed(nameof(SelectedProfile));
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage("Profile loaded. Missing axes use device-range defaults. Check that calibration matches this input source.");
     }
 
@@ -181,6 +289,7 @@ public sealed class DashboardViewModel : ObservableObject
         var value = frame.Result.Value.Processing.Input.ToString("R", CultureInfo.InvariantCulture);
         editors[selectedAxis] = maximum ? Editor with { Maximum = value } : Editor with { Minimum = value };
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage("Captured into the editor. Review the bounds, then Apply.");
     }
 
@@ -198,6 +307,7 @@ public sealed class DashboardViewModel : ObservableObject
             Maximum = frame.ObservedMaximum!.Value.ToString("R", CultureInfo.InvariantCulture)
         };
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage("Observed bounds copied into the editor. Review them, then Apply.");
     }
 
@@ -205,12 +315,14 @@ public sealed class DashboardViewModel : ObservableObject
     {
         editors[selectedAxis] = AxisEditor.FromProfile(DashboardEngine.DefaultProfile().Axes[selectedAxis]);
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         RefreshDraftCurve();
         ShowMessage("Device-range defaults are in the editor. Apply to activate them.");
     }
 
     public void ShowMessage(string message)
     {
+        if (Message == message) { return; }
         Message = message;
         Changed(nameof(Message));
     }
@@ -229,7 +341,10 @@ public sealed class DashboardViewModel : ObservableObject
         try { Apply(); }
         catch (ArgumentException exception) { ShowMessage($"Draft restored; previous processing remains active until Apply: {exception.Message}"); }
         RefreshDraftCurve();
-        Changed(string.Empty);
+        Changed(nameof(SelectedProfile));
+        Changed(nameof(Editor));
+        NotifyFilterSettings();
+        Refresh();
     }
 
     public void RefreshDraftCurve()
@@ -255,6 +370,7 @@ public sealed class DashboardViewModel : ObservableObject
         editors[axis].SetCurvePoints(points);
         RefreshDraftCurve();
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage($"{axis} curve edited. Apply activates it; Save profile keeps it for later.");
     }
 
@@ -264,6 +380,7 @@ public sealed class DashboardViewModel : ObservableObject
         editors[axis].CurveKind = name;
         RefreshDraftCurve();
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage($"{axis}: {name} curve ready. Apply activates all pedal drafts.");
     }
 
@@ -274,6 +391,7 @@ public sealed class DashboardViewModel : ObservableObject
         editors[axis].Points = "0:0; 1:1";
         RefreshDraftCurve();
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         ShowMessage($"{axis} curve cleared to linear. Calibration, deadzones and filters retained. Apply to activate.");
     }
 
@@ -300,6 +418,7 @@ public sealed class DashboardViewModel : ObservableObject
         CancelCalibration();
         CalibrationInfo = "Calibration ready in the editor. Review endpoints and Apply; Save profile to persist.";
         Changed(nameof(Editor));
+        NotifyFilterSettings();
         Changed(nameof(CalibrationInfo));
     }
 

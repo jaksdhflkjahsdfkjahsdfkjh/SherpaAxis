@@ -15,7 +15,7 @@ are null; enabled filters store `timeConstantSeconds` and `resetAfterSeconds`.
 Schema 2 adds filter `kind` and `windowSamples`, plus optional axis `session`
 settings: `maximumCorrectionPerSecond`, `maximumCorrectionOutputPerSecond`
 and `resetAfterSeconds`. Schema 1 rejects these extra fields. Filter kinds:
-`Exponential`, `TwoStageExponential`, `MovingAverage`, `Median`.
+`Exponential`, `TwoStageExponential`, `MovingAverage`, `Median`, `WeightedMovingAverage`, `MedianExponential`.
 
 ## Validation and persistence
 

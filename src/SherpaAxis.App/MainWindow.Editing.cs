@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using SherpaAxis.App.Controls;
 using SherpaAxis.App.ViewModels;
 
@@ -7,11 +8,15 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
+    private bool curveRefreshPending;
+    private bool filterRefreshPending;
+
     private void CurveSettingsChanged(object sender, RoutedEventArgs e)
     {
-        if (viewModel is not null && !editingCurve)
+        if (viewModel is not null && !editingCurve && !curveRefreshPending)
         {
-            Dispatcher.BeginInvoke(() => { if (!editingCurve && !closing) { viewModel.RefreshDraftCurve(); } });
+            curveRefreshPending = true;
+            Dispatcher.BeginInvoke(() => { curveRefreshPending = false; if (!editingCurve && !closing) { viewModel.RefreshDraftCurve(); } });
         }
     }
     private void CurveEdited(object? sender, EventArgs e) => Run(() =>
@@ -40,5 +45,33 @@ public partial class MainWindow
     {
         StopHold();
         if (viewModel.SelectedAxis != panel.Axis) { viewModel.SelectedAxis = panel.Axis; }
+    }
+
+    private void FilterPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (viewModel is not null && sender is ComboBox { SelectedItem: string name } && name != viewModel.FilterPreset)
+        {
+            Run(() => viewModel.SetFilterPreset(name));
+        }
+    }
+
+    private void FilterKindChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (viewModel is not null && sender is ComboBox { SelectedValue: string kind } && kind != viewModel.SelectedFilterKind)
+        {
+            Run(() => viewModel.SetFilterKind(kind));
+        }
+    }
+
+    private void FilterValuesChanged(object sender, RoutedEventArgs e)
+    {
+        if (viewModel is null || filterRefreshPending || closing) { return; }
+        filterRefreshPending = true;
+        Dispatcher.BeginInvoke(() => { filterRefreshPending = false; if (!closing) { viewModel.NotifyFilterSettings(); } });
+    }
+
+    private void ParameterFocused(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (viewModel is not null && e.NewFocus is FrameworkElement { ToolTip: string hint }) { viewModel.ContextHint = hint; }
     }
 }

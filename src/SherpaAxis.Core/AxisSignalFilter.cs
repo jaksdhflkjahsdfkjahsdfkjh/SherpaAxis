@@ -25,37 +25,36 @@ internal sealed class AxisSignalFilter(LowPassFilterSettings settings)
         }
         else if (interval > 0)
         {
-            if (settings.Kind is SignalFilterKind.MovingAverage or SignalFilterKind.Median)
+            if (settings.Kind is SignalFilterKind.MovingAverage or SignalFilterKind.Median or SignalFilterKind.WeightedMovingAverage or SignalFilterKind.MedianExponential)
             {
                 window.Enqueue(input);
                 if (window.Count > settings.WindowSamples)
                 {
                     window.Dequeue();
                 }
-                if (settings.Kind == SignalFilterKind.Median)
+                if (settings.Kind is SignalFilterKind.Median or SignalFilterKind.MedianExponential)
                 {
                     Span<double> sorted = stackalloc double[window.Count];
                     var index = 0;
                     foreach (var sample in window) { sorted[index++] = sample; }
                     sorted.Sort();
-                    value = sorted.Length % 2 == 0
+                    var median = sorted.Length % 2 == 0
                         ? .5 * sorted[sorted.Length / 2 - 1] + .5 * sorted[sorted.Length / 2]
                         : sorted[sorted.Length / 2];
+                    value = settings.Kind == SignalFilterKind.Median ? median : Blend(value, median, Weight(interval));
                 }
                 else
                 {
                     value = 0;
-                    foreach (var sample in window) { value += sample / window.Count; }
+                    var total = settings.Kind == SignalFilterKind.WeightedMovingAverage ? window.Count * (window.Count + 1) / 2d : window.Count;
+                    var index = 1;
+                    foreach (var sample in window) { value += sample * (settings.Kind == SignalFilterKind.WeightedMovingAverage ? index++ / total : 1 / total); }
                     value = Math.Clamp(value, window.Min(), window.Max());
                 }
             }
             else
             {
-                var ratio = interval / settings.TimeConstantSeconds;
-                // Preserve small positive weights when subtracting Exp(-ratio) from one would round to zero.
-                var weight = ratio < .001
-                    ? ratio * (1 + ratio * (-.5 + ratio * (1d / 6 + ratio * (-1d / 24 + ratio / 120))))
-                    : 1 - Math.Exp(-ratio);
+                var weight = Weight(interval);
                 // A convex sum avoids overflow when finite samples have opposite signs.
                 firstStage = Blend(firstStage, input, weight);
                 value = settings.Kind == SignalFilterKind.TwoStageExponential ? Blend(value, firstStage, weight) : firstStage;
@@ -67,6 +66,13 @@ internal sealed class AxisSignalFilter(LowPassFilterSettings settings)
     }
 
     public void Reset() => previousTime = null;
+
+    private double Weight(double interval)
+    {
+        var ratio = interval / settings.TimeConstantSeconds;
+        // Preserve small positive weights when subtracting Exp(-ratio) from one would round to zero.
+        return ratio < .001 ? ratio * (1 + ratio * (-.5 + ratio * (1d / 6 + ratio * (-1d / 24 + ratio / 120)))) : 1 - Math.Exp(-ratio);
+    }
 
     private static double Blend(double previous, double input, double weight) =>
         Math.Clamp((1 - weight) * previous + weight * input, Math.Min(previous, input), Math.Max(previous, input));

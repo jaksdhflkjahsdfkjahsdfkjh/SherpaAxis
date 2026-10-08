@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
         xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels"
-        Title="SherpaAxis — Pedal Workbench" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
+        Title="SherpaAxis — Pedals" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
         WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
-        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated">
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated" PreviewGotKeyboardFocus="ParameterFocused">
     <Window.Resources>
         <SolidColorBrush x:Key="Muted" Color="#95A9C1" />
         <Style TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}"/>
             <Setter Property="Background" Value="#22334C" />
             <Setter Property="Foreground" Value="#E8EFF8" />
             <Setter Property="BorderBrush" Value="#354862" />
@@ -27,7 +28,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.8" /></Trigger>
                             <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.6" /></Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#45D6BB" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#E8EFF8" /></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -42,209 +43,269 @@
             <Setter Property="BorderBrush" Value="#34465F" /><Setter Property="CaretBrush" Value="#45D6BB" />
             <Setter Property="Padding" Value="9,7" /><Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="SelectionBrush" Value="#365975" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}"/>
+            <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#78E3C6"/></Trigger></Style.Triggers>
         </Style>
         <Style TargetType="ComboBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="Padding" Value="10,7" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
                 <Border x:Name="Item" Background="#18273C" Padding="{TemplateBinding Padding}"><ContentPresenter /></Border>
-                <ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#304B69" /></Trigger></ControlTemplate.Triggers>
+                <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Item" Property="Background" Value="#365975"/></Trigger><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#304B69" /></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
+        <Style x:Key="FocusRing" TargetType="Control">
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border BorderBrush="#78E3C6" BorderThickness="2" CornerRadius="6" Margin="-2"/></ControlTemplate></Setter.Value></Setter>
+        </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="MinHeight" Value="36" />
+            <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="MinHeight" Value="36"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+            <Setter Property="KeyboardNavigation.TabNavigation" Value="Once"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
                 <Grid>
-                    <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False">
-                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" /></ControlTemplate></ToggleButton.Template>
+                    <Border x:Name="ComboSurface" Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5"/>
+                    <ToggleButton x:Name="DropDownToggle" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False" ClickMode="Press">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent"/></ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
-                    <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="10,7,27,7" IsHitTestVisible="False" />
-                    <TextBlock Text="⌄" Foreground="#95A9C1" HorizontalAlignment="Right" Margin="0,4,10,0" IsHitTestVisible="False" />
-                    <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
-                        <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" BorderBrush="#34465F" BorderThickness="1" Background="#18273C">
-                            <ScrollViewer MaxHeight="300"><StackPanel IsItemsHost="True" /></ScrollViewer>
+                    <ContentPresenter x:Name="Selection" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="10,7,27,7" IsHitTestVisible="False"/>
+                    <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Padding="6,3" Margin="2,1,26,1" IsReadOnly="{TemplateBinding IsReadOnly}" ToolTip="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}"/>
+                    <TextBlock Text="⌄" Foreground="#95A9C1" HorizontalAlignment="Right" Margin="0,4,10,0" IsHitTestVisible="False"/>
+                    <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" AllowsTransparency="True" Focusable="False">
+                        <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" BorderBrush="#536C8B" BorderThickness="1" Background="#18273C">
+                            <ScrollViewer MaxHeight="280" CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
                         </Border>
                     </Popup>
                 </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsEditable" Value="True"><Setter TargetName="Selection" Property="Visibility" Value="Collapsed"/><Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/></Trigger>
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ComboSurface" Property="BorderBrush" Value="#78E3C6"/><Setter TargetName="ComboSurface" Property="BorderThickness" Value="2"/></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ComboSurface" Property="Background" Value="#223750"/></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ComboSurface" Property="Opacity" Value="0.45"/><Setter Property="Foreground" Value="#70829A"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="Expander">
+            <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="Margin" Value="0,14,0,0"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+                <StackPanel>
+                    <ToggleButton Foreground="{TemplateBinding Foreground}" x:Name="HeaderToggle" AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Stretch" Cursor="Hand" FocusVisualStyle="{StaticResource FocusRing}">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="HeaderSurface" Background="#18273C" BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="10,8">
+                                <DockPanel><TextBlock Text="⌄" DockPanel.Dock="Right" Foreground="#95A9C1"/><ContentPresenter/></DockPanel>
+                            </Border>
+                            <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderSurface" Property="BorderBrush" Value="#78E3C6"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="#223750"/></Trigger></ControlTemplate.Triggers>
+                        </ControlTemplate></ToggleButton.Template>
+                        <ContentPresenter ContentSource="Header"/>
+                    </ToggleButton>
+                    <ContentPresenter x:Name="ExpandedContent" ContentSource="Content" Visibility="Collapsed" Margin="0,10,0,0"/>
+                </StackPanel>
+                <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandedContent" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Muted}" /><Setter Property="FontSize" Value="12" /><Setter Property="Margin" Value="0,0,0,5" /></Style>
         <Style x:Key="Section" TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="15" /><Setter Property="Margin" Value="0,22,0,12" /></Style>
-        <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#D4E1EF" /><Setter Property="Margin" Value="0,10,0,0" /></Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#D4E1EF"/><Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
+                <DockPanel Background="Transparent">
+                    <Border x:Name="CheckSurface" Width="16" Height="16" BorderBrush="#536C8B" BorderThickness="1" Background="#0D1728" CornerRadius="3" Margin="0,0,7,0" VerticalAlignment="Center">
+                        <Path x:Name="CheckMark" Data="M 2,7 L 5,10 L 11,3" Stroke="#78E3C6" StrokeThickness="2" Visibility="Collapsed"/>
+                    </Border>
+                    <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                </DockPanel>
+                <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="CheckSurface" Property="BorderBrush" Value="#78E3C6"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
     </Window.Resources>
-    <Grid Margin="26,22,26,18">
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-        <DockPanel Margin="0,0,0,20">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" IsEnabled="{Binding CanEdit}">
-                <Button Content="New profile" Click="NewProfileClick" /><Button Content="Open profile…" Click="OpenProfileClick" />
-                <Button Content="Save profile as…" Click="SaveProfileClick" Margin="0" />
+    <Grid Margin="22,16,22,14">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="64"/></Grid.RowDefinitions>
+        <DockPanel Height="70" Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Width="500" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding Status}" Foreground="#78E3C6" FontSize="14" HorizontalAlignment="Right"/>
+                <TextBlock Text="{Binding SourceName}" TextTrimming="CharacterEllipsis" Foreground="#95A9C1" FontSize="11" HorizontalAlignment="Right"/>
+                <TextBlock Text="{Binding RecordingInfo}" Foreground="#EEB5C1" FontSize="11" HorizontalAlignment="Right"/>
+                <TextBlock Text="{Binding OutputInfo}" ToolTip="{Binding OutputInfo}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <Path Data="M 0,25 L 15,0 L 30,25 L 21,25 L 15,14 L 8,25 Z" Fill="#45D6BB" Width="32" Height="30" Stretch="Uniform" Margin="0,0,12,0" />
-                <StackPanel><TextBlock Text="SherpaAxis" FontSize="25" FontWeight="SemiBold" /><TextBlock Text="PEDAL WORKBENCH" Foreground="{StaticResource Muted}" FontSize="10" /></StackPanel>
-                <Border Background="#15382F" CornerRadius="4" Padding="9,5" Margin="18,0,0,0" VerticalAlignment="Center"><TextBlock Text="PEDAL WORKBENCH" Foreground="#78E3C6" FontSize="10" FontWeight="SemiBold" /></Border>
-            </StackPanel>
+            <StackPanel><TextBlock Text="SherpaAxis" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="PEDALS · CURVES · FILTERS" FontSize="10" Foreground="#95A9C1"/></StackPanel>
         </DockPanel>
-        <Border Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="15,12" Margin="0,0,0,18">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" MaxWidth="240">
-                    <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DFBC7A" /><Style.Triggers><DataTrigger Binding="{Binding IsReceiving}" Value="True"><Setter Property="Foreground" Value="#78E3C6" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                    <TextBlock Text="{Binding OutputInfo}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding OutputInfo}" />
-                    <TextBlock Text="{Binding SourceName}" Foreground="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding RecordingInfo}" Foreground="#EEB5C1" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding RecordingInfo}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" IsEnabled="{Binding CanEdit}">
-                    <Button Content="Start live" Style="{StaticResource Primary}" Click="StartLiveClick" />
-                    <Button Content="Open capture…" Click="OpenCaptureClick" />
-                    <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.PlaybackSpeeds}" SelectedItem="{Binding PlaybackSpeed}" Width="64" Margin="0,0,5,0" AutomationProperties.Name="Playback speed" />
-                    <TextBlock Text="×" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,12,0" />
-                    <Button Content="Stop" Click="StopClick" />
-                    <Button Content="Read hardware" Click="ReadHardwareClick" ToolTip="Read the stored calibration bounds without changing the device" />
-                    <Button Content="● Record…" Click="RecordClick" Background="#633348" BorderBrush="#9D526B" IsEnabled="{Binding CanRecord}" />
-                    <Button Content="Finish" Click="FinishRecordingClick" IsEnabled="{Binding CanFinishRecording}" ToolTip="Finish recording and keep the live preview running" />
-                </StackPanel>
-            </DockPanel>
+        <Border Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+            <WrapPanel IsEnabled="{Binding CanEdit}">
+                <Button Content="Start live" Style="{StaticResource Primary}" Click="StartLiveClick" ToolTip="Read live device input without changing hardware calibration."/>
+                <Button Content="Open recording…" Click="OpenCaptureClick" ToolTip="Replay an input CSV with current software settings. Recorded playback cannot feed vJoy."/>
+                <Button Content="Stop" Click="StopClick" ToolTip="Stop input and finish any active recording."/>
+                <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.PlaybackSpeeds}" SelectedItem="{Binding PlaybackSpeed}" Width="62" Margin="4,0,4,0" AutomationProperties.Name="Playback speed" ToolTip="Choose before opening a recording. Filters still use original recorded timestamps." AutomationProperties.HelpText="Choose before opening a recording. Filters still use original recorded timestamps." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                <TextBlock Text="× replay" Foreground="#95A9C1" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <Button Content="● Record…" Click="RecordClick" Background="#633348" BorderBrush="#9D526B" IsEnabled="{Binding CanRecord}" ToolTip="Save every original and processed report plus session events to a new bundle."/>
+                <Button Content="Finish recording" Click="FinishRecordingClick" IsEnabled="{Binding CanFinishRecording}" ToolTip="Finish saving the bundle while preview continues."/>
+            </WrapPanel>
         </Border>
         <Grid Grid.Row="2">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,12" IsEnabled="{Binding CanEdit}">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Starter profiles" Click="StarterProfilesClick" FontSize="12" Padding="10,6"/>
-                    <Button Content="Save to library" Click="SaveLibraryClick" FontSize="12" Padding="10,6"/>
-                    <Button Content="Duplicate" Click="DuplicateProfileClick" FontSize="12" Padding="10,6"/>
+                    <Button Content="New" Click="NewProfileClick" FontSize="12" Padding="10,7" ToolTip="Add a tab with device-axis defaults. Existing tabs retain their drafts."/>
+                    <Button Content="Open…" Click="OpenProfileClick" FontSize="12" Padding="10,7" ToolTip="Import a profile into a new tab. Save profile keeps it across restarts."/>
+                    <Button Content="Save profile" Click="SaveLibraryClick" FontSize="12" Padding="10,7" ToolTip="Validate, save all three pedals to the library and apply them. Runtime filter/correction histories reset."/>
                 </StackPanel>
-                <ListBox ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}" SelectionChanged="ProfileTabChanged"
-                         Background="#111D2E" Foreground="#E8EFF8" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                         ScrollViewer.VerticalScrollBarVisibility="Disabled" DisplayMemberPath="Name" AutomationProperties.Name="Profile tabs">
+                <ListBox ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}" SelectionChanged="ProfileTabChanged" Background="#111D2E" Foreground="#E8EFF8" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled" DisplayMemberPath="Name" AutomationProperties.Name="Profile tabs">
                     <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="12,8"/><Setter Property="Foreground" Value="#E8EFF8"/>
+                        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
                         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
-                            <Border x:Name="Tab" Background="#18273C" CornerRadius="5" Margin="0,0,5,0" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
-                            <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="#365975"/></Trigger></ControlTemplate.Triggers>
+                            <Border x:Name="Tab" Background="#18273C" BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Margin="0,0,5,0" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
+                            <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="#365975"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Tab" Property="BorderBrush" Value="#78E3C6"/></Trigger></ControlTemplate.Triggers>
                         </ControlTemplate></Setter.Value></Setter>
                     </Style></ListBox.ItemContainerStyle>
                 </ListBox>
             </DockPanel>
-        <Grid Grid.Row="1" x:Name="WorkbenchContent">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="370" /></Grid.ColumnDefinitions>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}" MinHeight="590">
-                <Grid.RowDefinitions><RowDefinition Height="137" /><RowDefinition Height="*" /><RowDefinition Height="285" /></Grid.RowDefinitions>
-                <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-12,15">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate><DataTemplate>
-                        <Button Tag="{Binding Axis}" Click="SelectAxisClick" Padding="16,14" Margin="0,0,12,0" Background="#142136" BorderBrush="#293D57" HorizontalContentAlignment="Stretch">
-                            <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <DockPanel><TextBlock Text="{Binding OutputText}" DockPanel.Dock="Right" Foreground="#69DFC4" HorizontalAlignment="Right" /><TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource Muted}" /></DockPanel>
-                                <TextBlock Grid.Row="1" Text="{Binding Input}" FontSize="25" FontWeight="SemiBold" Margin="0,4,0,5">
-                                    <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsFresh}" Value="False"><Setter Property="Opacity" Value="0.45" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Row="2"><ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Background="#25364F" Foreground="#45D6BB" BorderThickness="0" /><TextBlock Text="{Binding Filtered}" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,6,0,0" /></StackPanel>
+            <Grid Grid.Row="1" x:Name="WorkbenchContent">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="350"/></Grid.ColumnDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}">
+                        <Grid.Style><Style TargetType="Grid"><Setter Property="MinHeight" Value="520"/><Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=CurvesSection}" Value="True"><Setter Property="MinHeight" Value="800"/></DataTrigger></Style.Triggers></Style></Grid.Style>
+                        <Grid.RowDefinitions><RowDefinition Height="104"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-10,12">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Button Tag="{Binding Axis}" AutomationProperties.Name="{Binding Name}" Click="SelectAxisClick" Padding="12,8" Margin="0,0,10,0" Background="#142136" BorderBrush="#293D57" HorizontalContentAlignment="Stretch" ToolTip="Select this pedal to edit its calibration, curve and filter.">
+                                    <StackPanel><DockPanel><TextBlock Text="{Binding Name}" FontSize="11" Foreground="#95A9C1"/><TextBlock Text="{Binding OutputText}" FontSize="23" Foreground="#78E3C6" HorizontalAlignment="Right"/></DockPanel>
+                                    <ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,7,0,7" Background="#25364F" Foreground="#45D6BB" BorderThickness="0"/>
+                                    <TextBlock Foreground="#95A9C1" FontSize="10"><Run Text="Device input: "/><Run Text="{Binding Input, Mode=OneWay}"/></TextBlock></StackPanel>
+                                </Button>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <WrapPanel>
+                                    <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphPedals}" SelectedItem="{Binding GraphPedal}" Width="125" Margin="0,0,8,6" AutomationProperties.Name="Graph pedals" ToolTip="Show all three pedals on a shared time axis, or inspect one. Changes only the graph." AutomationProperties.HelpText="Show all three pedals on a shared time axis, or inspect one. Changes only the graph." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                    <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphModes}" SelectedItem="{Binding GraphMode}" Width="155" Margin="0,0,8,6" AutomationProperties.Name="Graph signal" ToolTip="Compare input and filtered input, see final output, or magnify their difference. Graphs use applied settings." AutomationProperties.HelpText="Compare input and filtered input, see final output, or magnify their difference. Graphs use applied settings." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                    <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphWindows}" SelectedItem="{Binding GraphWindow}" Width="58" Margin="0,0,4,6" AutomationProperties.Name="Graph time window" ToolTip="Visible history in seconds. Use one second to see filtering delay more clearly. Changes only the graph." AutomationProperties.HelpText="Visible history in seconds. Use one second to see filtering delay more clearly. Changes only the graph."/>
+                                    <TextBlock Text="s" Foreground="#95A9C1" Margin="0,8,8,6"/>
+                                    <CheckBox Content="Zoom range" IsChecked="{Binding GraphZoom}" Margin="3,8,0,6" AutomationProperties.Name="Zoom graph range" ToolTip="Fit each pedal to its visible range to reveal small changes. Counts and difference views always auto-scale." AutomationProperties.HelpText="Fit each pedal to its visible range to reveal small changes. Counts and difference views always auto-scale." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                </WrapPanel>
+                                <TextBlock Grid.Row="1" Text="{Binding GraphLegend}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                <controls:SignalPlot x:Name="MainSignalPlot" Grid.Row="2" Series="{Binding PedalHistories}" Pedal="{Binding GraphPedal}" Mode="{Binding GraphMode}" Zoom="{Binding GraphZoom}" WindowSeconds="{Binding GraphWindow}" MinHeight="250" AutomationProperties.Name="Pedal signal history"/>
+                                <TextBlock Grid.Row="3" Text="{Binding SampleInfo}" FontSize="10" Foreground="#95A9C1" Margin="0,6,0,0"/>
                             </Grid>
-                        </Button>
-                    </DataTemplate></ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="18,15" Margin="0,0,0,15">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                        <DockPanel><TextBlock Text="Signal history" FontSize="17" FontWeight="SemiBold" /><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><CheckBox Content="Counts" IsChecked="{Binding PlotCounts}" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" ToolTip="Show original device counts on an automatically scaled axis" /><StackPanel Orientation="Horizontal"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding PlotCounts}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="● Input" Foreground="#91A5BE" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Filtered" Foreground="#AF94F6" FontSize="11" Margin="14,0,0,0" /><TextBlock Text="● Output" Foreground="#45D6BB" FontSize="11" Margin="14,0,0,0" /></StackPanel></StackPanel></DockPanel>
-                        <controls:SignalPlot Grid.Row="1" Samples="{Binding History}" CountsMode="{Binding PlotCounts}" Margin="0,10,0,6" MinHeight="70" />
-                        <TextBlock Grid.Row="2" Text="{Binding SampleInfo}" FontSize="11" Foreground="{StaticResource Muted}" />
-                    </Grid>
-                </Border>
-                <Border Grid.Row="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9" Padding="10,12">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                        <TextBlock Text="Pedal curves · drag points · double-click adds · right-click removes · dashed = applied · Apply activates drafts" TextWrapping="Wrap" Foreground="#95A9C1" FontSize="11" Margin="6,0,0,8"/>
-                        <ItemsControl Grid.Row="1" ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanEdit}">
+                        </Border>
+                        <Expander Grid.Row="2" x:Name="CurvesSection" Header="Response curves · throttle / brake / clutch" IsExpanded="False">
+                            <StackPanel><TextBlock Text="Drag points · Double-click adds · Right-click removes · Dashed = applied · Apply activates drafts" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanEdit}" Height="240">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate><DataTemplate>
                                 <Border BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="8" Margin="4,0">
                                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-                                        <ComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{Binding Title}"/>
+                                        <ComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{Binding Title}" ToolTip="Curve preset for this pedal only. Drag or add points below. Clear restores linear response. Apply activates drafts." AutomationProperties.HelpText="Curve preset for this pedal only. Drag or add points below. Clear restores linear response. Apply activates drafts." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                         <controls:CurveEditor Grid.Row="2" Points="{Binding Points, Mode=OneWay}" Preview="{Binding Preview}" Applied="{Binding Applied}" Edited="CurveEdited" MinHeight="115" Margin="0,8,0,6" AutomationProperties.Name="{Binding Title}"/>
                                         <Button Grid.Row="3" Content="Clear curve" Click="ClearCurveClick" FontSize="11" Padding="7,5" Margin="0" ToolTip="Restore linear response for this pedal; keep calibration, deadzones and filters"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
+                            </StackPanel>
+                        </Expander>
                     </Grid>
-                </Border>
-            </Grid>
-            </ScrollViewer>
-            <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="9">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Top" Margin="18,15,18,0">
-                        <DockPanel><Button DockPanel.Dock="Right" Content="Apply" Style="{StaticResource Primary}" Click="ApplyClick" Margin="12,0,0,0" IsEnabled="{Binding CanEdit}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="Selected pedal" /></DockPanel>
-                        <TextBlock Text="{Binding AxisTitle}" FontSize="18" FontWeight="SemiBold" Margin="0,15,0,3" /><TextBlock Text="{Binding ActiveProfileInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
-                    </StackPanel>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="18,0,18,18" IsEnabled="{Binding CanEdit}">
-                            <TextBlock Text="Profile name" Style="{StaticResource Label}" /><TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" />
-                            <TextBlock Text="Software calibration" Style="{StaticResource Section}" />
+                </ScrollViewer>
+                <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
+                            <DockPanel><Button DockPanel.Dock="Right" Content="Apply settings" Style="{StaticResource Primary}" Click="ApplyClick" Padding="10,9" FontSize="12" Margin="10,0,0,0" IsEnabled="{Binding CanEdit}" ToolTip="Validate and apply all pedal drafts. Clears filter/correction histories and disarms vJoy."/><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="Selected pedal" ToolTip="Choose the pedal to edit. Each pedal keeps separate calibration, curve and filter settings." AutomationProperties.HelpText="Choose the pedal to edit. Each pedal keeps separate calibration, curve and filter settings." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></DockPanel>
+                            <TextBlock Text="{Binding ActiveProfileInfo}" Foreground="#95A9C1" FontSize="10" Margin="0,8,0,12" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
+                                <TextBlock Text="Profile name" Style="{StaticResource Label}"/><TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" ToolTip="Name of this tab. Save profile keeps all three pedals in your local library." AutomationProperties.HelpText="Name of this tab. Save profile keeps all three pedals in your local library." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <TextBlock Text="Deadzone" Style="{StaticResource Section}"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Lower deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lower deadzone percent"  ToolTip="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent"  ToolTip="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                            </Grid>
+
+                                <TextBlock Text="Filtering" Style="{StaticResource Section}"/>
+                                <TextBlock Text="Preset" Style="{StaticResource Label}"/>
+                                <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterPresetNames}" SelectedItem="{Binding FilterPreset, Mode=OneWay}" SelectionChanged="FilterPresetChanged" AutomationProperties.Name="Filter preset" ToolTip="Off bypasses filtering. Sharp: exponential 3 ms. Balanced: exponential 10 ms. Smooth: two stages, 20 ms each. Spike guard: median 5 samples plus exponential 8 ms. Apply to activate." AutomationProperties.HelpText="Off bypasses filtering. Sharp: exponential 3 ms. Balanced: exponential 10 ms. Smooth: two stages, 20 ms each. Spike guard: median 5 samples plus exponential 8 ms. Apply to activate." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <TextBlock Text="Algorithm" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding SelectedFilterKind, Mode=OneWay}" SelectedValuePath="Kind" DisplayMemberPath="Name" SelectionChanged="FilterKindChanged" AutomationProperties.Name="Filter type" ToolTip="Choose an algorithm for this pedal. Choosing a different type enables filtering. Apply settings to activate it." AutomationProperties.HelpText="Choose an algorithm for this pedal. Choosing a different type enables filtering. Apply settings to activate it." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <TextBlock Text="{Binding FilterInfo}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <TextBlock Text="Draft settings · Apply to update the graph and output" Foreground="#DFBC7A" FontSize="10" Margin="0,8,0,0"/>
+                                <Expander Header="Filter details">
+                                    <StackPanel>
+                                        <TextBlock Text="Time constant (ms)" Style="{StaticResource Label}"/>
+                                        <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterTimes}" IsEditable="True" Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesTimeFilter}" TextBox.TextChanged="FilterValuesChanged" LostKeyboardFocus="FilterValuesChanged" SelectionChanged="FilterValuesChanged" AutomationProperties.Name="Filter milliseconds" ToolTip="Exponential time constant in milliseconds. Higher values smooth more and react slower. Zero disables filtering. Choose or type a value." AutomationProperties.HelpText="Exponential time constant in milliseconds. Higher values smooth more and react slower. Zero disables filtering. Choose or type a value." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <TextBlock Text="Window (samples)" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                        <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterWindows}" IsEditable="True" Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesWindowFilter}" TextBox.TextChanged="FilterValuesChanged" LostKeyboardFocus="FilterValuesChanged" SelectionChanged="FilterValuesChanged" AutomationProperties.Name="Filter window samples" ToolTip="Number of recent reports used by window filters. Use an odd integer from 3 to 101. Larger windows smooth more and add delay. Choose or type a value." AutomationProperties.HelpText="Number of recent reports used by window filters. Use an odd integer from 3 to 101. Larger windows smooth more and add delay. Choose or type a value." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <TextBlock Text="Reset after gap (ms)" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                        <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.ResetGaps}" IsEditable="True" Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" TextBox.TextChanged="FilterValuesChanged" LostKeyboardFocus="FilterValuesChanged" SelectionChanged="FilterValuesChanged" AutomationProperties.Name="Filter reset milliseconds" ToolTip="A gap at least this long clears filter history. Must be positive. The advanced session gap can also reset history." AutomationProperties.HelpText="A gap at least this long clears filter history. Must be positive. The advanced session gap can also reset history." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="Calibration"><StackPanel>
                             <TextBlock Text="{Binding CalibrationInfo}" Foreground="#95A9C1" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                            <WrapPanel Margin="0,0,0,10"><Button Content="1 · Released" Click="CalibrateReleasedClick" FontSize="11" Padding="8,6"/><Button Content="2 · Pressed" Click="CalibratePressedClick" FontSize="11" Padding="8,6"/><Button Content="Cancel" Click="CancelCalibrationClick" FontSize="11" Padding="8,6"/></WrapPanel>
+                            <WrapPanel Margin="0,0,0,10"><Button Content="1 · Released" Click="CalibrateReleasedClick" FontSize="11" Padding="8,6" ToolTip="With this pedal fully released, capture its software release endpoint from fresh input."/><Button Content="2 · Pressed" Click="CalibratePressedClick" FontSize="11" Padding="8,6" ToolTip="After Released, press to desired full force/travel and capture the software pressed endpoint."/><Button Content="Cancel" Click="CancelCalibrationClick" FontSize="11" Padding="8,6" ToolTip="Discard only the pending software calibration capture."/></WrapPanel>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Minimum · device-axis units" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software minimum" /><Button Content="Use current" Click="CaptureMinimumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Maximum" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software maximum" /><Button Content="Use current" Click="CaptureMaximumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0" /></StackPanel>
+                                <StackPanel><TextBlock Text="Minimum · device-axis units" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software minimum"  ToolTip="Software endpoint mapped to release, or full output when inverted. Must be below maximum. These are device-axis counts, not hardware calibration units." AutomationProperties.HelpText="Software endpoint mapped to release, or full output when inverted. Must be below maximum. These are device-axis counts, not hardware calibration units." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/><Button Content="Use current" Click="CaptureMinimumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0"  ToolTip="Copy fresh input into this endpoint. Review bounds, then Apply."/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Maximum" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software maximum"  ToolTip="Software endpoint mapped to full output, or release when inverted. Must exceed minimum. Does not change the device." AutomationProperties.HelpText="Software endpoint mapped to full output, or release when inverted. Must exceed minimum. Does not change the device." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/><Button Content="Use current" Click="CaptureMaximumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0"  ToolTip="Copy fresh input into this endpoint. Review bounds, then Apply."/></StackPanel>
                             </Grid>
-                            <CheckBox Content="Invert axis" IsChecked="{Binding Editor.Inverted}" />
+                            <CheckBox Content="Invert axis" IsChecked="{Binding Editor.Inverted}"  ToolTip="Reverse input direction when pressing makes counts decrease." AutomationProperties.HelpText="Reverse input direction when pressing makes counts decrease." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                             <TextBlock Text="Observed this connection" Style="{StaticResource Label}" Margin="0,12,0,3" /><TextBlock Text="{Binding ObservedRange}" FontSize="12" Margin="0,0,0,8" />
-                            <StackPanel Orientation="Horizontal"><Button Content="Use observed range" Click="ObservedRangeClick" FontSize="11" Padding="9,6" /><Button Content="Defaults" Click="DefaultsClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
-                            <TextBlock Text="Response &amp; filtering" Style="{StaticResource Section}" />
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Lower deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lower deadzone percent" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent" /></StackPanel>
-                            </Grid>
+                            <StackPanel Orientation="Horizontal"><Button Content="Use observed range" Click="ObservedRangeClick" FontSize="11" Padding="9,6"  ToolTip="Copy this pedal’s observed minimum and maximum. Move through the intended range first."/><Button Content="Defaults" Click="DefaultsClick" FontSize="11" Padding="9,6" Margin="0"  ToolTip="Restore this pedal’s device-axis defaults in the draft. Apply activates them."/></StackPanel>
+
+                                </StackPanel></Expander>
+                                <Expander Header="Curve details"><StackPanel>
                             <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Curve" Style="{StaticResource Label}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding Editor.CurveKind, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="CurveSettingsChanged" AutomationProperties.Name="Response curve" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Power exponent" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Exponent, UpdateSourceTrigger=PropertyChanged}" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Power exponent" /></StackPanel>
+                                <StackPanel><TextBlock Text="Curve" Style="{StaticResource Label}" /><ComboBox ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding Editor.CurveKind, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="CurveSettingsChanged" AutomationProperties.Name="Response curve"  ToolTip="Curve for the selected pedal. Power and Custom use the fields below. Apply activates all pedal drafts." AutomationProperties.HelpText="Curve for the selected pedal. Power and Custom use the fields below. Apply activates all pedal drafts." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Power exponent" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Exponent, UpdateSourceTrigger=PropertyChanged}" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Power exponent"  ToolTip="Used only for Power curves. Above 1 reduces early response; below 1 increases it. Must be positive." AutomationProperties.HelpText="Used only for Power curves. Above 1 reduces early response; below 1 increases it. Must be positive." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
                             </Grid>
                             <TextBlock Text="Custom points · 0..1 input:output pairs" Style="{StaticResource Label}" Margin="0,12,0,5" />
-                            <TextBox Text="{Binding Editor.Points, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="56" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Custom curve points" />
-                            <CheckBox Content="Enable selected filter" IsChecked="{Binding Editor.FilterEnabled}" Margin="0,12,0,8"/>
-                            <TextBlock Text="Filter type" Style="{StaticResource Label}" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding Editor.FilterKind}" SelectedValuePath="Kind" DisplayMemberPath="Name" AutomationProperties.Name="Filter type"/>
-                            <TextBlock Text="Window samples · odd 3..101 · average/median" Style="{StaticResource Label}" Margin="0,10,0,5"/>
-                            <TextBox Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter window samples"/>
-                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Filter τ (ms) · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter milliseconds" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Filter reset gap (ms)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filter reset milliseconds" /></StackPanel>
-                            </Grid>
+                            <TextBox Text="{Binding Editor.Points, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="56" TextChanged="CurveSettingsChanged" AutomationProperties.Name="Custom curve points"  ToolTip="Used only for Custom. Enter input:output pairs separated by semicolons within 0–1, from 0:0 to 1:1. Keep input strictly increasing and output monotonic." AutomationProperties.HelpText="Used only for Custom. Enter input:output pairs separated by semicolons within 0–1, from 0:0 to 1:1. Keep input strictly increasing and output monotonic." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+
+                                </StackPanel></Expander>
+                                <Expander Header="Manual baseline correction"><StackPanel>
                         <StackPanel><TextBlock Text="Manual correction" FontWeight="SemiBold" /><TextBlock Text="{Binding CorrectionInfo}" FontSize="12" Margin="0,9,0,0" /><TextBlock Text="{Binding ResetInfo}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal"><Button Content="Confirm baseline" Click="ConfirmBaselineClick" FontSize="11" Padding="9,6" /><Button Content="Disable" Click="DisableCorrectionClick" FontSize="11" Padding="9,6" Margin="0" /></StackPanel>
+                            <StackPanel Orientation="Horizontal"><Button Content="Confirm baseline" Click="ConfirmBaselineClick" FontSize="11" Padding="9,6"  ToolTip="Request a manual baseline correction only when this pedal is independently known to be released."/><Button Content="Disable" Click="DisableCorrectionClick" FontSize="11" Padding="9,6" Margin="0"  ToolTip="Request zero correction. Hold release permission while fully released to ramp back to zero."/></StackPanel>
                             <Button x:Name="ReleaseHold" Content="Hold to apply · pedal released" Margin="0,9,0,0" FontSize="11" Padding="8,7"
                                     PreviewMouseLeftButtonDown="ReleaseMouseDown" PreviewMouseLeftButtonUp="ReleaseMouseUp" LostMouseCapture="ReleaseLostCapture"
-                                    PreviewKeyDown="ReleaseKeyDown" PreviewKeyUp="ReleaseKeyUp" LostKeyboardFocus="ReleaseLostFocus" />
+                                    PreviewKeyDown="ReleaseKeyDown" PreviewKeyUp="ReleaseKeyUp" LostKeyboardFocus="ReleaseLostFocus"  ToolTip="Hold only while this pedal is fully released to allow bounded correction. Release or lose focus to stop adjustment."/>
                         </StackPanel>
 
                             <TextBlock Text="Correction settings" Style="{StaticResource Section}" />
-                            <TextBlock Text="Max correction · counts · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.MaximumCorrection, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum correction" />
+                            <TextBlock Text="Max correction · counts · 0 = off" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.MaximumCorrection, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum correction"  ToolTip="Absolute manual baseline correction limit in device counts. Zero disables it. Filtering never learns a baseline." AutomationProperties.HelpText="Absolute manual baseline correction limit in device counts. Zero disables it. Filtering never learns a baseline." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                             <TextBlock Text="Session transition limits" Foreground="#DFBC7A" FontSize="11" Margin="0,12,0,9" TextWrapping="Wrap" />
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Correction counts / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction count rate" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Output fraction / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionOutputRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction output rate" /></StackPanel>
+                                <StackPanel><TextBlock Text="Correction counts / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction count rate"  ToolTip="Maximum baseline change in counts per second while explicit release permission is held. Must be positive." AutomationProperties.HelpText="Maximum baseline change in counts per second while explicit release permission is held. Must be positive." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Output fraction / s" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.CorrectionOutputRate, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Correction output rate"  ToolTip="Maximum output fraction change per second caused by baseline adjustment. 0.05 means five percentage points per second. Must be positive." AutomationProperties.HelpText="Maximum output fraction change per second caused by baseline adjustment. 0.05 means five percentage points per second. Must be positive." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
                             </Grid>
-                            <TextBlock Text="Session reset gap (ms)" Style="{StaticResource Label}" Margin="0,12,0,5" /><TextBox Text="{Binding Editor.SessionGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Session reset milliseconds" />
-                            <TextBlock Text="Virtual controller · vJoy" Style="{StaticResource Section}"/>
+                            <TextBlock Text="Session reset gap (ms)" Style="{StaticResource Label}" Margin="0,12,0,5" /><TextBox Text="{Binding Editor.SessionGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Session reset milliseconds"  ToolTip="A gap at least this long clears correction and all filter history. Must be positive." AutomationProperties.HelpText="A gap at least this long clears correction and all filter history. Must be positive." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+
+                                </StackPanel></Expander>
+                                <Expander Header="Virtual controller · vJoy"><StackPanel>
                             <TextBlock Text="{Binding OutputInfo}" Foreground="#DFBC7A" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             <TextBlock Text="Installed x64 vJoyInterface.dll" Style="{StaticResource Label}"/>
-                            <TextBox Text="{Binding VJoyPath, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy library path"/>
-                            <Button Content="Browse DLL…" Click="BrowseVJoyClick" FontSize="11" Padding="8,5" Margin="0,5,0,8"/>
+                            <TextBox Text="{Binding VJoyPath, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy library path" ToolTip="Absolute path to the installed x64 vJoyInterface.dll. Loaded only when Enable vJoy is clicked." AutomationProperties.HelpText="Absolute path to the installed x64 vJoyInterface.dll. Loaded only when Enable vJoy is clicked." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                            <Button Content="Browse DLL…" Click="BrowseVJoyClick" FontSize="11" Padding="8,5" Margin="0,5,0,8" ToolTip="Choose the installed x64 vJoyInterface.dll."/>
                             <TextBlock Text="Dedicated vJoy device ID · 1..16" Style="{StaticResource Label}"/>
-                            <TextBox Text="{Binding VJoyDevice, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy device ID"/>
-                            <WrapPanel Margin="0,8,0,8"><Button Content="Enable vJoy" Click="EnableOutputClick" FontSize="11" Padding="8,6"/><Button Content="Disable output" Click="DisableOutputClick" FontSize="11" Padding="8,6"/></WrapPanel>
+                            <TextBox Text="{Binding VJoyDevice, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="vJoy device ID" ToolTip="Dedicated device ID, 1–16, with X/Y/Z axes. Throttle → X, brake → Y, clutch → Z." AutomationProperties.HelpText="Dedicated device ID, 1–16, with X/Y/Z axes. Throttle → X, brake → Y, clutch → Z." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                            <WrapPanel Margin="0,8,0,8"><Button Content="Enable vJoy" Click="EnableOutputClick" FontSize="11" Padding="8,6" ToolTip="Acquire the dedicated vJoy device and send fresh live processed axes."/><Button Content="Disable output" Click="DisableOutputClick" FontSize="11" Padding="8,6" ToolTip="Send zero, stop virtual output and release vJoy."/></WrapPanel>
                             <TextBlock Text="Throttle → X · Brake → Y · Clutch → Z. Live input only. Apply, calibration, profile/source changes and stale input stop output. Enable again after reviewing changes." Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap"/>
-                            <TextBlock Text="Hardware calibration · read only" Style="{StaticResource Section}" />
+
+                                </StackPanel></Expander>
+                                <Expander Header="Profile tools"><WrapPanel><Button Content="Starter profiles" Click="StarterProfilesClick" FontSize="11" Padding="8,7" ToolTip="Add four independent starter tabs, applying each as added. The last is Clutch bite control. Disarms output."/><Button Content="Duplicate" Click="DuplicateProfileClick" FontSize="11" Padding="8,7" ToolTip="Copy all three pedal settings into a new independent tab."/><Button Content="Export JSON…" Click="SaveProfileClick" FontSize="11" Padding="8,7" ToolTip="Export all three validated pedal settings to JSON and apply them."/></WrapPanel></Expander>
+                                <Expander Header="Hardware info · read only"><StackPanel>
                             <Button Content="Read hardware calibration" Click="ReadHardwareClick" Margin="0,0,0,10" />
                             <TextBlock Text="{Binding HardwareInfo}" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" />
                             <TextBlock Text="Live counts are firmware-calibrated device axes. A zero can hide released-brake drift. Hardware bounds are not software input bounds." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
-                        </StackPanel>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+
+                                </StackPanel></Expander>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
         </Grid>
-        </Grid>
-        <Border Grid.Row="3" Background="#17273B" CornerRadius="6" Padding="12,9" Margin="0,15,0,0"><TextBlock Text="{Binding Message}" Foreground="#BDCEE1" FontSize="12" TextWrapping="Wrap" /></Border>
+        <Border Grid.Row="3" Background="#17273B" CornerRadius="6" Padding="10,7" Margin="0,10,0,0">
+            <StackPanel><TextBlock Text="{Binding Message}" ToolTip="{Binding Message}" Foreground="#BDCEE1" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding ContextHint}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"/></StackPanel>
+        </Border>
     </Grid>
 </Window>

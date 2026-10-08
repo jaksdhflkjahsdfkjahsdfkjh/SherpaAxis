@@ -12,6 +12,8 @@ public sealed class SignalFilterTests
     [InlineData(SignalFilterKind.TwoStageExponential)]
     [InlineData(SignalFilterKind.MovingAverage)]
     [InlineData(SignalFilterKind.Median)]
+    [InlineData(SignalFilterKind.WeightedMovingAverage)]
+    [InlineData(SignalFilterKind.MedianExponential)]
     public void FiltersAreBoundedResetOnGapsAndDoNotAdvanceAtDuplicateTimes(SignalFilterKind kind)
     {
         var processor = new AxisProcessor(new(0, 100), filterSettings: new(.01, .1, kind, 5));
@@ -28,6 +30,21 @@ public sealed class SignalFilterTests
         Assert.Equal(90, reset.FilteredInput);
         Assert.Throws<ArgumentOutOfRangeException>(() => processor.Process(10, .5));
         Assert.Equal(90, processor.Process(0, 1).FilteredInput);
+    }
+
+    [Fact]
+    public void WeightedAverageFavoursRecentInputAndMedianExponentialRejectsAnIsolatedSpike()
+    {
+        var weighted = Processor(SignalFilterKind.WeightedMovingAverage);
+        weighted.Process(0, 0);
+        Assert.Equal(20, weighted.Process(30, .002).FilteredInput, 12);
+        Assert.Equal(40, weighted.Process(60, .004).FilteredInput, 12);
+        Assert.Equal(75, weighted.Process(100, .006).FilteredInput, 12);
+        var robust = Processor(SignalFilterKind.MedianExponential);
+        robust.Process(10, 0);
+        robust.Process(10, .002);
+        Assert.Equal(10, robust.Process(100, .004).FilteredInput, 12);
+        Assert.Equal(10, robust.Process(10, .006).FilteredInput, 12);
     }
 
     [Fact]
@@ -67,6 +84,8 @@ public sealed class SignalFilterTests
     [InlineData(SignalFilterKind.TwoStageExponential)]
     [InlineData(SignalFilterKind.MovingAverage)]
     [InlineData(SignalFilterKind.Median)]
+    [InlineData(SignalFilterKind.WeightedMovingAverage)]
+    [InlineData(SignalFilterKind.MedianExponential)]
     public void SchemaTwoRoundTripsEveryFilterAndSessionLimits(SignalFilterKind kind)
     {
         var axis = new AxisProfile(new(100, 200), filter: new(.012, .2, kind, 7), session: new(17, .03, .3));
@@ -109,6 +128,8 @@ public sealed class SignalFilterTests
     [InlineData(SignalFilterKind.TwoStageExponential)]
     [InlineData(SignalFilterKind.MovingAverage)]
     [InlineData(SignalFilterKind.Median)]
+    [InlineData(SignalFilterKind.WeightedMovingAverage)]
+    [InlineData(SignalFilterKind.MedianExponential)]
     public void FiltersPreserveHeldInputAndSessionCorrectionCannotLearnFromIt(SignalFilterKind kind)
     {
         var session = new AxisSession(new(100, 200), new(1000, 1), maximumBaselineCorrection: 20,

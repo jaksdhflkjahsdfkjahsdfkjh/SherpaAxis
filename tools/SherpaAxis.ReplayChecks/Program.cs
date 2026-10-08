@@ -56,6 +56,29 @@ internal static class Program
             }
         }
 
+        foreach (var axis in DashboardViewModel.AxisNames)
+        {
+            foreach (var filter in Enum.GetValues<SignalFilterKind>())
+            {
+                var filterModel = new DashboardViewModel(new DashboardEngine()) { SelectedAxis = axis };
+                filterModel.SetFilterKind(filter.ToString());
+                cases.Add(Check($"{axis}: {filter} filter", samples, filterModel.ValidateEditors().Profile));
+                if (filter is SignalFilterKind.WeightedMovingAverage or SignalFilterKind.MedianExponential)
+                {
+                    foreach (var mode in new[] { "duplicates", "gap", "reconnect" })
+                    {
+                        cases.Add(Check($"{axis}: {filter}, synthetic {mode}", samples, filterModel.ValidateEditors().Profile, mode));
+                    }
+                }
+            }
+            foreach (var preset in FilterPresets.Names.Where(n => n != "Custom"))
+            {
+                var filterModel = new DashboardViewModel(new DashboardEngine()) { SelectedAxis = axis };
+                filterModel.SetFilterPreset(preset);
+                cases.Add(Check($"{axis}: {preset} filter preset", samples, filterModel.ValidateEditors().Profile));
+            }
+        }
+
         var starters = StarterProfiles.Create();
         var library = new ProfileLibrary(Path.Combine(destination, "profile-library"));
         foreach (var profile in starters)

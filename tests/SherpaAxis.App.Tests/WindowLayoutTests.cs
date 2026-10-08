@@ -25,6 +25,8 @@ public sealed class WindowLayoutTests
                 try
                 {
                     var content = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
+                    Assert.False(Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded);
+                    Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded = true;
                     content.Measure(new Size(width, height));
                     content.Arrange(new Rect(0, 0, width, height));
                     content.UpdateLayout();
