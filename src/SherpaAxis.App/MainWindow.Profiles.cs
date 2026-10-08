@@ -17,9 +17,9 @@ public partial class MainWindow
         foreach (var profile in StarterProfiles.Create()) { viewModel.Load(profile); }
         viewModel.ShowMessage("Four starter profile tabs added. Device-axis calibration defaults; review curves and Save to library to keep a tab.");
     });
-    private async void ProfileTabChanged(object sender, SelectionChangedEventArgs e)
+    private async void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (viewModel is not null && sender is ListBox { SelectedItem: ProfileTab tab })
+        if (viewModel is not null && sender is ComboBox { SelectedItem: ProfileTab tab })
         {
             Run(() => { StopHold(); viewModel.SwitchProfile(tab); });
             if (tab.FilePath is { } path && viewModel.CanEdit && !closing)
