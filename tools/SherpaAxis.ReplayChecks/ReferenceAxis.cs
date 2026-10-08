@@ -26,13 +26,19 @@ internal sealed class ReferenceAxis(AxisProfile profile)
         }
         else if (dt > 0)
         {
-            if (settings.Kind is SignalFilterKind.Median or SignalFilterKind.MovingAverage)
+            if (settings.Kind is SignalFilterKind.Median or SignalFilterKind.MovingAverage or SignalFilterKind.WeightedMovingAverage or SignalFilterKind.MedianExponential)
             {
                 window.Add(input);
                 if (window.Count > settings.WindowSamples) { window.RemoveAt(0); }
                 var sorted = window.Order().ToArray();
-                filtered = settings.Kind == SignalFilterKind.MovingAverage ? window.Average()
-                    : (sorted[(sorted.Length - 1) / 2] + sorted[sorted.Length / 2]) / 2;
+                var median = (sorted[(sorted.Length - 1) / 2] + sorted[sorted.Length / 2]) / 2;
+                filtered = settings.Kind switch
+                {
+                    SignalFilterKind.MovingAverage => window.Average(),
+                    SignalFilterKind.WeightedMovingAverage => window.Select((v, i) => v * (i + 1) / (window.Count * (window.Count + 1) / 2d)).Sum(),
+                    SignalFilterKind.MedianExponential => median + (filtered - median) * Math.Exp(-dt / settings.TimeConstantSeconds),
+                    _ => median
+                };
             }
             else
             {

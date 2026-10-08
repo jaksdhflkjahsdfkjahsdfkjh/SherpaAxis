@@ -5,5 +5,7 @@ public enum SignalFilterKind
     Exponential,
     TwoStageExponential,
     MovingAverage,
-    Median
+    Median,
+    WeightedMovingAverage,
+    MedianExponential
 }

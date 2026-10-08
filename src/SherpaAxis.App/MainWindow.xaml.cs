@@ -283,11 +283,25 @@ public partial class MainWindow : Window, IAsyncDisposable
             return;
         }
 
+        var priorFocus = Keyboard.FocusedElement;
+        var userMovedFocus = false;
+        void ObserveInput(object inputSender, PreProcessInputEventArgs args)
+        {
+            if (args.StagingItem.Input is MouseButtonEventArgs { ButtonState: MouseButtonState.Pressed } or KeyEventArgs { IsDown: true }) { userMovedFocus = true; }
+        }
+        InputManager.Current.PreProcessInput += ObserveInput;
         viewModel.CanEdit = false;
         viewModel.Refresh();
         try { activeOperation = action(); await activeOperation; }
         catch (Exception exception) when (IsExpected(exception)) { viewModel.ShowMessage(exception.Message); }
-        finally { activeOperation = null; viewModel.CanEdit = !closing; viewModel.Refresh(); }
+        finally
+        {
+            activeOperation = null;
+            InputManager.Current.PreProcessInput -= ObserveInput;
+            viewModel.CanEdit = !closing;
+            viewModel.Refresh();
+            if (!closing && IsActive && !userMovedFocus && priorFocus is FrameworkElement { IsEnabled: true, IsVisible: true } element) { element.Focus(); }
+        }
     }
 
     private static bool IsExpected(Exception exception) => exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException
@@ -323,6 +337,8 @@ public partial class MainWindow : Window, IAsyncDisposable
         refresh.Stop();
         StopHold();
         await lifetime.CancelAsync();
+        await Task.WhenAll(profileSelections.ToArray());
+        profileSelectionGate.Dispose();
         if (activeOperation is not null)
         {
             try { await activeOperation; }

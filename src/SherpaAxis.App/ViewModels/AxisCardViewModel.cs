@@ -22,6 +22,10 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
         OutputPercent = (frame.Result?.Processing.Output ?? 0) * 100;
         OutputText = frame.Result is null ? "—" : OutputPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
         Filtered = frame.Result is null ? "No samples" : FormattableString.Invariant($"Filtered  {frame.Result.Value.Processing.FilteredNormalized:P1}");
-        Changed(string.Empty);
+        Changed(nameof(IsFresh));
+        Changed(nameof(Input));
+        Changed(nameof(OutputPercent));
+        Changed(nameof(OutputText));
+        Changed(nameof(Filtered));
     }
 }

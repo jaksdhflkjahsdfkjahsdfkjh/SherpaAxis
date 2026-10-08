@@ -9,6 +9,8 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
+    private readonly SemaphoreSlim profileSelectionGate = new(1, 1);
+    private readonly List<Task> profileSelections = [];
     private void StarterProfilesClick(object sender, RoutedEventArgs e) => Run(() =>
     {
         StopHold();
@@ -20,7 +22,27 @@ public partial class MainWindow
         if (viewModel is not null && sender is ListBox { SelectedItem: ProfileTab tab })
         {
             Run(() => { StopHold(); viewModel.SwitchProfile(tab); });
-            if (tab.FilePath is { } path && viewModel.CanEdit) { await RunAsync(() => library.RememberAsync(path, lifetime.Token)); }
+            if (tab.FilePath is { } path && viewModel.CanEdit && !closing)
+            {
+                var operation = RememberProfileAsync(tab, path);
+                profileSelections.Add(operation);
+                try { await operation; }
+                finally { profileSelections.Remove(operation); }
+            }
+        }
+    }
+
+    private async Task RememberProfileAsync(ProfileTab tab, string path)
+    {
+        try
+        {
+            await profileSelectionGate.WaitAsync(lifetime.Token);
+            try { if (viewModel.SelectedProfile == tab) { await library.RememberAsync(path, lifetime.Token); } }
+            finally { profileSelectionGate.Release(); }
+        }
+        catch (Exception exception) when (IsExpected(exception))
+        {
+            if (!closing) { viewModel.ShowMessage($"Profile selected; could not remember selection: {exception.Message}"); }
         }
     }
     private void DuplicateProfileClick(object sender, RoutedEventArgs e) => Run(() =>
