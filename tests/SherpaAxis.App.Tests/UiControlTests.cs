@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
 
 namespace SherpaAxis.App.Tests;
@@ -71,6 +72,40 @@ public sealed class UiControlTests
             Assert.Equal("Still typing", name.Text);
             Assert.Equal(2, name.SelectionStart);
             Assert.Equal(4, name.SelectionLength);
+            var first = model.SelectedProfile;
+            var profileSelector = Find<ComboBox>(controls, "Selected profile");
+            model.Load(StarterProfiles.Create()[1]);
+            Assert.Same(model.SelectedProfile, profileSelector.SelectedItem);
+            profileSelector.SetCurrentValue(Selector.SelectedItemProperty, first);
+            Assert.Same(first, model.SelectedProfile);
+            Assert.Equal("Still typing", model.ProfileName);
+            Assert.Equal("MedianExponential", model.Editor.FilterKind);
+            Assert.Equal("7", model.Editor.FilterWindowSamples);
+            Assert.True(model.CanEdit);
+            foreach (var orientation in new[] { Orientation.Vertical, Orientation.Horizontal })
+            {
+                var bar = new ScrollBar
+                {
+                    Orientation = orientation,
+                    Minimum = 0,
+                    Maximum = 100,
+                    ViewportSize = 20,
+                    Value = 40,
+                    Style = (Style)window.FindResource(typeof(ScrollBar))
+                };
+                var size = new Size(orientation == Orientation.Vertical ? 12 : 240, orientation == Orientation.Vertical ? 240 : 12);
+                bar.Measure(size);
+                bar.Arrange(new Rect(size));
+                bar.UpdateLayout();
+                var track = Assert.IsType<Track>(bar.Template.FindName("PART_Track", bar));
+                Assert.Equal(orientation, track.Orientation);
+                track.Thumb.RaiseEvent(new DragStartedEventArgs(0, 0));
+                track.Thumb.RaiseEvent(new DragDeltaEventArgs(orientation == Orientation.Horizontal ? 20 : 0, orientation == Orientation.Vertical ? 20 : 0));
+                Assert.InRange(bar.Value, 40.1, 100);
+                var afterDrag = bar.Value;
+                (orientation == Orientation.Vertical ? ScrollBar.PageDownCommand : ScrollBar.PageRightCommand).Execute(null, bar);
+                Assert.True(bar.Value > afterDrag);
+            }
             var hint = AutomationProperties.GetHelpText(Find<ComboBox>(controls, "Filter milliseconds"));
             Assert.Contains("milliseconds", hint, StringComparison.Ordinal);
             Assert.Empty(errors.Messages);

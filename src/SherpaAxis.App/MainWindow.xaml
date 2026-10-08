@@ -4,7 +4,7 @@
         xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
         xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels"
         Title="SherpaAxis — Pedals" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
-        WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
+        WindowState="Maximized" WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
         FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated" PreviewGotKeyboardFocus="ParameterFocused">
     <Window.Resources>
         <SolidColorBrush x:Key="Muted" Color="#95A9C1" />
@@ -84,6 +84,45 @@
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
+        <Style x:Key="ScrollPage" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="12"/><Setter Property="Height" Value="Auto"/>
+            <Setter Property="Background" Value="#101C2D"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
+                <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                    <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True"
+                           Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" ViewportSize="{TemplateBinding ViewportSize}"
+                           Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <Track.DecreaseRepeatButton><RepeatButton x:Name="PageDecrease" Command="{x:Static ScrollBar.PageUpCommand}" Style="{StaticResource ScrollPage}"/></Track.DecreaseRepeatButton>
+                        <Track.Thumb><Thumb x:Name="ScrollThumb" MinHeight="24" MinWidth="8" Cursor="Hand">
+                            <Thumb.Template><ControlTemplate TargetType="Thumb">
+                                <Border x:Name="Grip" Background="#48637E" CornerRadius="4" Margin="2"/>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="#679AAB"/></Trigger>
+                                    <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="#45D6BB"/></Trigger>
+                                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Grip" Property="Background" Value="#293D57"/></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate></Thumb.Template>
+                        </Thumb></Track.Thumb>
+                        <Track.IncreaseRepeatButton><RepeatButton x:Name="PageIncrease" Command="{x:Static ScrollBar.PageDownCommand}" Style="{StaticResource ScrollPage}"/></Track.IncreaseRepeatButton>
+                    </Track>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="Orientation" Value="Horizontal">
+                        <Setter Property="Height" Value="12"/><Setter Property="Width" Value="Auto"/>
+                        <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                        <Setter TargetName="ScrollThumb" Property="MinWidth" Value="24"/><Setter TargetName="ScrollThumb" Property="MinHeight" Value="8"/>
+                        <Setter TargetName="PageDecrease" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}"/>
+                        <Setter TargetName="PageIncrease" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
         <Style TargetType="Expander">
             <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="Margin" Value="0,14,0,0"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
@@ -148,17 +187,13 @@
                     <Button Content="Open…" Click="OpenProfileClick" FontSize="12" Padding="10,7" ToolTip="Import a profile into a new tab. Save profile keeps it across restarts."/>
                     <Button Content="Save profile" Click="SaveLibraryClick" FontSize="12" Padding="10,7" ToolTip="Validate, save all three pedals to the library and apply them. Runtime filter/correction histories reset."/>
                 </StackPanel>
-                <ListBox ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}" SelectionChanged="ProfileTabChanged" Background="#111D2E" Foreground="#E8EFF8" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled" DisplayMemberPath="Name" AutomationProperties.Name="Profile tabs">
-                    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="12,8"/><Setter Property="Foreground" Value="#E8EFF8"/>
-                        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
-                        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
-                            <Border x:Name="Tab" Background="#18273C" BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Margin="0,0,5,0" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border>
-                            <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="#365975"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Tab" Property="BorderBrush" Value="#78E3C6"/></Trigger></ControlTemplate.Triggers>
-                        </ControlTemplate></Setter.Value></Setter>
-                    </Style></ListBox.ItemContainerStyle>
-                </ListBox>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Profile" VerticalAlignment="Center" Foreground="#95A9C1" Margin="0,0,10,0"/>
+                    <ComboBox x:Name="ProfileSelector" ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}"
+                              IsSynchronizedWithCurrentItem="False" DisplayMemberPath="Name" SelectionChanged="ProfileSelectionChanged" Width="360"
+                              AutomationProperties.Name="Selected profile" ToolTip="Switch between saved profiles and open drafts. Valid settings apply immediately and stop virtual output. Unsaved drafts stay in this session."
+                              AutomationProperties.HelpText="Switch between saved profiles and open drafts. Valid settings apply immediately and stop virtual output. Unsaved drafts stay in this session."/>
+                </StackPanel>
             </DockPanel>
             <Grid Grid.Row="1" x:Name="WorkbenchContent">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="350"/></Grid.ColumnDefinitions>

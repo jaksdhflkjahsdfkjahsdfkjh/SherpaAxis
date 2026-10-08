@@ -24,6 +24,7 @@ public sealed class WindowLayoutTests
                 var window = new MainWindow();
                 try
                 {
+                    Assert.Equal(WindowState.Maximized, window.WindowState);
                     var content = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
                     Assert.False(Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded);
                     Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded = true;
