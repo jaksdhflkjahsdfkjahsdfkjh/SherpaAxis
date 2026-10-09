@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
+using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Tests;
 
@@ -37,6 +38,16 @@ public sealed class UiControlTests
             }
             Assert.All(controls.OfType<Button>(), button => { Assert.True(button.Focusable); Assert.NotNull(button.FocusVisualStyle); });
             Assert.All(controls.OfType<ComboBox>(), combo => Assert.IsType<Popup>(combo.Template.FindName("PART_Popup", combo)));
+            var graphChoice = Find<ComboBox>(controls, "Graph pedals");
+            var graphPopup = Assert.IsType<Popup>(graphChoice.Template.FindName("PART_Popup", graphChoice));
+            var popupContent = Assert.IsAssignableFrom<FrameworkElement>(graphPopup.Child);
+            popupContent.Measure(new Size(360, 1000));
+            popupContent.Arrange(new Rect(popupContent.DesiredSize));
+            popupContent.UpdateLayout();
+            Assert.InRange(popupContent.DesiredSize.Height, 1, 200);
+            var popupScroll = Assert.Single(Descendants(popupContent).OfType<ScrollViewer>());
+            Assert.False(popupScroll.CanContentScroll);
+            Assert.IsType<SherpaAxis.App.Controls.StableComboBox>(graphChoice);
             var model = Assert.IsType<DashboardViewModel>(window.DataContext);
             var preset = Find<ComboBox>(controls, "Filter preset");
             preset.SetCurrentValue(Selector.SelectedItemProperty, "Smooth");
@@ -108,6 +119,30 @@ public sealed class UiControlTests
             }
             var hint = AutomationProperties.GetHelpText(Find<ComboBox>(controls, "Filter milliseconds"));
             Assert.Contains("milliseconds", hint, StringComparison.Ordinal);
+            Assert.DoesNotContain("Power", DashboardViewModel.CurveKinds);
+            Assert.DoesNotContain("Clutch bite", DashboardViewModel.CurveKinds);
+            Assert.DoesNotContain(controls.OfType<Expander>(), expander => Equals(expander.Header, "Curve details"));
+            Assert.DoesNotContain(controls, c => AutomationProperties.GetName(c) == "Power exponent");
+            var calibration = Assert.Single(controls.OfType<Button>(), b => Equals(b.Content, "Calibrate"));
+            calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(model.IsCalibrating);
+            model.CancelCalibration();
+            var pause = Assert.IsType<Button>(window.FindName("GraphPauseButton"));
+            pause.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(model.GraphPaused);
+            pause.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(model.GraphPaused);
+            var help = new FilteringHelpWindow(window.Resources);
+            var helpContent = (FrameworkElement)help.Content;
+            helpContent.Measure(new Size(680, 680));
+            helpContent.Arrange(new Rect(0, 0, 680, 680));
+            helpContent.UpdateLayout();
+            Assert.Equal(DashboardViewModel.FilterKinds.Select(f => f.Name), FilteringGuide.Algorithms.Select(f => f.Name));
+            var imported = DashboardEngine.DefaultProfile().Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
+            imported[PedalAxis.Brake] = new(new(0, DashboardEngine.DeviceMaximum(PedalAxis.Brake)), curve: ProfileCurve.Power(2.7));
+            model.Load(new("Imported custom curve", imported));
+            Assert.Equal("Custom", model.PedalCurves[1].CurveKind);
+            Assert.Equal(2.7, model.ValidateEditors().Profile.Axes[PedalAxis.Brake].Curve.Exponent);
             Assert.Empty(errors.Messages);
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(errors); errors.Dispose(); }

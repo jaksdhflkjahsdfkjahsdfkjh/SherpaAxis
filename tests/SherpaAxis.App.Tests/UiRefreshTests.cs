@@ -69,14 +69,14 @@ public sealed class UiRefreshTests
         Assert.Equal(3, frame.Start);
         Assert.Equal(15, frame.End);
         Assert.Equal(2, frame.Lanes.Count);
-        Assert.All(frame.Lanes, lane => { Assert.Single(lane.Samples); Assert.Equal(0, lane.Minimum); Assert.Equal(1, lane.Maximum); });
+        Assert.All(frame.Lanes, lane => { Assert.Equal(frame.Start, lane.Samples[0].Time); Assert.Equal(0, lane.Minimum); Assert.Equal(1, lane.Maximum); });
         var counts = SignalGraph.Prepare(series, "All pedals", "Device counts", false);
         Assert.True(counts.Lanes[0].Maximum < counts.Lanes[1].Minimum);
         var difference = SignalGraph.Prepare(series, "Throttle", "Filter difference", false);
         Assert.Equal(0, SignalGraph.Value(difference.Lanes[0].Samples[0], "Filter difference"));
         Assert.Equal(-difference.Lanes[0].Minimum, difference.Lanes[0].Maximum);
         Assert.True(difference.Lanes[0].Maximum > 0);
-        Assert.Equal(.7, SignalGraph.Value(frame.Lanes[0].Samples[0], "Output"));
+        Assert.Equal(.7, SignalGraph.Value(frame.Lanes[0].Samples[^1], "Output"));
         var zoom = SignalGraph.Prepare(series, "Brake", "Input vs filtered", true);
         Assert.True(zoom.Lanes[0].Minimum < .4 && zoom.Lanes[0].Maximum > .5);
         Assert.Equal(14, SignalGraph.Prepare(series, "All pedals", "Output", false, 1).Start);

@@ -8,17 +8,7 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
-    private bool curveRefreshPending;
     private bool filterRefreshPending;
-
-    private void CurveSettingsChanged(object sender, RoutedEventArgs e)
-    {
-        if (viewModel is not null && !editingCurve && !curveRefreshPending)
-        {
-            curveRefreshPending = true;
-            Dispatcher.BeginInvoke(() => { curveRefreshPending = false; if (!editingCurve && !closing) { viewModel.RefreshDraftCurve(); } });
-        }
-    }
     private void CurveEdited(object? sender, EventArgs e) => Run(() =>
     {
         if (sender is not CurveEditor { DataContext: PedalCurveViewModel panel, Points: { } points }) { return; }
@@ -35,7 +25,7 @@ public partial class MainWindow
     private void PedalPresetChanged(object sender, SelectionChangedEventArgs e)
     {
         if (viewModel is not null && !editingCurve && sender is ComboBox { DataContext: PedalCurveViewModel panel, SelectedItem: string name }
-            && panel.Editor.CurveKind != name)
+            && panel.CurveKind != name)
         {
             Run(() => { SelectCurvePedal(panel); viewModel.SetCurvePreset(panel.Axis, name); });
         }
@@ -69,9 +59,21 @@ public partial class MainWindow
         filterRefreshPending = true;
         Dispatcher.BeginInvoke(() => { filterRefreshPending = false; if (!closing) { viewModel.NotifyFilterSettings(); } });
     }
+    private void FilterTextChanged(object sender, TextChangedEventArgs e) => FilterValuesChanged(sender, e);
+    private void FilterSelectionChanged(object sender, SelectionChangedEventArgs e) => FilterValuesChanged(sender, e);
+    private void FilterFocusChanged(object sender, KeyboardFocusChangedEventArgs e) => FilterValuesChanged(sender, e);
 
     private void ParameterFocused(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (viewModel is not null && e.NewFocus is FrameworkElement { ToolTip: string hint }) { viewModel.ContextHint = hint; }
+    }
+
+    private void ToggleGraphPauseClick(object sender, RoutedEventArgs e) => viewModel.GraphPaused = !viewModel.GraphPaused;
+    private void ResetGraphZoomClick(object sender, RoutedEventArgs e) => MainSignalPlot.ResetZoom();
+    private void GraphInspectionStarted(object? sender, EventArgs e) => viewModel.GraphPaused = true;
+    private void FilterHelpClick(object sender, RoutedEventArgs e)
+    {
+        StopHold();
+        new FilteringHelpWindow(Resources) { Owner = this }.ShowDialog();
     }
 }

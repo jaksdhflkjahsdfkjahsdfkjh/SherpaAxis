@@ -10,7 +10,7 @@ public static class StarterProfiles
         Create("Linear baseline", "Linear", "Linear", "Linear"),
         Create("Precision control", "Gentle progressive", "Progressive", "S curve", SignalFilterKind.Exponential),
         Create("Responsive control", "Gentle aggressive", "Early bite", "Linear", SignalFilterKind.Median),
-        Create("Clutch bite control", "S curve", "Late bite", "Clutch bite", SignalFilterKind.MovingAverage)
+        Create("Smooth control", "S curve", "Late bite", "S curve", SignalFilterKind.MovingAverage)
     ];
 
     private static PedalProfile Create(string name, string throttle, string brake, string clutch, SignalFilterKind? filter = null)
