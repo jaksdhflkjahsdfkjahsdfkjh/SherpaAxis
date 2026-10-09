@@ -16,6 +16,8 @@ public sealed class DashboardViewModel : ObservableObject
     private bool plotCounts;
     private ProfileTab? selectedProfile;
     private CalibrationDraft? calibration;
+    private int calibrationStep;
+    public bool IsCalibrating => calibrationStep != 0;
 
     public DashboardViewModel(DashboardEngine engine)
     {
@@ -27,7 +29,7 @@ public sealed class DashboardViewModel : ObservableObject
 
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = Enum.GetValues<PedalAxis>().Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
-    public static IReadOnlyList<string> CurveKinds { get; } = [.. CurvePresets.Names, "Power", "Custom"];
+    public static IReadOnlyList<string> CurveKinds { get; } = [.. CurvePresets.Names, "Custom"];
     public IReadOnlyList<PedalCurveViewModel> PedalCurves { get; } = Enum.GetValues<PedalAxis>().Select(axis => new PedalCurveViewModel(axis)).ToArray();
     public static IReadOnlyList<FilterChoice> FilterKinds { get; } =
     [
@@ -40,7 +42,7 @@ public sealed class DashboardViewModel : ObservableObject
     public ProfileTab? SelectedProfile => selectedProfile;
     public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
     public IReadOnlyList<PlotSample> DraftCurve { get; private set; } = [];
-    public string CalibrationInfo { get; private set; } = "Release this pedal, then capture released. Software calibration only.";
+    public string CalibrationInfo { get; private set; } = "Click Calibrate to begin. Guided software calibration; hardware settings are unchanged.";
     public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
     public double PlaybackSpeed { get; set; } = 1;
     private bool canEdit = true;
@@ -64,7 +66,7 @@ public sealed class DashboardViewModel : ObservableObject
     }
 
     public static IReadOnlyList<string> GraphPedals { get; } = ["All pedals", "Throttle", "Brake", "Clutch"];
-    public static IReadOnlyList<string> GraphModes { get; } = ["Input vs filtered", "Output", "Input", "Filtered", "Filter difference", "Device counts"];
+    public static IReadOnlyList<string> GraphModes { get; } = ["Input vs filtered", "Filtered vs curved", "Output", "Input", "Filtered", "Filter difference", "Device counts"];
     public static IReadOnlyList<double> GraphWindows { get; } = [1, 3, 6, 12];
     public static IReadOnlyList<string> FilterTimes { get; } = ["1", "3", "5", "8", "10", "15", "20", "30", "50"];
     public static IReadOnlyList<string> FilterWindows { get; } = ["3", "5", "7", "9", "11", "15", "21", "31"];
@@ -74,12 +76,16 @@ public sealed class DashboardViewModel : ObservableObject
     private string graphMode = "Input vs filtered";
     private bool graphZoom;
     private double graphWindow = 12;
+    private bool graphPaused;
+    public bool GraphPaused { get => graphPaused; set { if (Set(ref graphPaused, value)) { Changed(nameof(GraphPauseText)); } } }
+    public string GraphPauseText => GraphPaused ? "Resume graph" : "Pause graph";
     private string contextHint = "Hover a control for help, or focus it with Tab. Edit a pedal, then Apply settings.";
     public string GraphPedal { get => graphPedal; set => Set(ref graphPedal, value); }
     public string GraphMode { get => graphMode; set { if (Set(ref graphMode, value)) { Changed(nameof(GraphLegend)); } } }
     public string GraphLegend => GraphMode switch
     {
         "Input vs filtered" => "Dashed: input · Color: filtered · Before curve/deadzones · Applied settings",
+        "Filtered vs curved" => "Dashed: filtered input · Color: output after deadzones and curve · Applied settings",
         "Filter difference" => "Input minus filtered · Auto-scaled in percentage points (pp) · Before curve/deadzones",
         "Device counts" => "Original device counts · Each pedal has its own scale · Applied settings",
         "Output" => "Final output after filter, deadzones and curve · Applied settings",
@@ -159,6 +165,7 @@ public sealed class DashboardViewModel : ObservableObject
         get => selectedAxis;
         set
         {
+            if (GraphPedal != "All pedals") { GraphPedal = value.ToString(); }
             if (selectedAxis == value) { return; }
             engine.RevokeRelease();
             selectedAxis = value;
@@ -220,9 +227,12 @@ public sealed class DashboardViewModel : ObservableObject
             ? $"{(current.CorrectionSuspended ? "Pending · release permission required" : "Manual baseline only")} · boundary: {current.ResetReason}"
             : "No session";
         History = frame.History;
-        PedalHistories = frame.Axes.Select(axis => new PedalHistory(axis.Axis, axis.History ?? [], FilterLabel(applied.Axes[axis.Axis]))).ToArray();
         Changed(nameof(History));
-        Changed(nameof(PedalHistories));
+        if (!GraphPaused)
+        {
+            PedalHistories = frame.Axes.Select(axis => new PedalHistory(axis.Axis, axis.History ?? [], FilterLabel(applied.Axes[axis.Axis]))).ToArray();
+            Changed(nameof(PedalHistories));
+        }
     }
 
     public (PedalProfile Profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> Limits) ValidateEditors()
@@ -400,6 +410,8 @@ public sealed class DashboardViewModel : ObservableObject
         engine.SuspendOutput("calibration started");
         var (frame, axis) = FreshAxis();
         calibration = new(selectedAxis, frame.Connection, axis.Result!.Value.Processing.Input);
+        calibrationStep = 2;
+        Changed(nameof(IsCalibrating));
         CalibrationInfo = "Released captured. Press to your desired full-scale force/travel, hold, then capture pressed.";
         Changed(nameof(CalibrationInfo));
     }
@@ -416,7 +428,7 @@ public sealed class DashboardViewModel : ObservableObject
             Inverted = result.Inverted
         };
         CancelCalibration();
-        CalibrationInfo = "Calibration ready in the editor. Review endpoints and Apply; Save profile to persist.";
+        CalibrationInfo = FormattableString.Invariant($"Ready · {result.Minimum:G} → {result.Maximum:G} counts{(result.Inverted ? " · inverted" : "")}. Apply settings to activate; Save profile to keep.");
         Changed(nameof(Editor));
         NotifyFilterSettings();
         Changed(nameof(CalibrationInfo));
@@ -425,8 +437,29 @@ public sealed class DashboardViewModel : ObservableObject
     public void CancelCalibration()
     {
         calibration = null;
-        CalibrationInfo = "Release this pedal, then capture released. Software calibration only.";
+        calibrationStep = 0;
+        Changed(nameof(IsCalibrating));
+        CalibrationInfo = "Click Calibrate to begin. Guided software calibration; hardware settings are unchanged.";
         Changed(nameof(CalibrationInfo));
+    }
+
+    public void AdvanceCalibration()
+    {
+        if (calibrationStep == 0)
+        {
+            engine.SuspendOutput("calibration started");
+            calibrationStep = 1;
+            CalibrationInfo = $"1/2 · Release {SelectedAxis} fully. Click Calibrate again to capture its released position.";
+            Changed(nameof(CalibrationInfo));
+            Changed(nameof(IsCalibrating));
+        }
+        else if (calibrationStep == 1)
+        {
+            CaptureReleased();
+            CalibrationInfo = $"2/2 · Press {SelectedAxis} to your desired full force/travel. Hold it, then click Calibrate again.";
+            Changed(nameof(CalibrationInfo));
+        }
+        else { CapturePressed(); }
     }
 
     private (DashboardFrame Frame, AxisFrame Axis) FreshAxis()

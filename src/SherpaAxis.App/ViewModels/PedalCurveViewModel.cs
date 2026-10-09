@@ -9,7 +9,7 @@ public sealed class PedalCurveViewModel(PedalAxis axis) : ObservableObject
     public PedalAxis Axis { get; } = axis;
     public string Title => Axis + " curve";
     public AxisEditor Editor { get; private set; } = new();
-    public string CurveKind => Editor.CurveKind;
+    public string CurveKind => Editor.CurveKind == "Power" ? "Custom" : Editor.CurveKind;
     public IReadOnlyList<CurvePoint> Points { get; private set; } = [];
     public IReadOnlyList<PlotSample> Preview { get; private set; } = [];
     public IReadOnlyList<PlotSample> Applied { get; private set; } = [];

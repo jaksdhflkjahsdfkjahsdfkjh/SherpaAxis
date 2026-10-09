@@ -6,7 +6,7 @@ namespace SherpaAxis.App.Models;
 public static class CurvePresets
 {
     public static IReadOnlyList<string> Names { get; } =
-        ["Linear", "Gentle progressive", "Progressive", "Strong progressive", "Gentle aggressive", "Aggressive", "S curve", "Late bite", "Early bite", "Clutch bite"];
+        ["Linear", "Gentle progressive", "Progressive", "Strong progressive", "Gentle aggressive", "Aggressive", "S curve", "Late bite", "Early bite"];
 
     public static ProfileCurve Create(string name) => name switch
     {
@@ -23,7 +23,6 @@ public static class CurvePresets
         })),
         "Late bite" => ProfileCurve.PiecewiseLinear([new(0, 0), new(.3, .08), new(.6, .3), new(.8, .6), new(1, 1)]),
         "Early bite" => ProfileCurve.PiecewiseLinear([new(0, 0), new(.2, .4), new(.4, .7), new(.7, .92), new(1, 1)]),
-        "Clutch bite" => ProfileCurve.PiecewiseLinear([new(0, 0), new(.2, .1), new(.4, .45), new(.65, .55), new(.85, .9), new(1, 1)]),
         _ => throw new ArgumentException("Unknown curve preset.", nameof(name))
     };
 

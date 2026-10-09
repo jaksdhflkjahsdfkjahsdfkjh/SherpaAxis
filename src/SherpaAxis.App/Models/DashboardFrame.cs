@@ -4,7 +4,7 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Models;
 
-public readonly record struct PlotSample(double Time, double Input, double Filtered, double Output, double DeviceInput = 0, double PreFilter = double.NaN);
+public readonly record struct PlotSample(double Time, double Input, double Filtered, double Output, double DeviceInput = 0, double PreFilter = double.NaN, bool IsPadding = false);
 
 public sealed record AxisFrame(PedalAxis Axis, AxisSessionResult? Result, bool IsFresh,
     double? ObservedMinimum, double? ObservedMaximum, IReadOnlyList<PlotSample>? History = null);

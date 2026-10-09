@@ -37,6 +37,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     public MainWindow()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowTheme.Apply(this);
         var workArea = SystemParameters.WorkArea;
         MinWidth = Math.Min(MinWidth, workArea.Width);
         MinHeight = Math.Min(MinHeight, workArea.Height);
@@ -193,8 +194,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     private void CaptureMaximumClick(object sender, RoutedEventArgs e) => Run(() => viewModel.CaptureEndpoint(true));
     private void ObservedRangeClick(object sender, RoutedEventArgs e) => Run(viewModel.UseObservedRange);
     private void DefaultsClick(object sender, RoutedEventArgs e) => viewModel.ResetEditor();
-    private void CalibrateReleasedClick(object sender, RoutedEventArgs e) => Run(viewModel.CaptureReleased);
-    private void CalibratePressedClick(object sender, RoutedEventArgs e) => Run(viewModel.CapturePressed);
+    private void CalibrateClick(object sender, RoutedEventArgs e) => Run(() => { StopHold(); viewModel.AdvanceCalibration(); });
     private void CancelCalibrationClick(object sender, RoutedEventArgs e) => viewModel.CancelCalibration();
     private void ConfirmBaselineClick(object sender, RoutedEventArgs e) => Run(() =>
     {

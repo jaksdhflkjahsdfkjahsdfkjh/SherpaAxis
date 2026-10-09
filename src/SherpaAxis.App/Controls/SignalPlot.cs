@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using SherpaAxis.App.Models;
 using SherpaAxis.Profiles;
@@ -17,25 +18,92 @@ public sealed class SignalPlot : FrameworkElement
     public static readonly DependencyProperty ZoomProperty = DependencyProperty.Register(nameof(Zoom),
         typeof(bool), typeof(SignalPlot), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty WindowSecondsProperty = DependencyProperty.Register(nameof(WindowSeconds),
-        typeof(double), typeof(SignalPlot), new FrameworkPropertyMetadata(12d, FrameworkPropertyMetadataOptions.AffectsRender),
+        typeof(double), typeof(SignalPlot), new FrameworkPropertyMetadata(12d, FrameworkPropertyMetadataOptions.AffectsRender, ResetViewChanged),
         value => value is double d && double.IsFinite(d) && d > 0);
+    public static readonly DependencyProperty PausedProperty = DependencyProperty.Register(nameof(Paused),
+        typeof(bool), typeof(SignalPlot), new FrameworkPropertyMetadata(false, (d, e) => { if (!(bool)e.NewValue) { ((SignalPlot)d).ResetZoom(); } }));
+    private GraphViewport? viewport;
+    private double? selectionStart;
+    private double selectionEnd;
+    public event EventHandler? InspectionStarted;
+    public SignalPlot() { Focusable = true; Cursor = Cursors.Cross; }
 
     public IReadOnlyList<PedalHistory>? Series { get => (IReadOnlyList<PedalHistory>?)GetValue(SeriesProperty); set => SetValue(SeriesProperty, value); }
     public string Pedal { get => (string)GetValue(PedalProperty); set => SetValue(PedalProperty, value); }
     public string Mode { get => (string)GetValue(ModeProperty); set => SetValue(ModeProperty, value); }
     public bool Zoom { get => (bool)GetValue(ZoomProperty); set => SetValue(ZoomProperty, value); }
     public double WindowSeconds { get => (double)GetValue(WindowSecondsProperty); set => SetValue(WindowSecondsProperty, value); }
+    public bool Paused { get => (bool)GetValue(PausedProperty); set => SetValue(PausedProperty, value); }
+    public void ResetZoom() { viewport = null; selectionStart = null; if (IsMouseCaptured) { ReleaseMouseCapture(); } InvalidateVisual(); }
+    private static void ResetViewChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((SignalPlot)d).ResetZoom();
+
+    private double Fraction(Point point) => Math.Clamp((point.X - (Mode == "Device counts" ? 82 : 52)) / Math.Max(1, ActualWidth - (Mode == "Device counts" ? 90 : 60)), 0, 1);
+    private void Inspect()
+    {
+        InspectionStarted?.Invoke(this, EventArgs.Empty);
+        var end = Series?.SelectMany(s => s.Samples).Select(s => s.Time).DefaultIfEmpty(0).Max() ?? 0;
+        viewport ??= new(end - WindowSeconds, end);
+    }
+
+    protected override void OnMouseWheel(MouseWheelEventArgs e)
+    {
+        Inspect();
+        viewport!.Zoom(Fraction(e.GetPosition(this)), e.Delta);
+        InvalidateVisual();
+        e.Handled = true;
+    }
+
+    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        Focus();
+        if (e.ClickCount == 2) { ResetZoom(); }
+        else
+        {
+            Inspect();
+            selectionStart = selectionEnd = Fraction(e.GetPosition(this));
+            CaptureMouse();
+        }
+        InvalidateVisual();
+        e.Handled = true;
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        if (selectionStart.HasValue && IsMouseCaptured)
+        {
+            selectionEnd = Fraction(e.GetPosition(this));
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        if (selectionStart is { } start)
+        {
+            selectionEnd = Fraction(e.GetPosition(this));
+            if (Math.Abs(start - selectionEnd) * ActualWidth >= 6) { viewport!.Select(start, selectionEnd); }
+            selectionStart = null;
+            ReleaseMouseCapture();
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnLostMouseCapture(MouseEventArgs e) { selectionStart = null; InvalidateVisual(); base.OnLostMouseCapture(e); }
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e) { ResetZoom(); e.Handled = true; }
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key is Key.Escape or Key.Home) { ResetZoom(); e.Handled = true; }
+        else { base.OnKeyDown(e); }
+    }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
         if (ActualWidth < 120 || ActualHeight < 60) { return; }
-        var frame = SignalGraph.Prepare(Series ?? [], Pedal, Mode, Zoom, WindowSeconds);
-        if (frame.Lanes.Count == 0 || frame.Lanes.All(lane => lane.Samples.Count == 0))
-        {
-            Label(drawingContext, "Start live input or open a recording to see all three pedals", 16, 30, Brushes.LightSlateGray);
-            return;
-        }
+        var series = Series is { Count: > 0 } ? Series : Enum.GetValues<PedalAxis>().Select(axis => new PedalHistory(axis, [], "No input yet · zero-filled history")).ToArray();
+        var frame = SignalGraph.Prepare(series, Pedal, Mode, Zoom, viewport?.Duration ?? WindowSeconds, viewport?.End);
         var laneHeight = (ActualHeight - 20) / frame.Lanes.Count;
         for (var index = 0; index < frame.Lanes.Count; index++)
         {
@@ -66,7 +134,13 @@ public sealed class SignalPlot : FrameworkElement
             {
                 DrawSeries(SignalGraph.Input, new Pen(Brushes.LightSlateGray, 1.3) { DashStyle = DashStyles.Dash });
             }
+            else if (Mode == "Filtered vs curved") { DrawSeries(sample => sample.Filtered, new Pen(Brushes.LightSlateGray, 1.3) { DashStyle = DashStyles.Dash }); }
             DrawSeries(sample => SignalGraph.Value(sample, Mode), new Pen(color, 1.8));
+            if (selectionStart is { } start)
+            {
+                drawingContext.DrawRectangle(new SolidColorBrush(Color.FromArgb(50, 69, 214, 187)), new Pen(color, 1),
+                    new Rect(area.Left + Math.Min(start, selectionEnd) * area.Width, area.Top, Math.Abs(start - selectionEnd) * area.Width, area.Height));
+            }
             drawingContext.Pop();
 
             void DrawSeries(Func<PlotSample, double> value, Pen pen)
