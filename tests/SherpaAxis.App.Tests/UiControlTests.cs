@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
+using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Tests;
@@ -125,7 +126,8 @@ public sealed class UiControlTests
             Assert.DoesNotContain(controls, c => AutomationProperties.GetName(c) == "Power exponent");
             var calibration = Assert.Single(controls.OfType<Button>(), b => Equals(b.Content, "Calibrate"));
             calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.True(model.IsCalibrating);
+            Assert.False(model.IsCalibrating);
+            Assert.Contains("fresh readings", model.CalibrationInfo, StringComparison.Ordinal);
             model.CancelCalibration();
             var pause = Assert.IsType<Button>(window.FindName("GraphPauseButton"));
             pause.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -148,17 +150,57 @@ public sealed class UiControlTests
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(errors); errors.Dispose(); }
     });
 
+    [Fact]
+    public Task CalibrationButtonCapturesBetweenRefreshesAndDoneActivatesTheRange()
+    {
+        var engine = new DashboardEngine();
+        return OnSta(engine, window =>
+        {
+            var content = (FrameworkElement)window.Content;
+            content.Measure(new Size(1340, 900));
+            content.Arrange(new Rect(0, 0, 1340, 900));
+            content.UpdateLayout();
+            var model = Assert.IsType<DashboardViewModel>(window.DataContext);
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 300, 0)));
+            model.Refresh();
+            model.GraphPaused = true;
+            var button = Assert.IsType<Button>(window.FindName("CalibrationButton"));
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(model.IsCalibrating);
+            Assert.Equal("Done", button.Content);
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.002), 1, new(0, 100, 0)));
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.004), 1, new(0, 500, 0)));
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.006), 1, new(0, 300, 0)));
+            model.Refresh();
+            Assert.Contains("100 counts", model.CalibrationRangeInfo, StringComparison.Ordinal);
+            Assert.Contains("500 counts", model.CalibrationRangeInfo, StringComparison.Ordinal);
+            Assert.Contains("3 captured reports", model.CalibrationRangeInfo, StringComparison.Ordinal);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal("Calibrate", button.Content);
+            Assert.False(model.IsCalibrating);
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.008), 1, new(0, 300, 0)));
+            model.Refresh();
+            Assert.Equal(50, model.Cards[1].OutputPercent);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var cancel = Descendants((FrameworkElement)window.Content).OfType<Button>().Single(b => Equals(b.Content, "Cancel calibration"));
+            cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(model.IsCalibrating);
+        });
+    }
+
     private static T Find<T>(IEnumerable<Control> controls, string name) where T : Control =>
         controls.OfType<T>().Single(c => AutomationProperties.GetName(c) == name);
 
-    private static async Task OnSta(Action<MainWindow> check)
+    private static Task OnSta(Action<MainWindow> check) => OnSta(new DashboardEngine(), check);
+
+    private static async Task OnSta(DashboardEngine engine, Action<MainWindow> check)
     {
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
             try
             {
-                var window = new MainWindow();
+                var window = new MainWindow(engine);
                 try { check(window); }
                 finally { window.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
                 done.SetResult();

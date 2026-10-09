@@ -17,7 +17,7 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow : Window, IAsyncDisposable
 {
-    private readonly DashboardEngine engine = new();
+    private readonly DashboardEngine engine;
     private readonly DashboardViewModel viewModel;
     private readonly DashboardSource source;
     private readonly DispatcherTimer refresh;
@@ -34,8 +34,12 @@ public partial class MainWindow : Window, IAsyncDisposable
     private bool editingCurve;
     private OutputBridge? bridge;
 
-    public MainWindow()
+    public MainWindow() : this(new DashboardEngine()) { }
+
+    public MainWindow(DashboardEngine engine)
     {
+        ArgumentNullException.ThrowIfNull(engine);
+        this.engine = engine;
         InitializeComponent();
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
         var workArea = SystemParameters.WorkArea;

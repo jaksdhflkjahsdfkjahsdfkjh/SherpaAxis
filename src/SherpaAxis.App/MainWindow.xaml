@@ -277,10 +277,11 @@
                                 <Border Background="#14283A" BorderBrush="#365975" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,14,0,0">
                                     <StackPanel>
                                         <DockPanel><TextBlock Text="Calibration" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Button Content="Calibrate" Click="CalibrateClick" DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="12" Padding="10,6" Margin="8,0,0,0" ToolTip="Guided software calibration: start, capture fully released, then capture desired full press using this same button. Review the draft and Apply settings."/>
+                                            <Button x:Name="CalibrationButton" Content="{Binding CalibrationButtonText}" Click="CalibrateClick" DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="12" Padding="10,6" Margin="8,0,0,0" AutomationProperties.Name="Pedal calibration" ToolTip="Calibrate starts collecting this pedal's minimum and maximum from every input report. Release and press through your desired range, then Done applies minimum as 0% and maximum as 100% immediately. Save profile to keep it."/>
                                         </DockPanel>
                                         <TextBlock Text="{Binding CalibrationInfo}" Foreground="#B4C4D8" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                        <Button Content="Cancel calibration" Click="CancelCalibrationClick" IsEnabled="{Binding IsCalibrating}" FontSize="10" Padding="7,4" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip="Discard the current capture steps. Previously applied calibration is unchanged.">
+                                        <TextBlock Text="{Binding CalibrationRangeInfo}" Foreground="#78E3C6" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        <Button Content="Cancel calibration" Click="CancelCalibrationClick" IsEnabled="{Binding IsCalibrating}" FontSize="10" Padding="7,4" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip="Discard the captured range. Previously applied calibration is unchanged.">
                                             <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></Button.Style>
                                         </Button>
                                     </StackPanel>

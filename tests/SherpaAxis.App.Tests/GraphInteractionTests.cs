@@ -91,24 +91,22 @@ public sealed class GraphInteractionTests
     }
 
     [Fact]
-    public void SingleCalibrationButtonCapturesTwoExplicitEndpointsAndRequiresApply()
+    public void CalibrationUsesTheFullCapturedRangeAndAppliesWhenDone()
     {
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine);
-        model.AdvanceCalibration();
-        Assert.True(model.IsCalibrating);
         Assert.Throws<InvalidOperationException>(model.AdvanceCalibration);
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 100, 0)));
         model.AdvanceCalibration();
-        Assert.Contains("2/2", model.CalibrationInfo, StringComparison.Ordinal);
+        Assert.True(model.IsCalibrating);
+        engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.002), 1, new(0, 100, 0)));
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.01), 1, new(0, 500, 0)));
+        engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.02), 1, new(0, 300, 0)));
+        Assert.True(engine.Snapshot(PedalAxis.Brake).Axes[1].Result!.Value.Processing.Output < .01);
         model.AdvanceCalibration();
         Assert.False(model.IsCalibrating);
         Assert.Equal("100", model.Editor.Minimum);
         Assert.Equal("500", model.Editor.Maximum);
-        engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.02), 1, new(0, 300, 0)));
-        Assert.True(engine.Snapshot(PedalAxis.Brake).Axes[1].Result!.Value.Processing.Output < .01);
-        model.Apply();
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.03), 1, new(0, 300, 0)));
         Assert.Equal(.5, engine.Snapshot(PedalAxis.Brake).Axes[1].Result!.Value.Processing.Output);
         model.AdvanceCalibration();

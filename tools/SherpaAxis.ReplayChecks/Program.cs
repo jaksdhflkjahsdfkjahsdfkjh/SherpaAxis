@@ -48,6 +48,7 @@ internal static class Program
         var cases = new List<CheckResult>();
         foreach (var axis in DashboardViewModel.AxisNames)
         {
+            cases.Add(CheckCalibration(axis, samples));
             foreach (var preset in CurvePresets.Names)
             {
                 var model = new DashboardViewModel(new DashboardEngine());
@@ -148,11 +149,43 @@ internal static class Program
             Cases = cases,
             Coverage = coverage,
             ProfileLibraryRoundTrip = "passed: four profiles, exact settings, last selection",
-            Scope = "Offline software processing only. Original timestamps retained except explicitly synthetic cases. No HID or vJoy access. Presets checked independently per axis; other axes remain linear."
+            Scope = "Offline software processing only. Original timestamps retained except explicitly synthetic cases. No HID or vJoy access. Presets checked independently per axis; other axes remain linear. Calibration cases capture every report with deliberately wrong existing bounds, finish through the desktop model, then independently verify output mapping."
         };
         await File.WriteAllTextAsync(Path.Combine(destination, "summary.json"), JsonSerializer.Serialize(report, ReportOptions));
         Console.WriteLine($"PASS: {cases.Count} scenarios, {cases.Sum(c => c.Reports):N0} processed reports, {3 * cases.Sum(c => c.Reports):N0} axis comparisons. Four saved profiles round-tripped.");
         Console.WriteLine(Path.Combine(destination, "summary.json"));
+    }
+
+    private static CheckResult CheckCalibration(PedalAxis axis, List<PedalMonitorEvent> samples)
+    {
+        var engine = new DashboardEngine();
+        var model = new DashboardViewModel(engine) { SelectedAxis = axis };
+        var maximum = DashboardEngine.DeviceMaximum(axis);
+        model.Editor.Minimum = (maximum * .2).ToString("R", CultureInfo.InvariantCulture);
+        model.Editor.Maximum = (maximum * .8).ToString("R", CultureInfo.InvariantCulture);
+        model.Editor.Inverted = true;
+        model.SetFilterPreset("Smooth");
+        model.SetCurvePreset(axis, "Progressive");
+        model.Apply();
+        engine.Begin(new("capture-replay"));
+        engine.Accept(samples[0]);
+        model.AdvanceCalibration();
+        foreach (var sample in samples) { engine.Accept(sample); }
+        var capture = engine.CalibrationSnapshot()!;
+        Require(capture.SampleCount == samples.Count, "Calibration missed source reports.");
+        var minimum = samples.Min(s => AxisInput(s.Axes!.Value, axis));
+        var observedMaximum = samples.Max(s => AxisInput(s.Axes!.Value, axis));
+        Require(capture.Minimum == minimum && capture.Maximum == observedMaximum, "Calibration missed input extrema.");
+        model.AdvanceCalibration();
+        var profile = model.ValidateEditors().Profile;
+        var calibrated = profile.Axes[axis];
+        Require(!model.IsCalibrating && calibrated.Calibration.Minimum == minimum && calibrated.Calibration.Maximum == observedMaximum
+            && !calibrated.Calibration.Inverted, "Done did not finish min-to-zero/max-to-one calibration.");
+        var checker = new SampleChecker(ProfileJson.Deserialize(ProfileJson.Serialize(profile)));
+        engine.AttachRecording(checker);
+        foreach (var sample in samples) { engine.Accept(sample); }
+        Require(checker.Count == samples.Count, "Calibrated processing lost source reports.");
+        return new($"{axis}: automatic min/max calibration", checker.Count, checker.MaximumError, true);
     }
 
     private static CheckResult Check(string name, List<PedalMonitorEvent> samples, PedalProfile profile, string mode = "normal", PedalProfile? next = null)
