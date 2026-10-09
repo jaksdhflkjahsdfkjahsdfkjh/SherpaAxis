@@ -25,6 +25,9 @@ public sealed class DashboardEngine
     private bool sourceActive;
     private double sourceElapsed;
     private IProcessedOutputSink? output;
+    private CalibrationCapture? calibration;
+    private PedalProfile activeProfile = DefaultProfile();
+    private IReadOnlyDictionary<PedalAxis, AxisSessionSettings> activeLimits = new Dictionary<PedalAxis, AxisSessionSettings>();
 
     public DashboardEngine(TimeProvider? clock = null)
     {
@@ -39,6 +42,9 @@ public sealed class DashboardEngine
         ? PedalInputReport.BrakeMaximum : PedalInputReport.ThrottleClutchMaximum;
 
     public void Configure(PedalProfile profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> limits)
+        => Configure(profile, limits, false);
+
+    private void Configure(PedalProfile profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> limits, bool completingCalibration)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(limits);
@@ -50,6 +56,7 @@ public sealed class DashboardEngine
                 pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
         lock (sync)
         {
+            if (!completingCalibration) { InvalidateCalibration("Processing settings changed. Start calibration again."); }
             SuspendOutput("processing settings changed");
             foreach (var (axis, session) in replacements)
             {
@@ -64,6 +71,9 @@ public sealed class DashboardEngine
             }
 
             configuration = snapshot;
+            activeProfile = new(profile.Name, Enum.GetValues<PedalAxis>().ToDictionary(axis => axis,
+                axis => profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis)))));
+            activeLimits = new Dictionary<PedalAxis, AxisSessionSettings>(limits);
             configurationRevision++;
             Event("configuration-applied", configuration);
         }
@@ -92,6 +102,7 @@ public sealed class DashboardEngine
     {
         lock (sync)
         {
+            InvalidateCalibration("Input source ended. Start input and calibrate again.");
             SuspendOutput("input source ended");
             Event("source-ended", new { Message = message });
             recording?.Complete(message.StartsWith("Source error:", StringComparison.Ordinal) ? "source-error" : message);
@@ -155,6 +166,10 @@ public sealed class DashboardEngine
                 values.LastSampleAt = clock.GetTimestamp();
                 values.Minimum = Math.Min(values.Minimum, raw);
                 values.Maximum = Math.Max(values.Maximum, raw);
+                if (calibration is { IsActive: true } capture && capture.Axis == axis)
+                {
+                    calibration = capture.Include(raw);
+                }
                 if (!values.LastPlotAt.HasValue || elapsed - values.LastPlotAt.Value >= .02)
                 {
                     values.LastPlotAt = elapsed;
@@ -177,6 +192,10 @@ public sealed class DashboardEngine
         ArgumentNullException.ThrowIfNull(sink);
         lock (sync)
         {
+            if (calibration is { IsActive: true })
+            {
+                throw new InvalidOperationException("Finish or cancel calibration before enabling virtual output.");
+            }
             if (!sourceActive || source.Kind != "live-device-axis" || axes.Values.Any(axis => !IsFresh(axis) || clock.GetElapsedTime(axis.LastSampleAt!.Value) >= TimeSpan.FromMilliseconds(100)))
             {
                 throw new InvalidOperationException("Virtual output requires fresh live pedal input. Replay cannot feed a controller.");
@@ -203,6 +222,70 @@ public sealed class DashboardEngine
 
     private PedalOutput CurrentOutput() => new(axes[PedalAxis.Throttle].Current!.Value.Processing.Output,
         axes[PedalAxis.Brake].Current!.Value.Processing.Output, axes[PedalAxis.Clutch].Current!.Value.Processing.Output);
+
+    public CalibrationCapture StartCalibration(PedalAxis axis)
+    {
+        lock (sync)
+        {
+            var values = axes[axis];
+            if (!IsFresh(values)) { throw new InvalidOperationException("Start live input or playback and wait for fresh readings, then click Calibrate."); }
+            SuspendOutput("calibration started");
+            RevokeRelease();
+            var input = values.Current!.Value.Processing.Input;
+            calibration = new(axis, connection, 0, 0, input, 0);
+            Event("calibration-started", calibration);
+            return calibration;
+        }
+    }
+
+    public CalibrationCapture? CalibrationSnapshot()
+    {
+        lock (sync) { return calibration; }
+    }
+
+    public void CancelCalibration()
+    {
+        lock (sync)
+        {
+            if (calibration is not null) { Event("calibration-cancelled", calibration); }
+            calibration = null;
+        }
+    }
+
+    public PedalProfile CompleteCalibration(PedalAxis axis)
+    {
+        lock (sync)
+        {
+            var capture = calibration;
+            if (capture is null || capture.Axis != axis) { throw new InvalidOperationException("Click Calibrate to start a new capture for this pedal."); }
+            if (capture.Failure is { } failure) { throw new InvalidOperationException(failure); }
+            if (!IsFresh(axes[axis])) { throw new InvalidOperationException("Input is stale. Wait for fresh readings before clicking Done, or cancel calibration."); }
+            if (capture.SampleCount == 0 || capture.Maximum <= capture.Minimum) { throw new InvalidOperationException("No pedal range captured yet. Release and press the pedal before clicking Done."); }
+            var old = activeProfile.Axes[axis];
+            if (old.MaximumBaselineCorrection > capture.Maximum - capture.Minimum)
+            {
+                throw new InvalidOperationException("Captured range is smaller than the active manual-correction limit. Move through a wider range or cancel and reduce that limit.");
+            }
+            var calibrated = new AxisProfile(new(capture.Minimum, capture.Maximum), old.Deadzone, old.Curve,
+                old.MaximumBaselineCorrection, old.Filter, old.Session);
+            var replacements = activeProfile.Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
+            replacements[axis] = calibrated;
+            var profile = new PedalProfile(activeProfile.Name, replacements);
+            Configure(profile, activeLimits, true);
+            calibration = null;
+            Event("calibration-completed", capture);
+            return profile;
+        }
+    }
+
+    private void InvalidateCalibration(string reason)
+    {
+        if (calibration is { IsActive: true } capture)
+        {
+            calibration = capture with { Failure = reason };
+            Event("calibration-invalidated", calibration);
+        }
+    }
 
     public void ConfirmBaseline(PedalAxis axis)
     {
@@ -333,6 +416,7 @@ public sealed class DashboardEngine
 
     private void ClearConnection()
     {
+        InvalidateCalibration("Connection changed. Start calibration again.");
         SuspendOutput("connection changed");
         hardware = null;
         count = 0;

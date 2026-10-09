@@ -73,25 +73,27 @@ public sealed class WorkbenchEditingTests
     }
 
     [Fact]
-    public void GuidedCalibrationCapturesInversionRejectsDegenerateAndChangedConnections()
+    public void RangeCalibrationMapsMinimumToZeroAndRejectsNoMovementAndReconnects()
     {
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine);
-        Assert.Throws<InvalidOperationException>(model.CaptureReleased);
+        Assert.Throws<InvalidOperationException>(model.AdvanceCalibration);
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 500, 0)));
-        model.CaptureReleased();
-        Assert.Throws<ArgumentOutOfRangeException>(model.CapturePressed);
+        model.AdvanceCalibration();
+        Assert.Throws<InvalidOperationException>(model.AdvanceCalibration);
+        Assert.True(model.IsCalibrating);
+        engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.004), 1, new(0, 500, 0)));
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.01), 1, new(0, 100, 0)));
-        model.CapturePressed();
+        model.AdvanceCalibration();
         Assert.Equal("100", model.Editor.Minimum);
         Assert.Equal("500", model.Editor.Maximum);
-        Assert.True(model.Editor.Inverted);
-        model.Apply();
+        Assert.False(model.Editor.Inverted);
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.02), 1, new(0, 100, 0)));
-        Assert.Equal(1, engine.Snapshot(PedalAxis.Brake).Axes.Single(a => a.Axis == PedalAxis.Brake).Result!.Value.Processing.Output);
-        model.CaptureReleased();
+        Assert.Equal(0, engine.Snapshot(PedalAxis.Brake).Axes.Single(a => a.Axis == PedalAxis.Brake).Result!.Value.Processing.Output);
+        model.AdvanceCalibration();
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.03), 2, new(0, 200, 0)));
-        Assert.Throws<InvalidOperationException>(model.CapturePressed);
+        Assert.Throws<InvalidOperationException>(model.AdvanceCalibration);
+        Assert.False(model.IsCalibrating);
     }
 
     [Fact]

@@ -15,9 +15,9 @@ public sealed class DashboardViewModel : ObservableObject
     private string profileName = "Device-axis preview";
     private bool plotCounts;
     private ProfileTab? selectedProfile;
-    private CalibrationDraft? calibration;
-    private int calibrationStep;
-    public bool IsCalibrating => calibrationStep != 0;
+    private bool isCalibrating;
+    public bool IsCalibrating => isCalibrating;
+    public string CalibrationButtonText => IsCalibrating ? "Done" : "Calibrate";
 
     public DashboardViewModel(DashboardEngine engine)
     {
@@ -42,7 +42,8 @@ public sealed class DashboardViewModel : ObservableObject
     public ProfileTab? SelectedProfile => selectedProfile;
     public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
     public IReadOnlyList<PlotSample> DraftCurve { get; private set; } = [];
-    public string CalibrationInfo { get; private set; } = "Click Calibrate to begin. Guided software calibration; hardware settings are unchanged.";
+    public string CalibrationInfo { get; private set; } = "Start input, then Calibrate. Release and press this pedal through its range; Done applies the captured bounds.";
+    public string CalibrationRangeInfo { get; private set; } = "";
     public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
     public double PlaybackSpeed { get; set; } = 1;
     private bool canEdit = true;
@@ -206,6 +207,7 @@ public sealed class DashboardViewModel : ObservableObject
     public void Refresh()
     {
         var frame = engine.Snapshot(selectedAxis);
+        RefreshCalibration();
         foreach (var card in Cards)
         {
             card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis));
@@ -323,6 +325,7 @@ public sealed class DashboardViewModel : ObservableObject
 
     public void ResetEditor()
     {
+        CancelCalibration();
         editors[selectedAxis] = AxisEditor.FromProfile(DashboardEngine.DefaultProfile().Axes[selectedAxis]);
         Changed(nameof(Editor));
         NotifyFilterSettings();
@@ -405,69 +408,87 @@ public sealed class DashboardViewModel : ObservableObject
         ShowMessage($"{axis} curve cleared to linear. Calibration, deadzones and filters retained. Apply to activate.");
     }
 
-    public void CaptureReleased()
-    {
-        engine.SuspendOutput("calibration started");
-        var (frame, axis) = FreshAxis();
-        calibration = new(selectedAxis, frame.Connection, axis.Result!.Value.Processing.Input);
-        calibrationStep = 2;
-        Changed(nameof(IsCalibrating));
-        CalibrationInfo = "Released captured. Press to your desired full-scale force/travel, hold, then capture pressed.";
-        Changed(nameof(CalibrationInfo));
-    }
-
-    public void CapturePressed()
-    {
-        if (calibration is null || calibration.Axis != selectedAxis) { throw new InvalidOperationException("Capture released for this pedal first."); }
-        var (frame, axis) = FreshAxis();
-        var result = calibration.Complete(frame.Connection, axis.Result!.Value.Processing.Input);
-        editors[selectedAxis] = Editor with
-        {
-            Minimum = result.Minimum.ToString("R", CultureInfo.InvariantCulture),
-            Maximum = result.Maximum.ToString("R", CultureInfo.InvariantCulture),
-            Inverted = result.Inverted
-        };
-        CancelCalibration();
-        CalibrationInfo = FormattableString.Invariant($"Ready · {result.Minimum:G} → {result.Maximum:G} counts{(result.Inverted ? " · inverted" : "")}. Apply settings to activate; Save profile to keep.");
-        Changed(nameof(Editor));
-        NotifyFilterSettings();
-        Changed(nameof(CalibrationInfo));
-    }
-
     public void CancelCalibration()
     {
-        calibration = null;
-        calibrationStep = 0;
-        Changed(nameof(IsCalibrating));
-        CalibrationInfo = "Click Calibrate to begin. Guided software calibration; hardware settings are unchanged.";
+        engine.CancelCalibration();
+        SetCalibrating(false);
+        CalibrationInfo = "Start input, then Calibrate. Release and press this pedal through its range; Done applies the captured bounds.";
+        CalibrationRangeInfo = "";
         Changed(nameof(CalibrationInfo));
+        Changed(nameof(CalibrationRangeInfo));
     }
 
     public void AdvanceCalibration()
     {
-        if (calibrationStep == 0)
+        try
         {
-            engine.SuspendOutput("calibration started");
-            calibrationStep = 1;
-            CalibrationInfo = $"1/2 · Release {SelectedAxis} fully. Click Calibrate again to capture its released position.";
+            if (!IsCalibrating)
+            {
+                engine.StartCalibration(selectedAxis);
+                SetCalibrating(true);
+                CalibrationInfo = $"Release and press {SelectedAxis} through its full desired range, then click Done. All input reports are captured.";
+                RefreshCalibration();
+            }
+            else
+            {
+                applied = engine.CompleteCalibration(selectedAxis);
+                var result = applied.Axes[selectedAxis].Calibration;
+                editors[selectedAxis] = Editor with
+                {
+                    Minimum = result.Minimum.ToString("R", CultureInfo.InvariantCulture),
+                    Maximum = result.Maximum.ToString("R", CultureInfo.InvariantCulture),
+                    Inverted = false
+                };
+                SetCalibrating(false);
+                CalibrationInfo = "Calibration applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart. Other draft settings still require Apply.";
+                CalibrationRangeInfo = FormattableString.Invariant($"0% = {result.Minimum:N0} counts · 100% = {result.Maximum:N0} counts");
+                Changed(nameof(CalibrationRangeInfo));
+                Changed(nameof(Editor));
+                NotifyFilterSettings();
+                UpdateCurve();
+                RefreshDraftCurve();
+                Refresh();
+                ShowMessage($"{SelectedAxis} calibration applied immediately. Virtual output stays disarmed; Save profile to keep these bounds.");
+            }
             Changed(nameof(CalibrationInfo));
-            Changed(nameof(IsCalibrating));
         }
-        else if (calibrationStep == 1)
+        catch (InvalidOperationException exception)
         {
-            CaptureReleased();
-            CalibrationInfo = $"2/2 · Press {SelectedAxis} to your desired full force/travel. Hold it, then click Calibrate again.";
+            CalibrationInfo = exception.Message;
             Changed(nameof(CalibrationInfo));
+            RefreshCalibration();
+            throw;
         }
-        else { CapturePressed(); }
     }
 
-    private (DashboardFrame Frame, AxisFrame Axis) FreshAxis()
+    private void SetCalibrating(bool value)
     {
-        var frame = engine.Snapshot(selectedAxis);
-        var axis = frame.Axes.Single(a => a.Axis == selectedAxis);
-        if (!axis.IsFresh || axis.Result is null) { throw new InvalidOperationException("Start live input and wait for fresh samples before calibration."); }
-        return (frame, axis);
+        isCalibrating = value;
+        Changed(nameof(IsCalibrating));
+        Changed(nameof(CalibrationButtonText));
+    }
+
+    private void RefreshCalibration()
+    {
+        if (!IsCalibrating) { return; }
+        var capture = engine.CalibrationSnapshot();
+        if (capture is not { IsActive: true } || capture.Axis != selectedAxis)
+        {
+            SetCalibrating(false);
+            CalibrationInfo = capture?.Failure ?? "Calibration cancelled. Click Calibrate to start again.";
+            CalibrationRangeInfo = "";
+            Changed(nameof(CalibrationInfo));
+            Changed(nameof(CalibrationRangeInfo));
+            ShowMessage(CalibrationInfo);
+            return;
+        }
+        var range = capture.SampleCount == 0 ? "Waiting for the first input report…"
+            : FormattableString.Invariant($"0% = {capture.Minimum:N0} counts · 100% = {capture.Maximum:N0} counts\nInput: {capture.Current:N0} · {capture.SampleCount:N0} captured reports");
+        if (CalibrationRangeInfo != range)
+        {
+            CalibrationRangeInfo = range;
+            Changed(nameof(CalibrationRangeInfo));
+        }
     }
 
     private void StoreDraft()
