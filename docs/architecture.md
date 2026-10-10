@@ -36,6 +36,10 @@ is 17 bytes: signed little-endian minimum/maximum pairs, 16 bits each for
 throttle and clutch and 32 bits each for brake. Feature reads validate report
 identity and length independently of joystick input.
 
+Command report 2 contains a little-endian 32-bit command padded to 17 bytes.
+Commands are LED off (0), LED on (1), enter bootloader (2) and Save (3).
+Writing bounds and saving them persistently are separate operations.
+
 ## Build and validation
 
 Run `dotnet restore --locked-mode` and `dotnet build -c Release --no-restore`.

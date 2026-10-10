@@ -27,4 +27,18 @@ public static class PedalCalibrationReport
             new HardwareCalibrationRange(BinaryPrimitives.ReadInt32LittleEndian(report[5..]), BinaryPrimitives.ReadInt32LittleEndian(report[9..])),
             new HardwareCalibrationRange(BinaryPrimitives.ReadInt16LittleEndian(report[13..]), BinaryPrimitives.ReadInt16LittleEndian(report[15..])));
     }
+
+    public static byte[] Encode(PedalCalibration calibration)
+    {
+        ArgumentNullException.ThrowIfNull(calibration);
+        var report = new byte[Length];
+        report[0] = ReportId;
+        BinaryPrimitives.WriteInt16LittleEndian(report.AsSpan(1), checked((short)calibration.Throttle.Minimum));
+        BinaryPrimitives.WriteInt16LittleEndian(report.AsSpan(3), checked((short)calibration.Throttle.Maximum));
+        BinaryPrimitives.WriteInt32LittleEndian(report.AsSpan(5), calibration.Brake.Minimum);
+        BinaryPrimitives.WriteInt32LittleEndian(report.AsSpan(9), calibration.Brake.Maximum);
+        BinaryPrimitives.WriteInt16LittleEndian(report.AsSpan(13), checked((short)calibration.Clutch.Minimum));
+        BinaryPrimitives.WriteInt16LittleEndian(report.AsSpan(15), checked((short)calibration.Clutch.Maximum));
+        return report;
+    }
 }
