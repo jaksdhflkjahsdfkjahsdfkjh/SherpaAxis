@@ -172,12 +172,11 @@ public sealed class UiControlTests
             engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.004), 1, new(0, 500, 0)));
             engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.006), 1, new(0, 300, 0)));
             model.Refresh();
-            Assert.Contains("100 counts", model.CalibrationRangeInfo, StringComparison.Ordinal);
-            Assert.Contains("500 counts", model.CalibrationRangeInfo, StringComparison.Ordinal);
-            Assert.Contains("3 captured reports", model.CalibrationRangeInfo, StringComparison.Ordinal);
+            Assert.Equal("0% = 100\n100% = 500\nInput: 300", model.CalibrationRangeInfo);
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Equal("Calibrate", button.Content);
             Assert.False(model.IsCalibrating);
+            Assert.Equal("0% = 100\n100% = 500", model.CalibrationRangeInfo);
             engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.008), 1, new(0, 300, 0)));
             model.Refresh();
             Assert.Equal(50, model.Cards[1].OutputPercent);

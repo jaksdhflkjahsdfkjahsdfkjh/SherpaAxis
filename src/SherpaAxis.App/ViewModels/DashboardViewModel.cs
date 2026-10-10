@@ -441,7 +441,7 @@ public sealed class DashboardViewModel : ObservableObject
                 };
                 SetCalibrating(false);
                 CalibrationInfo = "Calibration applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart. Other draft settings still require Apply.";
-                CalibrationRangeInfo = FormattableString.Invariant($"0% = {result.Minimum:N0} counts · 100% = {result.Maximum:N0} counts");
+                CalibrationRangeInfo = FormattableString.Invariant($"0% = {result.Minimum:N0}\n100% = {result.Maximum:N0}");
                 Changed(nameof(CalibrationRangeInfo));
                 Changed(nameof(Editor));
                 NotifyFilterSettings();
@@ -483,7 +483,7 @@ public sealed class DashboardViewModel : ObservableObject
             return;
         }
         var range = capture.SampleCount == 0 ? "Waiting for the first input report…"
-            : FormattableString.Invariant($"0% = {capture.Minimum:N0} counts · 100% = {capture.Maximum:N0} counts\nInput: {capture.Current:N0} · {capture.SampleCount:N0} captured reports");
+            : FormattableString.Invariant($"0% = {capture.Minimum:N0}\n100% = {capture.Maximum:N0}\nInput: {capture.Current:N0}");
         if (CalibrationRangeInfo != range)
         {
             CalibrationRangeInfo = range;
