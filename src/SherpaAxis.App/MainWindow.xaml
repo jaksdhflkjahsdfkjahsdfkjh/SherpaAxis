@@ -8,6 +8,7 @@
         FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated" PreviewGotKeyboardFocus="ParameterFocused">
     <Window.Resources>
         <SolidColorBrush x:Key="Muted" Color="#95A9C1" />
+        <SolidColorBrush x:Key="EditorSurface" Color="#111D2E" />
         <Style TargetType="Button">
             <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}"/>
             <Setter Property="Background" Value="#22334C" />
@@ -265,7 +266,7 @@
                         </Expander>
                     </Grid>
                 </ScrollViewer>
-                <Border Grid.Column="2" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8">
+                <Border Grid.Column="2" Background="{StaticResource EditorSurface}" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
                             <DockPanel><Button DockPanel.Dock="Right" Content="Apply settings" Style="{StaticResource Primary}" Click="ApplyClick" Padding="10,9" FontSize="12" Margin="10,0,0,0" IsEnabled="{Binding CanEdit}" ToolTip="Validate and apply all pedal drafts. Clears filter/correction histories and disarms vJoy."/><controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="Selected pedal" ToolTip="Choose the pedal to edit. Each pedal keeps separate calibration, curve and filter settings." AutomationProperties.HelpText="Choose the pedal to edit. Each pedal keeps separate calibration, curve and filter settings." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></DockPanel>
@@ -274,19 +275,33 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
                                 <TextBlock Text="Profile name" Style="{StaticResource Label}"/><TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" ToolTip="Name of this tab. Save profile keeps all three pedals in your local library." AutomationProperties.HelpText="Name of this tab. Save profile keeps all three pedals in your local library." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
-                                <Border Background="#14283A" BorderBrush="#365975" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,14,0,0">
+                                <GroupBox Header="Calibration" Background="#14283A" Foreground="#E8EFF8" BorderBrush="#365975" BorderThickness="1" Padding="12" Margin="0,14,0,0" AutomationProperties.Name="Calibration">
+                                    <GroupBox.Template><ControlTemplate TargetType="GroupBox">
+                                        <Grid>
+                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Margin="0,10,0,0">
+                                                <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                                            </Border>
+                                            <Grid Background="{TemplateBinding Background}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,0,0,0">
+                                                <Border Background="{StaticResource EditorSurface}" Height="10" VerticalAlignment="Top"/>
+                                                <ContentPresenter ContentSource="Header" Margin="5,0" TextElement.FontSize="15" TextElement.FontWeight="SemiBold"/>
+                                            </Grid>
+                                        </Grid>
+                                    </ControlTemplate></GroupBox.Template>
                                     <StackPanel>
-                                        <DockPanel><TextBlock Text="Calibration" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Button x:Name="CalibrationButton" Content="{Binding CalibrationButtonText}" Click="CalibrateClick" DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="12" Padding="10,6" Margin="8,0,0,0" AutomationProperties.Name="Pedal calibration" ToolTip="Calibrate starts collecting this pedal's minimum and maximum from every input report. Release and press through your desired range, then Done applies minimum as 0% and maximum as 100% immediately. Save profile to keep it."/>
-                                        </DockPanel>
-                                        <TextBlock Text="{Binding CalibrationInfo}" Foreground="#B4C4D8" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                        <TextBlock Text="{Binding CalibrationInfo}" Foreground="#B4C4D8" FontSize="11" TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding CalibrationRangeInfo}" Foreground="#78E3C6" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                        <Button Content="Cancel calibration" Click="CancelCalibrationClick" IsEnabled="{Binding IsCalibrating}" FontSize="10" Padding="7,4" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip="Discard the captured range. Previously applied calibration is unchanged.">
-                                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></Button.Style>
-                                        </Button>
-                                    </StackPanel>
-                                </Border>
-                                <Expander Header="Calibration bounds · advanced"><StackPanel>
+                                        <WrapPanel Margin="0,10,0,0">
+                                            <Button x:Name="CalibrationButton" Content="{Binding CalibrationButtonText}" Click="CalibrateClick" FontSize="12" MinWidth="88" MinHeight="32" Padding="12,6" Margin="0,0,8,0" VerticalAlignment="Center" AutomationProperties.Name="Pedal calibration" ToolTip="Calibrate starts collecting this pedal's minimum and maximum from every input report. Release and press through your desired range, then Done applies minimum as 0% and maximum as 100% immediately. Save profile to keep it."/>
+                                            <Button Content="Cancel calibration" Click="CancelCalibrationClick" IsEnabled="{Binding IsCalibrating}" FontSize="12" MinWidth="140" MinHeight="36" Padding="12,8" Margin="0" VerticalAlignment="Center" ToolTip="Discard the captured range. Previously applied calibration is unchanged.">
+                                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></Button.Style>
+                                            </Button>
+                                        </WrapPanel>
+                                <TextBlock Text="Deadzone" Style="{StaticResource Section}"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="Lower deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lower deadzone percent"  ToolTip="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent"  ToolTip="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                </Grid>
+                                <Expander Header="Advanced"><StackPanel>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <StackPanel><TextBlock Text="Minimum · device-axis units" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software minimum"  ToolTip="Software endpoint mapped to release, or full output when inverted. Must be below maximum. These are device-axis counts, not hardware calibration units." AutomationProperties.HelpText="Software endpoint mapped to release, or full output when inverted. Must be below maximum. These are device-axis counts, not hardware calibration units." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/><Button Content="Use current" Click="CaptureMinimumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0"  ToolTip="Copy fresh input into this endpoint. Review bounds, then Apply."/></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Text="Maximum" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Software maximum"  ToolTip="Software endpoint mapped to full output, or release when inverted. Must exceed minimum. Does not change the device." AutomationProperties.HelpText="Software endpoint mapped to full output, or release when inverted. Must exceed minimum. Does not change the device." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/><Button Content="Use current" Click="CaptureMaximumClick" FontSize="11" Padding="6,5" Margin="0,5,0,0"  ToolTip="Copy fresh input into this endpoint. Review bounds, then Apply."/></StackPanel>
@@ -296,12 +311,8 @@
                             <StackPanel Orientation="Horizontal"><Button Content="Use observed range" Click="ObservedRangeClick" FontSize="11" Padding="9,6"  ToolTip="Copy this pedal’s observed minimum and maximum. Move through the intended range first."/><Button Content="Defaults" Click="DefaultsClick" FontSize="11" Padding="9,6" Margin="0"  ToolTip="Restore this pedal’s device-axis defaults in the draft. Apply activates them."/></StackPanel>
 
                                 </StackPanel></Expander>
-                                <TextBlock Text="Deadzone" Style="{StaticResource Section}"/>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Lower deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lower deadzone percent"  ToolTip="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent ignored near release. Remaining input is rescaled to 0–100%. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Upper deadzone (%)" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Upper deadzone percent"  ToolTip="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." AutomationProperties.HelpText="Percent removed near full input so full output is reached earlier. Lower plus upper must be below 100%." ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
-                            </Grid>
-
+                                    </StackPanel>
+                                </GroupBox>
                                 <DockPanel Margin="0,22,0,12">
                                     <Button Content="ⓘ" Click="FilterHelpClick" DockPanel.Dock="Right" Width="28" Height="26" Padding="0" Margin="8,0,0,0" AutomationProperties.Name="Filtering help" ToolTip="Open a plain-language guide to every filter and how smoothing changes pedal feel."/>
                                     <TextBlock Text="Filtering" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
