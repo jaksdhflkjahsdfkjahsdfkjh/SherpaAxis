@@ -7,6 +7,36 @@ namespace SherpaAxis.Tests;
 
 public sealed class ProfileJsonTests
 {
+    [Theory]
+    [InlineData(BaselineCorrectionMode.Off)]
+    [InlineData(BaselineCorrectionMode.Auto)]
+    [InlineData(BaselineCorrectionMode.ByButton)]
+    public void CorrectionModesAndKeyboardOrControllerBindingsRoundTrip(BaselineCorrectionMode mode)
+    {
+        var profile = new PedalProfile("Bindings", new Dictionary<PedalAxis, AxisProfile>
+        {
+            [PedalAxis.Brake] = new(new(0, 1000), maximumBaselineCorrection: 5, correctionMode: mode,
+                correctionButton: new("keyboard", 65)),
+            [PedalAxis.Throttle] = new(new(0, 1000), maximumBaselineCorrection: 5, correctionMode: mode,
+                correctionButton: new("controller", 64, "wheel-path"))
+        });
+        var loaded = ProfileJson.Deserialize(ProfileJson.Serialize(profile));
+        Assert.Equal(mode, loaded.Axes[PedalAxis.Brake].CorrectionMode);
+        Assert.Equal(new("keyboard", 65), loaded.Axes[PedalAxis.Brake].CorrectionButton);
+        Assert.Equal(new("controller", 64, "WHEEL-PATH"), loaded.Axes[PedalAxis.Throttle].CorrectionButton);
+        Assert.Equal(0, loaded.Axes[PedalAxis.Brake].CreateProcessor().BaselineCorrection);
+    }
+
+    [Theory]
+    [InlineData("keyboard", 0, null)]
+    [InlineData("keyboard", 255, null)]
+    [InlineData("keyboard", 65, "device")]
+    [InlineData("controller", 1, null)]
+    [InlineData("controller", 65536, "device")]
+    [InlineData("mouse", 1, null)]
+    public void UnsupportedBindingsAreRejected(string kind, int code, string? device) =>
+        Assert.Throws<ArgumentException>(() => new CorrectionButton(kind, code, device));
+
     [Fact]
     public void RoundTripsIndependentAxesAndEveryCurveKindWithoutSessionState()
     {
@@ -105,7 +135,7 @@ public sealed class ProfileJsonTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(3)]
+    [InlineData(4)]
     [InlineData(-1)]
     public void UnsupportedSchemaVersionsAreRejected(int version)
     {

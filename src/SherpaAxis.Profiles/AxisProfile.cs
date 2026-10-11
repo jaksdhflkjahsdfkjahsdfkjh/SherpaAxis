@@ -5,7 +5,8 @@ namespace SherpaAxis.Profiles;
 public sealed class AxisProfile
 {
     public AxisProfile(AxisCalibration calibration, AxisDeadzone? deadzone = null, ProfileCurve? curve = null,
-        double maximumBaselineCorrection = 0, LowPassFilterSettings? filter = null, AxisSessionSettings? session = null)
+        double maximumBaselineCorrection = 0, LowPassFilterSettings? filter = null, AxisSessionSettings? session = null,
+        BaselineCorrectionMode correctionMode = BaselineCorrectionMode.Off, CorrectionButton? correctionButton = null)
     {
         ArgumentNullException.ThrowIfNull(calibration);
         Calibration = calibration;
@@ -14,6 +15,9 @@ public sealed class AxisProfile
         MaximumBaselineCorrection = maximumBaselineCorrection;
         Filter = filter;
         Session = session;
+        if (!Enum.IsDefined(correctionMode)) { throw new ArgumentOutOfRangeException(nameof(correctionMode)); }
+        CorrectionMode = correctionMode;
+        CorrectionButton = correctionButton;
         _ = CreateProcessor();
     }
 
@@ -23,6 +27,8 @@ public sealed class AxisProfile
     public double MaximumBaselineCorrection { get; }
     public LowPassFilterSettings? Filter { get; }
     public AxisSessionSettings? Session { get; }
+    public BaselineCorrectionMode CorrectionMode { get; }
+    public CorrectionButton? CorrectionButton { get; }
 
     public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve.Curve, MaximumBaselineCorrection, Filter);
 

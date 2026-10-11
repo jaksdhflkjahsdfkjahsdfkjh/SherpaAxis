@@ -6,7 +6,7 @@ namespace SherpaAxis.Profiles;
 
 public static class ProfileJson
 {
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
     public const int MaximumFileBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions Options = new()
@@ -30,7 +30,7 @@ public static class ProfileJson
         {
             var document = JsonSerializer.Deserialize<ProfileDocument>(json, Options)
                 ?? throw new InvalidDataException("Expected a profile object.");
-            if (document.SchemaVersion is not (1 or SchemaVersion))
+            if (document.SchemaVersion is not (1 or 2 or SchemaVersion))
             {
                 throw new InvalidDataException($"Unsupported profile schema version {document.SchemaVersion}; expected {SchemaVersion}.");
             }
@@ -47,6 +47,12 @@ public static class ProfileJson
                 {
                     throw new InvalidDataException("Schema 1 does not store session transition limits.");
                 }
+                if (document.SchemaVersion < 3 && settings.Correction is not null)
+                { throw new InvalidDataException("Correction modes require profile schema 3."); }
+                var mode = settings.Correction is { } correction
+                    && Enum.TryParse<BaselineCorrectionMode>(correction.Mode, out var parsed) && Enum.IsDefined(parsed)
+                    && parsed.ToString() == correction.Mode ? parsed
+                    : settings.Correction is null ? BaselineCorrectionMode.Off : throw new InvalidDataException("Unknown correction mode.");
 
                 axes.Add(axis, new AxisProfile(
                     new AxisCalibration(settings.Calibration.Minimum, settings.Calibration.Maximum, settings.Calibration.Inverted),
@@ -54,7 +60,8 @@ public static class ProfileJson
                     ReadCurve(settings.Curve), settings.MaximumBaselineCorrection,
                     settings.Filter is { } filter ? ReadFilter(filter, document.SchemaVersion) : null,
                     settings.Session is { } session ? new AxisSessionSettings(session.MaximumCorrectionPerSecond,
-                        session.MaximumCorrectionOutputPerSecond, session.ResetAfterSeconds) : null));
+                        session.MaximumCorrectionOutputPerSecond, session.ResetAfterSeconds) : null,
+                    mode, settings.Correction?.Button));
             }
 
             return new PedalProfile(document.Name, axes);
@@ -134,7 +141,9 @@ public static class ProfileJson
             Kind = filter.Kind.ToString(),
             WindowSamples = filter.WindowSamples
         } : null,
-        MaximumBaselineCorrection = axis.MaximumBaselineCorrection
+        MaximumBaselineCorrection = axis.MaximumBaselineCorrection,
+        Correction = axis.CorrectionMode != BaselineCorrectionMode.Off || axis.CorrectionButton is not null
+            ? new() { Mode = axis.CorrectionMode.ToString(), Button = axis.CorrectionButton } : null
     };
 
     private static LowPassFilterSettings ReadFilter(FilterDocument filter, int version)
