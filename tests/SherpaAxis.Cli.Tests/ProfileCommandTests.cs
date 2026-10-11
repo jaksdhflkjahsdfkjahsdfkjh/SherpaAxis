@@ -78,14 +78,14 @@ public sealed class ProfileCommandTests
         var output = Path.Combine(directory.Path, "must-not-exist.json");
         await Create(path);
         var json = JsonNode.Parse(await File.ReadAllBytesAsync(path))!;
-        json["schemaVersion"] = 3;
+        json["schemaVersion"] = 4;
         await File.WriteAllTextAsync(path, json.ToJsonString());
         await Assert.ThrowsAsync<InvalidDataException>(() => ProfileCommand.RunAsync(
             ["export", "--input", path, "--json", output], CancellationToken.None));
         await Assert.ThrowsAsync<InvalidDataException>(() => ReplayCommand.ExecuteAsync(ReplayOptions.Parse(
             ["--input", "unused", "--csv", output, "--profile", path])));
         Assert.False(File.Exists(output));
-        Assert.Equal(3, JsonNode.Parse(await File.ReadAllBytesAsync(path))!["schemaVersion"]!.GetValue<int>());
+        Assert.Equal(4, JsonNode.Parse(await File.ReadAllBytesAsync(path))!["schemaVersion"]!.GetValue<int>());
     }
 
     [Fact]

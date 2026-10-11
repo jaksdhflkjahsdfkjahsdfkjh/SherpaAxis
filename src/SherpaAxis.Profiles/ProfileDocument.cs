@@ -19,6 +19,14 @@ internal sealed class AxisDocument
     public required CurveDocument Curve { get; init; }
     public required FilterDocument? Filter { get; init; }
     public required double MaximumBaselineCorrection { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CorrectionDocument? Correction { get; init; }
+}
+
+internal sealed class CorrectionDocument
+{
+    public required string Mode { get; init; }
+    public CorrectionButton? Button { get; init; }
 }
 
 internal sealed class SessionDocument

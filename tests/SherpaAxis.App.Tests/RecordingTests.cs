@@ -48,7 +48,7 @@ public sealed class RecordingTests
         var start = metadata.First().GetProperty("details");
         Assert.Equal("capture-replay", start.GetProperty("source").GetProperty("kind").GetString());
         Assert.Equal(20, start.GetProperty("source").GetProperty("playbackSpeed").GetDouble());
-        Assert.Equal(2, start.GetProperty("configuration").GetProperty("profile").GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(ProfileJson.SchemaVersion, start.GetProperty("configuration").GetProperty("profile").GetProperty("schemaVersion").GetInt32());
         Assert.Equal(3, start.GetProperty("configuration").GetProperty("sessionLimits").GetArrayLength());
         Assert.Null(start.GetProperty("hardwareSnapshot").Deserialize<object>());
         Assert.True(metadata.Last().GetProperty("complete").GetBoolean());

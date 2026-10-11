@@ -1,7 +1,7 @@
 # Processing profiles
 
 `SherpaAxis.Profiles` stores immutable per-axis settings as UTF-8 JSON. New
-files use schema 2. Earlier schemas 1 through 1 remain readable.
+files use schema 3. Earlier schemas 1 through 2 remain readable.
 
 A profile has `schemaVersion`, a display `name` and an `axes` object keyed by
 `throttle`, `brake` or `clutch`. Axis entries store `calibration` (minimum,
@@ -16,6 +16,10 @@ Schema 2 adds filter `kind` and `windowSamples`, plus optional axis `session`
 settings: `maximumCorrectionPerSecond`, `maximumCorrectionOutputPerSecond`
 and `resetAfterSeconds`. Schema 1 rejects these extra fields. Filter kinds:
 `Exponential`, `TwoStageExponential`, `MovingAverage`, `Median`, `WeightedMovingAverage`, `MedianExponential`.
+
+Schema 3 adds `correction` with `mode` (`Off`, `Auto`, `ByButton`) and an
+optional keyboard/controller `button` binding. Older schemas default to Off.
+Unknown modes and incompatible bindings are rejected.
 
 ## Validation and persistence
 
