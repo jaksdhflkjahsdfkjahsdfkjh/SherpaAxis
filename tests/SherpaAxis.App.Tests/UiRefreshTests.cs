@@ -66,7 +66,7 @@ public sealed class UiRefreshTests
             new(PedalAxis.Brake, [new(15, .5, .4, .8, 500000, .5)], "Balanced")
         ];
         var frame = SignalGraph.Prepare(series, "All pedals", "Input vs filtered", false);
-        Assert.Equal(3, frame.Start);
+        Assert.Equal(5, frame.Start);
         Assert.Equal(15, frame.End);
         Assert.Equal(2, frame.Lanes.Count);
         Assert.All(frame.Lanes, lane => { Assert.Equal(frame.Start, lane.Samples[0].Time); Assert.Equal(0, lane.Minimum); Assert.Equal(1, lane.Maximum); });

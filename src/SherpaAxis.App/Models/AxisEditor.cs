@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using SherpaAxis.Core;
 using SherpaAxis.Profiles;
 
@@ -18,6 +19,7 @@ public sealed record AxisEditor
     public string FilterGapMilliseconds { get; set; } = "100";
     public string FilterKind { get; set; } = "Exponential";
     public string FilterWindowSamples { get; set; } = "5";
+    [JsonIgnore]
     public bool FilterEnabled
     {
         get => double.TryParse(FilterMilliseconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0;
@@ -27,6 +29,8 @@ public sealed record AxisEditor
     public string CorrectionRate { get; set; } = "1000";
     public string CorrectionOutputRate { get; set; } = "0.05";
     public string SessionGapMilliseconds { get; set; } = "100";
+    public BaselineCorrectionMode CorrectionMode { get; set; }
+    public CorrectionButton? CorrectionButton { get; set; }
 
     public AxisProfile BuildProfile()
     {
@@ -53,7 +57,7 @@ public sealed record AxisEditor
         }
         return new(new(Number(Minimum, "Minimum"), Number(Maximum, "Maximum"), Inverted),
             new(Number(LowerDeadzone, "Lower deadzone") / 100, Number(UpperDeadzone, "Upper deadzone") / 100),
-            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap, kind, window), BuildSessionSettings());
+            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap, kind, window), BuildSessionSettings(), CorrectionMode, CorrectionButton);
     }
 
     public ProfileCurve BuildCurve() => CurveKind switch
@@ -87,6 +91,8 @@ public sealed record AxisEditor
             FilterKind = (profile.Filter?.Kind ?? SignalFilterKind.Exponential).ToString(),
             FilterWindowSamples = (profile.Filter?.WindowSamples ?? 5).ToString(CultureInfo.InvariantCulture),
             MaximumCorrection = Format(profile.MaximumBaselineCorrection),
+            CorrectionMode = profile.CorrectionMode,
+            CorrectionButton = profile.CorrectionButton,
             CorrectionRate = Format(profile.Session?.MaximumCorrectionPerSecond ?? 1000),
             CorrectionOutputRate = Format(profile.Session?.MaximumCorrectionOutputPerSecond ?? .05),
             SessionGapMilliseconds = Format((profile.Session?.ResetAfterSeconds ?? .1) * 1000)

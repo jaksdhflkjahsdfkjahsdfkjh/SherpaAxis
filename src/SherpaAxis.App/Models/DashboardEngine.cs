@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SherpaAxis.App.Services;
 using SherpaAxis.Bridge;
 using SherpaAxis.Core;
 using SherpaAxis.FeelVR;
@@ -15,6 +16,7 @@ public sealed class DashboardEngine
     private string? detail = "Stopped";
     private int connection;
     private long count;
+    private int historyCapacity = 600;
     private double firstTime;
     private double elapsed;
     private IDashboardRecording? recording;
@@ -27,7 +29,7 @@ public sealed class DashboardEngine
     private IProcessedOutputSink? output;
     private CalibrationCapture? calibration;
     private PedalProfile activeProfile = DefaultProfile();
-    private IReadOnlyDictionary<PedalAxis, AxisSessionSettings> activeLimits = new Dictionary<PedalAxis, AxisSessionSettings>();
+    private Dictionary<PedalAxis, AxisSessionSettings> activeLimits = [];
 
     public DashboardEngine(TimeProvider? clock = null)
     {
@@ -113,6 +115,8 @@ public sealed class DashboardEngine
             foreach (var axis in axes.Values)
             {
                 axis.Session.Reset();
+                axis.Automatic.Reset();
+                axis.BindingReady = axis.BindingWasDown = false;
                 axis.AuthorizedAt = null;
             }
         }
@@ -153,7 +157,15 @@ public sealed class DashboardEngine
             {
                 var raw = axis switch { PedalAxis.Throttle => input.Throttle, PedalAxis.Brake => input.Brake, _ => input.Clutch };
                 var released = values.AuthorizedAt.HasValue && clock.GetElapsedTime(values.AuthorizedAt.Value) < TimeSpan.FromMilliseconds(150);
+                var settings = activeProfile.Axes[axis];
+                if (settings.CorrectionMode == BaselineCorrectionMode.Auto)
+                {
+                    var baseline = values.Automatic.Observe(raw, elapsed, connection, settings.Calibration,
+                        settings.MaximumBaselineCorrection, activeLimits[axis].ResetAfterSeconds);
+                    if (baseline is { } candidate) { values.Session.ConfirmReleasedBaseline(candidate); released = true; }
+                }
                 var result = values.Session.Process(raw, elapsed, connection, released);
+                if (values.Automatic.Learning && values.Session.BaselineCorrection == values.Session.TargetCorrection) { values.Automatic.Complete(); }
                 if (result.ResetReason != AxisSessionResetReason.None)
                 {
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap) { SuspendOutput("sampling gap"); }
@@ -174,7 +186,7 @@ public sealed class DashboardEngine
                 {
                     values.LastPlotAt = elapsed;
                     values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, result.Processing.Output, raw, result.Processing.CorrectedNormalized));
-                    if (values.History.Count > 600)
+                    if (values.History.Count > historyCapacity)
                     {
                         values.History.Dequeue();
                     }
@@ -204,6 +216,52 @@ public sealed class DashboardEngine
             output = sink;
             output.Submit(CurrentOutput());
             Event("virtual-output-enabled", new { Mapping = "throttle:X,brake:Y,clutch:Z" });
+        }
+    }
+
+    public bool CanPublishOutput
+    {
+        get
+        {
+            lock (sync)
+            {
+                return sourceActive && source.Kind == "live-device-axis" && calibration is not { IsActive: true }
+            && count >= 2 && axes.Values.All(axis => IsFresh(axis) && clock.GetElapsedTime(axis.LastSampleAt!.Value) < TimeSpan.FromMilliseconds(100));
+            }
+        }
+    }
+
+    public void SetGraphWindow(double seconds)
+    {
+        if (!double.IsFinite(seconds) || seconds is < .1 or > 60) { throw new ArgumentOutOfRangeException(nameof(seconds)); }
+        lock (sync)
+        {
+            historyCapacity = Math.Max(600, (int)Math.Ceiling(seconds * 50) + 2);
+            foreach (var axis in axes.Values) { while (axis.History.Count > historyCapacity) { axis.History.Dequeue(); } }
+        }
+    }
+
+    public void ProcessCorrectionButtons(IButtonStateSource buttons)
+    {
+        ArgumentNullException.ThrowIfNull(buttons);
+        lock (sync)
+        {
+            foreach (var (axis, value) in axes)
+            {
+                var settings = activeProfile.Axes[axis];
+                if (settings.CorrectionMode != BaselineCorrectionMode.ByButton || settings.CorrectionButton is not { } button) { continue; }
+                var down = buttons.IsDown(button);
+                if (!down) { value.BindingReady = true; value.BindingWasDown = false; value.AuthorizedAt = null; continue; }
+                if (!value.BindingReady || !IsFresh(value)) { continue; }
+                if (!value.BindingWasDown)
+                {
+                    var raw = value.Current!.Value.Processing.Input;
+                    if (Math.Abs(raw - settings.Calibration.ReleasedReference) > settings.MaximumBaselineCorrection) { value.BindingReady = false; continue; }
+                    value.Session.ConfirmReleasedBaseline(raw);
+                }
+                value.BindingWasDown = true;
+                value.AuthorizedAt = clock.GetTimestamp();
+            }
         }
     }
 
@@ -267,7 +325,7 @@ public sealed class DashboardEngine
                 throw new InvalidOperationException("Captured range is smaller than the active manual-correction limit. Move through a wider range or cancel and reduce that limit.");
             }
             var calibrated = new AxisProfile(new(capture.Minimum, capture.Maximum), old.Deadzone, old.Curve,
-                old.MaximumBaselineCorrection, old.Filter, old.Session);
+                old.MaximumBaselineCorrection, old.Filter, old.Session, old.CorrectionMode, old.CorrectionButton);
             var replacements = activeProfile.Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
             replacements[axis] = calibrated;
             var profile = new PedalProfile(activeProfile.Name, replacements);
@@ -424,6 +482,8 @@ public sealed class DashboardEngine
         foreach (var axis in axes.Values)
         {
             axis.Session.Reset();
+            axis.Automatic.Reset();
+            axis.BindingReady = axis.BindingWasDown = false;
             axis.Current = null;
             axis.AuthorizedAt = null;
             axis.LastSampleAt = null;
@@ -437,6 +497,9 @@ public sealed class DashboardEngine
     private sealed class AxisState(AxisSession session)
     {
         public AxisSession Session { get; } = session;
+        public AutomaticBaseline Automatic { get; } = new();
+        public bool BindingReady { get; set; }
+        public bool BindingWasDown { get; set; }
         public AxisSessionResult? Current { get; set; }
         public long? AuthorizedAt { get; set; }
         public long? LastSampleAt { get; set; }
