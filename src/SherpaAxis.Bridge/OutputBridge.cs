@@ -22,6 +22,7 @@ public sealed class OutputBridge : IProcessedOutputSink, IAsyncDisposable
 
     public Task Ready => ready.Task;
     public string Status { get { lock (sync) { return status; } } }
+    public bool IsActive { get { lock (sync) { return !invalidated && ready.Task.IsCompletedSuccessfully; } } }
     public void Submit(PedalOutput output)
     {
         lock (sync)
@@ -31,7 +32,7 @@ public sealed class OutputBridge : IProcessedOutputSink, IAsyncDisposable
     }
     public void Invalidate(string reason)
     {
-        lock (sync) { invalidated = true; status = $"Output stopped: {reason}. Enable again to resume."; }
+        lock (sync) { invalidated = true; status = $"Output stopped: {reason}."; }
     }
 
     private async Task RunAsync(Func<IVirtualController> connect)
@@ -41,7 +42,14 @@ public sealed class OutputBridge : IProcessedOutputSink, IAsyncDisposable
         {
             controller = connect();
             controller.Write(default);
-            lock (sync) { if (!invalidated) { status = "Output enabled · throttle X · brake Y · clutch Z"; } }
+            lock (sync)
+            {
+                if (!invalidated)
+                {
+                    status = controller is VJoyController native
+                ? $"vJoy {native.DeviceId} · throttle X · brake Y · clutch Z" : "Output enabled · throttle X · brake Y · clutch Z";
+                }
+            }
             ready.TrySetResult();
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(4));
             var started = clock.GetTimestamp();
@@ -54,7 +62,7 @@ public sealed class OutputBridge : IProcessedOutputSink, IAsyncDisposable
                     if (clock.GetElapsedTime(receivedAt ?? started) >= TimeSpan.FromMilliseconds(100))
                     {
                         invalidated = true;
-                        status = "Output stopped: no fresh input for 100 ms. Enable again to resume.";
+                        status = "Output stopped: no fresh input for 100 ms.";
                         break;
                     }
                     next = receivedAt.HasValue ? latest : default;

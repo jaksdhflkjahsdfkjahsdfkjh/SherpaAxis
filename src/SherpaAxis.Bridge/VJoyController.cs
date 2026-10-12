@@ -13,25 +13,67 @@ public sealed class VJoyController : IVirtualController
     private readonly (int Minimum, int Maximum)[] ranges;
     private bool acquired;
     private bool disposed;
+    public uint DeviceId => device;
 
     public static string DefaultLibraryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "vJoy", "x64", "vJoyInterface.dll");
+
+    public static IReadOnlyList<VJoyDeviceInfo> Inspect(string libraryPath)
+    {
+        var handle = OpenValidatedLibrary(libraryPath);
+        T Api<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(handle, name));
+        var status = Api<DeviceStatus>("GetVJDStatus");
+        var exists = Api<AxisExists>("GetVJDAxisExist");
+        var minimum = Api<AxisRange>("GetVJDAxisMin");
+        var maximum = Api<AxisRange>("GetVJDAxisMax");
+        var buttons = Api<DeviceStatus>("GetVJDButtonNumber");
+        var continuous = Api<DeviceStatus>("GetVJDContPovNumber");
+        var discrete = Api<DeviceStatus>("GetVJDDiscPovNumber");
+        var ffb = Api<DeviceStatus>("IsDeviceFfb");
+        return Enumerable.Range(1, 16).Select(value =>
+        {
+            var id = (uint)value;
+            var state = (VJoyDeviceState)status(id);
+            // Do not query another feeder's busy device; it cannot be a candidate for acquisition.
+            if (state is VJoyDeviceState.Busy or VJoyDeviceState.Missing or VJoyDeviceState.Unknown) { return new VJoyDeviceInfo(id, state, false, false); }
+            var xyz = Enumerable.Range(0x30, 3).All(usage => DecodeAxisPresence(exists(id, (uint)usage))
+                && minimum(id, (uint)usage, out var min) != 0 && maximum(id, (uint)usage, out var max) != 0 && max > min);
+            // Match the dedicated pedal descriptor, not an arbitrary free wheel/gamepad.
+            var extraAxes = Enumerable.Range(0x33, 0x48 - 0x33 + 1).Any(usage => DecodeAxisPresence(exists(id, (uint)usage)));
+            var pedalsOnly = xyz && !extraAxes && buttons(id) == 0 && continuous(id) == 0 && discrete(id) == 0 && ffb(id) == 0;
+            return new VJoyDeviceInfo(id, state, xyz, pedalsOnly);
+        }).ToArray();
+    }
+
+    public static bool DecodeAxisPresence(int result) => result switch
+    {
+        1 => true,
+        // Despite the BOOL API declaration, the 2.2.2 SDK returns NO_SUCH_AXIS (-10).
+        0 or -10 => false,
+        _ => throw new IOException($"vJoy axis inspection failed (SDK code {result}).")
+    };
+
+    private static nint OpenValidatedLibrary(string libraryPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(libraryPath);
+        if (!Path.IsPathFullyQualified(libraryPath)) { throw new ArgumentException("Choose the installed x64 vJoyInterface.dll using an absolute path.", nameof(libraryPath)); }
+        if (!File.Exists(libraryPath)) { throw new FileNotFoundException("vJoy is not installed. Run the SherpaAxis installer to install the driver and SDK together.", libraryPath); }
+        var handle = LoadLibrary(Path.GetFullPath(libraryPath));
+        if (Marshal.GetDelegateForFunctionPointer<Enabled>(NativeLibrary.GetExport(handle, "vJoyEnabled"))() == 0)
+        { throw new IOException("vJoy driver is unavailable or disabled. Finish installation and restart Windows if requested."); }
+        var match = Marshal.GetDelegateForFunctionPointer<Match>(NativeLibrary.GetExport(handle, "DriverMatch"));
+        if (match(out var dllVersion, out var driverVersion) == 0 || dllVersion != 0x222 || driverVersion != 0x222)
+        { throw new IOException($"Expected matching vJoy 2.2.2 driver and SDK (DLL {dllVersion:X3}, driver {driverVersion:X3})."); }
+        return handle;
+    }
 
     public VJoyController(string libraryPath, uint deviceId = 1)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryPath);
         if (deviceId is < 1 or > 16) { throw new ArgumentOutOfRangeException(nameof(deviceId)); }
-        if (!Path.IsPathFullyQualified(libraryPath)) { throw new ArgumentException("Choose the installed x64 vJoyInterface.dll using an absolute path.", nameof(libraryPath)); }
-        if (!File.Exists(libraryPath)) { throw new FileNotFoundException("vJoy is not installed at the selected path. Install the signed Brunner vJoy 2.2.2.0 package and configure X, Y, Z axes first.", libraryPath); }
         device = deviceId;
-        library = LoadLibrary(Path.GetFullPath(libraryPath));
+        library = OpenValidatedLibrary(libraryPath);
         try
         {
-            if (Export<Enabled>("vJoyEnabled")() == 0) { throw new IOException("vJoy driver is unavailable or disabled."); }
-            var match = Export<Match>("DriverMatch");
-            if (match(out var dllVersion, out var driverVersion) == 0 || dllVersion != 0x222 || driverVersion != 0x222)
-            {
-                throw new IOException($"Expected matching vJoy 2.2.2 driver and SDK (DLL {dllVersion:X3}, driver {driverVersion:X3}).");
-            }
             if (Export<DeviceStatus>("GetVJDStatus")(device) != 1) { throw new IOException($"vJoy device {device} is missing, busy, or already owned. Configure a dedicated device with X, Y, Z axes."); }
             var exists = Export<AxisExists>("GetVJDAxisExist");
             var minimum = Export<AxisRange>("GetVJDAxisMin");
@@ -40,7 +82,7 @@ public sealed class VJoyController : IVirtualController
             for (uint i = 0; i < 3; i++)
             {
                 var usage = 0x30 + i;
-                if (exists(device, usage) == 0 || minimum(device, usage, out var min) == 0 || maximum(device, usage, out var max) == 0 || max <= min)
+                if (!DecodeAxisPresence(exists(device, usage)) || minimum(device, usage, out var min) == 0 || maximum(device, usage, out var max) == 0 || max <= min)
                 {
                     throw new IOException("vJoy device requires enabled X, Y, and Z axes with valid logical ranges.");
                 }
