@@ -23,6 +23,9 @@ The SDK version is pinned in `global.json`; project references define the depend
   Driver writes run outside the processing lock. Source changes, configuration
   changes and stale input disarm output before the device is released.
 
+`PedalRuntime` owns live input and automatic virtual output independently of graph
+refresh. Device checks inspect metadata without acquiring or feeding a virtual device.
+
 ## Input and native configuration
 
 FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is
@@ -39,6 +42,8 @@ identity and length independently of joystick input.
 Command report 2 contains a little-endian 32-bit command padded to 17 bytes.
 Commands are LED off (0), LED on (1), enter bootloader (2) and Save (3).
 Writing bounds and saving them persistently are separate operations.
+
+See [setup](setup.md) for device selection and installation.
 
 ## Build and validation
 

@@ -18,7 +18,7 @@ public static class SignalGraph
         _ => sample.Filtered
     };
 
-    public static GraphFrame Prepare(IReadOnlyList<PedalHistory> series, string pedal, string mode, bool zoom, double windowSeconds = 12, double? viewEnd = null)
+    public static GraphFrame Prepare(IReadOnlyList<PedalHistory> series, string pedal, string mode, bool zoom, double windowSeconds = 10, double? viewEnd = null)
     {
         ArgumentNullException.ThrowIfNull(series);
         if (!double.IsFinite(windowSeconds) || windowSeconds <= 0) { throw new ArgumentOutOfRangeException(nameof(windowSeconds)); }

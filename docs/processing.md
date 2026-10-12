@@ -47,6 +47,12 @@ offset, avoiding filter resets during correction transitions. `AxisProcessor`
 applies its immediate offset before filtering. Both normalize, apply deadzones
 and evaluate the curve afterwards.
 
+Desktop baseline modes are Off, Auto and By button. Auto requires a substantial
+press/release excursion and stable near-zero dwell; its capture band is limited
+to 0.5% of the calibration span. It is a heuristic, not evidence of physical
+release. By button uses an explicit held keyboard or controller binding.
+Neither mode recovers information clipped by firmware.
+
 ## Offline replay
 
 Replay opens no HID handles. Use input/output paths and bounds in the selected
