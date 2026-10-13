@@ -23,8 +23,16 @@ The SDK version is pinned in `global.json`; project references define the depend
   Driver writes run outside the processing lock. Source changes, configuration
   changes and stale input disarm output before the device is released.
 
+Native calibration owns a separate held HID session. It stops normal acquisition
+and virtual output, verifies identity and journals recovery before changing bounds.
+Restoration must complete before output resumes. Persistent Save is a separate command.
+
 `PedalRuntime` owns live input and automatic virtual output independently of graph
 refresh. Device checks inspect metadata without acquiring or feeding a virtual device.
+
+`DesktopServices` supplies application dependencies; tests inject substitutes.
+Desktop preferences are separate from pedal profiles. Tray actions use the same
+mode and profile handlers as the window.
 
 ## Input and native configuration
 
