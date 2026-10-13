@@ -13,5 +13,8 @@ preserves existing descriptors and never passes the upstream overwrite flag.
 After creation it inspects driver state again: helper exit zero alone does
 not establish readiness.
 
+Firmware tools and the reviewed vendor image are separate prerequisites; see
+[firmware](firmware.md). No firmware is programmed during startup or setup.
+
 SherpaAxis does not edit game configurations or hide physical devices.
 Driver installation and physical/simulator acceptance require separate testing.
