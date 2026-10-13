@@ -43,6 +43,8 @@ Command report 2 contains a little-endian 32-bit command padded to 17 bytes.
 Commands are LED off (0), LED on (1), enter bootloader (2) and Save (3).
 Writing bounds and saving them persistently are separate operations.
 
+See [firmware](firmware.md) for image validation and supported hardware.
+
 See [setup](setup.md) for device selection and installation.
 
 ## Build and validation
