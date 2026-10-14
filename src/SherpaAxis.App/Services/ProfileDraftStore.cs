@@ -45,20 +45,8 @@ public sealed class ProfileDraftStore(string path)
     {
         token.ThrowIfCancellationRequested();
         Validate(session);
-        var text = JsonSerializer.Serialize(session);
-        if (System.Text.Encoding.UTF8.GetByteCount(text) > MaximumBytes) { throw new InvalidDataException("Too many unsaved edits to store for recovery. Save or delete a profile."); }
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        var temporary = FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
-            {
-                var bytes = System.Text.Encoding.UTF8.GetBytes(text);
-                await stream.WriteAsync(bytes, token); await stream.FlushAsync(token);
-            }
-            token.ThrowIfCancellationRequested();
-            File.Move(temporary, FilePath, true);
-        }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(session);
+        if (bytes.Length > MaximumBytes) { throw new InvalidDataException("Too many unsaved edits to store for recovery. Save or delete a profile."); }
+        await AtomicFile.WriteAsync(FilePath, bytes, token);
     }
 }

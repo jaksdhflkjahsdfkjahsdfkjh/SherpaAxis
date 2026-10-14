@@ -210,16 +210,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     private static string Limit(string value) => value.Length > 60000 ? value[^60000..] : value;
     private async Task WriteAsync(FirmwareUpdateRecord record, CancellationToken token)
     {
-        Directory.CreateDirectory(DirectoryPath);
-        var path = Path.Combine(DirectoryPath, Guid.NewGuid().ToString("N") + ".tmp");
-        try
-        {
-            await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough | FileOptions.Asynchronous))
-            { await JsonSerializer.SerializeAsync(stream, record, JsonOptions, token).ConfigureAwait(false); await stream.FlushAsync(token).ConfigureAwait(false); }
-            File.Move(path, JournalPath, true);
-            // Keep an audit copy even after the blocking journal is cleared.
-            File.Copy(JournalPath, Path.Combine(Path.GetDirectoryName(record.StagedImagePath)!, "update-log.json"), true);
-        }
-        finally { if (File.Exists(path)) { File.Delete(path); } }
+        await AtomicFile.WriteAsync(JournalPath, JsonSerializer.SerializeToUtf8Bytes(record, JsonOptions), token).ConfigureAwait(false);
+        File.Copy(JournalPath, Path.Combine(Path.GetDirectoryName(record.StagedImagePath)!, "update-log.json"), true);
     }
 }
