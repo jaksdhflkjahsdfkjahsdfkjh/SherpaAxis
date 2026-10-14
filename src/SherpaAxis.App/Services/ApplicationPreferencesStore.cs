@@ -30,16 +30,6 @@ public sealed class ApplicationPreferencesStore(string path) : IApplicationPrefe
     {
         ArgumentNullException.ThrowIfNull(preferences);
         if (preferences.SchemaVersion != 1) { throw new InvalidDataException("Unsupported settings file version."); }
-        var fullPath = Path.GetFullPath(path);
-        var directory = Path.GetDirectoryName(fullPath)!;
-        Directory.CreateDirectory(directory);
-        var temporary = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".tmp");
-        try
-        {
-            await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(preferences, JsonOptions), cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, fullPath, overwrite: true);
-        }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        await AtomicFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(preferences, JsonOptions), cancellationToken);
     }
 }

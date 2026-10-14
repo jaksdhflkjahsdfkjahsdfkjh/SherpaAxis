@@ -13,20 +13,7 @@ public sealed class HardwareRecoveryStore(string filePath) : IHardwareRecoverySt
     public async Task WriteAsync(HardwareRecoverySnapshot snapshot, CancellationToken cancellationToken)
     {
         Validate(snapshot);
-        var parent = Path.GetDirectoryName(FilePath)!;
-        Directory.CreateDirectory(parent);
-        var temporary = Path.Combine(parent, $".hardware-{Guid.NewGuid():N}.tmp");
-        try
-        {
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
-            {
-                await JsonSerializer.SerializeAsync(stream, snapshot, Options, cancellationToken).ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, FilePath, true);
-        }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        await AtomicFile.WriteAsync(FilePath, JsonSerializer.SerializeToUtf8Bytes(snapshot, Options), cancellationToken).ConfigureAwait(false);
     }
 
     public Task ClearAsync(CancellationToken cancellationToken)

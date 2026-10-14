@@ -34,6 +34,9 @@ refresh. Device checks inspect metadata without acquiring or feeding a virtual d
 Desktop preferences are separate from pedal profiles. Tray actions use the same
 mode and profile handlers as the window.
 
+`AtomicFile` writes a temporary file beside its destination, flushes it and promotes
+it by replacement. Recovery transactions determine when a durable write is required.
+
 ## Input and native configuration
 
 FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is
