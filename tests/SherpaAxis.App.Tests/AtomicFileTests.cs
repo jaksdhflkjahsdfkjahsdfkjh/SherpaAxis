@@ -17,7 +17,7 @@ public sealed class AtomicFileTests
             await AtomicFile.WriteAsync(path, Encoding.UTF8.GetBytes("short"));
             Assert.Equal("short", await File.ReadAllTextAsync(path));
             using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => AtomicFile.WriteAsync(path, Encoding.UTF8.GetBytes("replacement"), cancelled.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => AtomicFile.WriteAsync(path, Encoding.UTF8.GetBytes("replacement"), token: cancelled.Token));
             Assert.Equal("short", await File.ReadAllTextAsync(path));
             Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(path)!, "*.tmp"));
         }

@@ -210,7 +210,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     private static string Limit(string value) => value.Length > 60000 ? value[^60000..] : value;
     private async Task WriteAsync(FirmwareUpdateRecord record, CancellationToken token)
     {
-        await AtomicFile.WriteAsync(JournalPath, JsonSerializer.SerializeToUtf8Bytes(record, JsonOptions), token).ConfigureAwait(false);
+        await AtomicFile.WriteAsync(JournalPath, JsonSerializer.SerializeToUtf8Bytes(record, JsonOptions), token: token).ConfigureAwait(false);
         File.Copy(JournalPath, Path.Combine(Path.GetDirectoryName(record.StagedImagePath)!, "update-log.json"), true);
     }
 }
