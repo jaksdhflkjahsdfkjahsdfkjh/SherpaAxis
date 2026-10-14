@@ -4,7 +4,7 @@ namespace SherpaAxis.App.Services;
 
 internal static class AtomicFile
 {
-    public static async Task WriteAsync(string path, ReadOnlyMemory<byte> content, CancellationToken token = default)
+    public static async Task WriteAsync(string path, ReadOnlyMemory<byte> content, bool overwrite = true, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
         var destination = Path.GetFullPath(path);
@@ -20,7 +20,7 @@ internal static class AtomicFile
                 await stream.FlushAsync(token).ConfigureAwait(false);
             }
             token.ThrowIfCancellationRequested();
-            File.Move(temporary, destination, overwrite: true);
+            File.Move(temporary, destination, overwrite);
         }
         finally
         {

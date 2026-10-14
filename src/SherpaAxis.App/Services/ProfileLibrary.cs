@@ -31,7 +31,7 @@ public sealed class ProfileLibrary(string directory)
     }
     private static readonly string[] SelectionMarkers = ["active-profile", "autoload-profile"];
     public static string DefaultDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "Profiles");
-    public string DirectoryPath { get; } = Path.GetFullPath(directory);
+    public string DirectoryPath { get; } = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
     public IReadOnlyList<string> LoadErrors { get; private set; } = [];
 
     public async Task<IReadOnlyList<(string Path, PedalProfile Profile)>> LoadAsync(CancellationToken cancellationToken = default)
@@ -55,7 +55,7 @@ public sealed class ProfileLibrary(string directory)
     public async Task<string> SaveAsync(PedalProfile profile, string? existingPath = null, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(DirectoryPath);
-        var path = existingPath is not null && Path.GetDirectoryName(Path.GetFullPath(existingPath)) == DirectoryPath
+        var path = existingPath is not null && IsLibraryPath(existingPath)
             ? existingPath : Path.Combine(DirectoryPath, Guid.NewGuid().ToString("N") + ".json");
         await ProfileStore.SaveAsync(path, profile, overwrite: true, cancellationToken: cancellationToken);
         await RememberAsync(path, cancellationToken);
@@ -78,40 +78,56 @@ public sealed class ProfileLibrary(string directory)
             { markers.Add(marker); }
         }
         cancellationToken.ThrowIfCancellationRequested();
-        File.Delete(fullPath);
-        foreach (var marker in markers) { File.Delete(marker); }
+        var cleared = new List<string>();
+        try
+        {
+            foreach (var marker in markers) { File.Delete(marker); cleared.Add(marker); }
+            File.Delete(fullPath);
+        }
+        catch
+        {
+            foreach (var marker in cleared)
+            {
+                if (File.Exists(marker)) { continue; }
+                try { await AtomicFile.WriteAsync(marker, System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(fullPath)), overwrite: false, token: CancellationToken.None); }
+                catch (IOException) when (File.Exists(marker)) { }
+            }
+            throw;
+        }
     }
 
     public async Task RememberAsync(string path, CancellationToken cancellationToken = default)
     {
-        if (!Directory.Exists(DirectoryPath) || Path.GetDirectoryName(Path.GetFullPath(path)) != DirectoryPath) { return; }
-        var temporary = Path.Combine(DirectoryPath, Guid.NewGuid().ToString("N") + ".tmp");
-        try
-        {
-            await File.WriteAllTextAsync(temporary, Path.GetFileName(path), cancellationToken);
-            File.Move(temporary, Path.Combine(DirectoryPath, "active-profile"), overwrite: true);
-        }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        if (!Directory.Exists(DirectoryPath) || !IsLibraryPath(path)) { return; }
+        await AtomicFile.WriteAsync(Path.Combine(DirectoryPath, "active-profile"),
+            System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(path)), token: cancellationToken);
     }
 
-    public async Task<string?> SelectedPathAsync(CancellationToken cancellationToken = default)
-    {
-        var marker = Path.Combine(DirectoryPath, "active-profile");
-        if (!File.Exists(marker) || new FileInfo(marker).Length > 4096) { return null; }
-        var name = await File.ReadAllTextAsync(marker, cancellationToken);
-        return name == Path.GetFileName(name) && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-            ? Path.Combine(DirectoryPath, name) : null;
-    }
+    public Task<string?> SelectedPathAsync(CancellationToken cancellationToken = default) =>
+        ReadSelectionAsync("active-profile", cancellationToken);
 
     public async Task<string?> AutoLoadPathAsync(CancellationToken cancellationToken = default)
     {
-        var marker = Path.Combine(DirectoryPath, "autoload-profile");
-        if (!File.Exists(marker) || new FileInfo(marker).Length > 4096) { return null; }
-        var name = await File.ReadAllTextAsync(marker, cancellationToken);
-        if (name != Path.GetFileName(name) || !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) { return null; }
-        var path = Path.Combine(DirectoryPath, name);
-        return File.Exists(path) ? path : null;
+        var path = await ReadSelectionAsync("autoload-profile", cancellationToken);
+        return path is not null && File.Exists(path) ? path : null;
     }
+
+    private async Task<string?> ReadSelectionAsync(string markerName, CancellationToken token)
+    {
+        var marker = Path.Combine(DirectoryPath, markerName);
+        if (!File.Exists(marker)) { return null; }
+        await using var stream = new FileStream(marker, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (stream.Length > 4096) { return null; }
+        using var reader = new StreamReader(stream);
+        var name = await reader.ReadToEndAsync(token);
+        return name == Path.GetFileName(name) && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
+            && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? Path.Combine(DirectoryPath, name) : null;
+    }
+
+    private bool IsLibraryPath(string path) =>
+        string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), DirectoryPath, StringComparison.OrdinalIgnoreCase)
+        && path.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+
     public async Task SetAutoLoadAsync(string? path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -120,14 +136,6 @@ public sealed class ProfileLibrary(string directory)
         var fullPath = Path.GetFullPath(path);
         if (!string.Equals(Path.GetDirectoryName(fullPath), DirectoryPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
         { throw new ArgumentException("Auto-load requires a saved profile in this library.", nameof(path)); }
-        Directory.CreateDirectory(DirectoryPath);
-        var temporary = Path.Combine(DirectoryPath, Guid.NewGuid().ToString("N") + ".tmp");
-        try
-        {
-            await File.WriteAllTextAsync(temporary, Path.GetFileName(fullPath), cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, marker, overwrite: true);
-        }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        await AtomicFile.WriteAsync(marker, System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(fullPath)), token: cancellationToken);
     }
 }

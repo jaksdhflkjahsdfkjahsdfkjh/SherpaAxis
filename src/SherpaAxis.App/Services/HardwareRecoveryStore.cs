@@ -13,7 +13,7 @@ public sealed class HardwareRecoveryStore(string filePath) : IHardwareRecoverySt
     public async Task WriteAsync(HardwareRecoverySnapshot snapshot, CancellationToken cancellationToken)
     {
         Validate(snapshot);
-        await AtomicFile.WriteAsync(FilePath, JsonSerializer.SerializeToUtf8Bytes(snapshot, Options), cancellationToken).ConfigureAwait(false);
+        await AtomicFile.WriteAsync(FilePath, JsonSerializer.SerializeToUtf8Bytes(snapshot, Options), token: cancellationToken).ConfigureAwait(false);
     }
 
     public Task ClearAsync(CancellationToken cancellationToken)

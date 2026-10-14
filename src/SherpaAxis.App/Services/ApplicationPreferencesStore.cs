@@ -30,6 +30,6 @@ public sealed class ApplicationPreferencesStore(string path) : IApplicationPrefe
     {
         ArgumentNullException.ThrowIfNull(preferences);
         if (preferences.SchemaVersion != 1) { throw new InvalidDataException("Unsupported settings file version."); }
-        await AtomicFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(preferences, JsonOptions), cancellationToken);
+        await AtomicFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(preferences, JsonOptions), token: cancellationToken);
     }
 }
