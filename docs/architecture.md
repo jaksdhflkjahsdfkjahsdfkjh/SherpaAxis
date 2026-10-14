@@ -32,7 +32,7 @@ refresh. Device checks inspect metadata without acquiring or feeding a virtual d
 
 `DesktopServices` supplies application dependencies; tests inject substitutes.
 Desktop preferences are separate from pedal profiles. Tray actions use the same
-mode and profile handlers as the window.
+mode and profile handlers as the window. A named mutex prevents duplicate instances.
 
 `AtomicFile` writes a temporary file beside its destination, flushes it and promotes
 it by replacement. Recovery transactions determine when a durable write is required.

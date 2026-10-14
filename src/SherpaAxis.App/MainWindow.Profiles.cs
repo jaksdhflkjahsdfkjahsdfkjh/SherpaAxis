@@ -1,110 +1,123 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using Microsoft.Win32;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Services;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
-    private readonly SemaphoreSlim profileSelectionGate = new(1, 1);
-    private readonly List<Task> profileSelections = [];
-    private void StarterProfilesClick(object sender, RoutedEventArgs e) => Run(() =>
+    private Task? libraryInitialization;
+    private string? autoLoadProfilePath;
+    private int autoLoadRevision;
+    private void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        StopHold();
-        foreach (var profile in StarterProfiles.Create()) { viewModel.Load(profile); }
-        viewModel.ShowMessage("Four starter profile tabs added. Device-axis calibration defaults; review curves and Save to library to keep a tab.");
-    });
-    private async void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (viewModel is not null && sender is ComboBox { SelectedItem: ProfileTab tab })
-        {
-            Run(() => { StopHold(); viewModel.SwitchProfile(tab); });
-            if (tab.FilePath is { } path && viewModel.CanEdit && !closing)
-            {
-                var operation = RememberProfileAsync(tab, path);
-                profileSelections.Add(operation);
-                try { await operation; }
-                finally { profileSelections.Remove(operation); }
-            }
-        }
+        if (viewModel is not null && viewModel.CanEdit && sender is ComboBox { SelectedItem: ProfileTab tab })
+        { Run(() => { StopHold(); viewModel.SwitchProfile(tab); }); }
     }
-
-    private async Task RememberProfileAsync(ProfileTab tab, string path)
+    private async void LoadLibrary(object sender, RoutedEventArgs e)
+    { Loaded -= LoadLibrary; await InitializeLibraryAsync(); }
+    private Task InitializeLibraryAsync() => libraryInitialization ??= RunAsync(async () =>
+    {
+        var profiles = await library.LoadAsync(lifetime.Token);
+        autoLoadProfilePath = await library.AutoLoadPathAsync(lifetime.Token);
+        foreach (var (path, profile) in profiles) { viewModel.AddSavedProfile(profile, path); }
+        var startup = viewModel.ProfileTabs.FirstOrDefault(tab => string.Equals(tab.FilePath, autoLoadProfilePath, StringComparison.OrdinalIgnoreCase) && tab.FilePath is not null);
+        if (startup is not null) { viewModel.SwitchProfile(startup); }
+        viewModel.SetAutoLoadPath(autoLoadProfilePath);
+        if (library.LoadErrors.Count > 0)
+        {
+            desktop.Log?.Write("profile-load", string.Join("; ", library.LoadErrors));
+            viewModel.ShowMessage("Some profiles could not be loaded: " + string.Join("; ", library.LoadErrors));
+        }
+    });
+    private async void AutoLoadProfileClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkbox) { await SetSelectedAutoLoadAsync(checkbox.IsChecked == true); }
+    }
+    internal Task SetSelectedAutoLoadAsync(bool enabled) => RunAsync(async () =>
     {
         try
         {
-            await profileSelectionGate.WaitAsync(lifetime.Token);
-            try { if (viewModel.SelectedProfile == tab) { await library.RememberAsync(path, lifetime.Token); } }
-            finally { profileSelectionGate.Release(); }
+            var selected = viewModel.SelectedProfile!;
+            if (enabled && selected.FilePath is null)
+            {
+                var (profile, _) = viewModel.ValidateEditors();
+                selected.FilePath = await library.SaveAsync(profile, cancellationToken: lifetime.Token);
+                viewModel.MarkSelectedSaved();
+            }
+            var next = enabled ? selected.FilePath : null;
+            await library.SetAutoLoadAsync(next, lifetime.Token);
+            autoLoadProfilePath = next;
+            autoLoadRevision++;
+            viewModel.ShowMessage(enabled ? $"{selected.Name} will load automatically at startup." : "Profile auto-load is off.");
         }
-        catch (Exception exception) when (IsExpected(exception))
-        {
-            if (!closing) { viewModel.ShowMessage($"Profile selected; could not remember selection: {exception.Message}"); }
-        }
+        finally { viewModel.SetAutoLoadPath(autoLoadProfilePath); }
+    });
+    private async void SaveLibraryClick(object sender, RoutedEventArgs e) => await RunAsync(SaveSelectedProfileAsync);
+    internal async Task SaveSelectedProfileAsync()
+    {
+        var (profile, _) = viewModel.ValidateEditors();
+        var selected = viewModel.SelectedProfile!;
+        selected.FilePath = await library.SaveAsync(profile, selected.FilePath, lifetime.Token);
+        viewModel.MarkSelectedSaved();
+        viewModel.SetAutoLoadPath(autoLoadProfilePath);
+        StopHold(); viewModel.Apply();
+        viewModel.ShowMessage("Profile saved and applied.");
+    }
+    private void ProfileMenuClick(object sender, RoutedEventArgs e)
+    {
+        if (ProfileMoreButton.ContextMenu is not { } menu) { return; }
+        menu.PlacementTarget = ProfileMoreButton; menu.Placement = PlacementMode.Bottom; menu.IsOpen = true;
     }
     private void DuplicateProfileClick(object sender, RoutedEventArgs e) => Run(() =>
     {
         var (profile, _) = viewModel.ValidateEditors();
-        StopHold();
-        viewModel.Load(new PedalProfile(profile.Name.Length <= 73 ? profile.Name + " (copy)" : "Profile copy", profile.Axes));
+        viewModel.Load(new(profile.Name.Length <= 73 ? profile.Name + " (copy)" : "Profile copy", profile.Axes));
     });
-    private async void SaveLibraryClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
+    private async void RenameProfileClick(object sender, RoutedEventArgs e)
     {
-        var (profile, _) = viewModel.ValidateEditors();
-        var tab = viewModel.SelectedProfile!;
-        tab.FilePath = await library.SaveAsync(profile, tab.FilePath, lifetime.Token);
-        StopHold();
-        viewModel.Apply();
-        viewModel.ShowMessage("Profile saved to the local library. It will be available as a tab after restart.");
-    });
-    private async void LoadLibrary(object sender, RoutedEventArgs e)
-    {
-        Loaded -= LoadLibrary;
-        await RunAsync(async () =>
-        {
-            var profiles = await library.LoadAsync(lifetime.Token);
-            var selected = await library.SelectedPathAsync(lifetime.Token);
-            foreach (var (path, profile) in profiles)
-            {
-                viewModel.Load(profile);
-                viewModel.SelectedProfile!.FilePath = path;
-            }
-            var active = viewModel.ProfileTabs.FirstOrDefault(tab => tab.FilePath == selected);
-            if (active is not null) { viewModel.SwitchProfile(active); }
-            if (library.LoadErrors.Count > 0) { viewModel.ShowMessage("Some library profiles could not be loaded: " + string.Join("; ", library.LoadErrors)); }
-        });
+        var name = AskProfileName("Rename profile", viewModel.ProfileName);
+        if (name is null) { return; }
+        await RunAsync(async () => { viewModel.ProfileName = name; await SaveSelectedProfileAsync(); });
     }
+    private string? AskProfileName(string title, string initial)
+    {
+        var dialog = new ProfileNameDialog(this, title, initial);
+        return dialog.ShowDialog() == true ? dialog.ProfileName : null;
+    }
+    private async void DeleteProfileClick(object sender, RoutedEventArgs e) => await DeleteSelectedProfileAsync();
+    internal Task DeleteSelectedProfileAsync() => RunAsync(async () =>
+    {
+        var selected = viewModel.SelectedProfile;
+        if (selected is null || viewModel.IsCalibrationMode) { return; }
+        if (selected.FilePath is { } path) { await library.DeleteAsync(path, lifetime.Token); }
+        StopHold();
+        viewModel.DetachSelectedProfile();
+        if (selected.FilePath is not null && string.Equals(selected.FilePath, autoLoadProfilePath, StringComparison.OrdinalIgnoreCase))
+        { autoLoadProfilePath = null; }
+        viewModel.SetAutoLoadPath(autoLoadProfilePath);
+        viewModel.ShowMessage($"Deleted profile: {selected.Name}.");
+    });
     private async void OpenProfileClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "SherpaAxis profile (*.json)|*.json", Title = "Open processing profile" };
-        if (dialog.ShowDialog(this) == true)
-        {
-            await RunAsync(async () =>
-            {
-                var profile = await ProfileStore.LoadAsync(dialog.FileName, lifetime.Token);
-                StopHold();
-                viewModel.Load(profile);
-            });
-        }
+        var dialog = new OpenFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis profile (*.json)|*.json"), Title = Localization.Localizer.Translate("Import profile") };
+        if (dialog.ShowDialog(this) != true) { return; }
+        await RunAsync(async () => { var profile = await ProfileStore.LoadAsync(dialog.FileName, lifetime.Token); StopHold(); viewModel.Load(profile); });
     }
-
     private async void SaveProfileClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = "SherpaAxis profile (*.json)|*.json", DefaultExt = ".json", FileName = "pedals.json", Title = "Save processing profile", OverwritePrompt = true };
-        if (dialog.ShowDialog(this) == true)
+        var dialog = new SaveFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis profile (*.json)|*.json"), DefaultExt = ".json", FileName = "pedals.json", Title = Localization.Localizer.Translate("Export profile"), OverwritePrompt = true };
+        if (dialog.ShowDialog(this) != true) { return; }
+        await RunAsync(async () =>
         {
-            await RunAsync(async () =>
-            {
-                var (profile, _) = viewModel.ValidateEditors();
-                await ProfileStore.SaveAsync(dialog.FileName, profile, overwrite: true, cancellationToken: lifetime.Token);
-                StopHold();
-                viewModel.Apply();
-                viewModel.ShowMessage($"Saved {Path.GetFileName(dialog.FileName)} and applied software settings. Runtime correction is not saved.");
-            });
-        }
+            var (profile, _) = viewModel.ValidateEditors();
+            await ProfileStore.SaveAsync(dialog.FileName, profile, overwrite: true, cancellationToken: lifetime.Token);
+            viewModel.ShowMessage($"Exported {Path.GetFileName(dialog.FileName)}.");
+        });
     }
-
 }

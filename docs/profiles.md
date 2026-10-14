@@ -55,3 +55,7 @@ processing overrides when a profile is supplied.
 The desktop library keeps named profiles separate from runtime state.
 Apply activates editor settings; saving persists the profile. Display names
 are not trusted as filesystem paths.
+
+Auto-load designates one saved startup profile. Selecting another removes
+the previous designation. Creating or editing a profile does not apply it
+automatically on a future startup without that selection.

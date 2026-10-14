@@ -4,6 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
@@ -13,8 +14,98 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Tests;
 
+[Collection("WPF UI")]
 public sealed class UiControlTests
 {
+    private static readonly string[] InvalidGraphWindows = ["", "0", "-1", "NaN", "61", "abc"];
+    [Fact]
+    public Task NewProfileButtonCreatesAndSelectsDefaultsWithoutDiscardingThePreviousDraft() => OnSta(window =>
+    {
+        var model = Assert.IsType<DashboardViewModel>(window.DataContext);
+        var previous = model.SelectedProfile!;
+        model.Editor.Minimum = "unfinished draft";
+        var count = model.ProfileTabs.Count;
+        Assert.IsType<Button>(window.FindName("NewProfileButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(count + 1, model.ProfileTabs.Count);
+        var created = model.SelectedProfile!;
+        Assert.NotSame(previous, created);
+        Assert.Equal("new profile", created.Name);
+        Assert.Equal("0", model.Editor.Minimum);
+        Assert.Equal("Off", model.FilterPreset);
+        Assert.Null(created.FilePath);
+        model.SwitchProfile(previous);
+        Assert.Equal("unfinished draft", model.Editor.Minimum);
+        model.SwitchProfile(created);
+        Assert.Equal("new profile", model.ProfileName);
+        Assert.Equal("0", model.Editor.Minimum);
+    });
+
+    [Fact]
+    public Task GraphWindowAcceptsKeyboardInputAndKeepsTheLastValidValue() => OnSta(window =>
+    {
+        var content = (FrameworkElement)window.Content;
+        content.Measure(new Size(1340, 900)); content.Arrange(new Rect(0, 0, 1340, 900)); content.UpdateLayout();
+        var model = Assert.IsType<DashboardViewModel>(window.DataContext);
+        var input = Assert.IsType<TextBox>(window.FindName("GraphWindowInput"));
+        Assert.Equal("10", input.Text);
+        using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("Graph keyboard test")
+        { Width = 1, Height = 1, WindowStyle = 0 });
+        void Enter(string value)
+        {
+            input.SetCurrentValue(TextBox.TextProperty, value);
+            input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent });
+        }
+        Enter("2.5"); Assert.Equal(2.5, model.GraphWindow);
+        foreach (var value in InvalidGraphWindows)
+        {
+            Enter(value); Assert.Equal(2.5, model.GraphWindow); Assert.True(Validation.GetHasError(input));
+        }
+        Enter("20"); Assert.Equal(20, model.GraphWindow); Assert.False(Validation.GetHasError(input));
+        var pause = Assert.IsType<Button>(window.FindName("GraphPauseButton"));
+        var reset = Assert.IsType<Button>(window.FindName("GraphResetButton"));
+        var pausePosition = pause.TransformToAncestor(content).Transform(new Point());
+        var inputPosition = input.TransformToAncestor(content).Transform(new Point());
+        Assert.Equal(inputPosition.Y, pausePosition.Y, 1);
+        Assert.True(pausePosition.X > inputPosition.X);
+        Assert.True(reset.TransformToAncestor(content).Transform(new Point()).X > pausePosition.X);
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task FocusedClosedDropdownIgnoresWheelAndLetsThePanelReceiveIt(bool editable) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var combo = new SherpaAxis.App.Controls.StableComboBox
+        { ItemsSource = Enumerable.Range(0, 30).Select(index => $"Choice {index}").ToArray(), SelectedIndex = 10, IsEditable = editable, MaxDropDownHeight = 100 };
+        var parent = new StackPanel(); parent.Children.Add(combo);
+        var host = new Window { Content = parent, Width = 300, Height = 200, Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            host.Show(); combo.Focus();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.True(combo.IsKeyboardFocusWithin);
+            var panelReceivedWheel = 0;
+            parent.MouseWheel += (_, _) => panelReceivedWheel++;
+            foreach (var delta in new[] { 120, -120 })
+            {
+                var wheel = new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, delta) { RoutedEvent = Mouse.PreviewMouseWheelEvent, Source = combo };
+                InputManager.Current.ProcessInput(wheel);
+                Assert.True(wheel.Handled);
+                Assert.Equal(10, combo.SelectedIndex);
+            }
+            Assert.Equal(2, panelReceivedWheel);
+            combo.IsDropDownOpen = true;
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var popup = Assert.IsType<Popup>(combo.Template.FindName("PART_Popup", combo));
+            var scroll = Descendants(popup.Child).OfType<ScrollViewer>().First();
+            scroll.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -120) { RoutedEvent = Mouse.MouseWheelEvent });
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.True(scroll.VerticalOffset > 0);
+            Assert.Equal(10, combo.SelectedIndex);
+        }
+        finally { combo.IsDropDownOpen = false; host.Close(); }
+    });
+
     [Fact]
     public Task HintsTemplatesFilterControlsAndTypingSurviveRefresh() => OnSta(window =>
     {
@@ -38,7 +129,7 @@ public sealed class UiControlTests
                 Assert.True(parameter.Focusable);
             }
             Assert.All(controls.OfType<Button>(), button => { Assert.True(button.Focusable); Assert.NotNull(button.FocusVisualStyle); });
-            Assert.All(controls.OfType<ComboBox>(), combo => Assert.IsType<Popup>(combo.Template.FindName("PART_Popup", combo)));
+            Assert.All(controls.OfType<ComboBox>(), combo => { combo.ApplyTemplate(); Assert.IsType<Popup>(combo.Template.FindName("PART_Popup", combo)); });
             var graphChoice = Find<ComboBox>(controls, "Graph pedals");
             var graphPopup = Assert.IsType<Popup>(graphChoice.Template.FindName("PART_Popup", graphChoice));
             var popupContent = Assert.IsAssignableFrom<FrameworkElement>(graphPopup.Child);
@@ -76,12 +167,12 @@ public sealed class UiControlTests
             sampleWindow.SetCurrentValue(ComboBox.TextProperty, "7");
             sampleWindow.GetBindingExpression(ComboBox.TextProperty)!.UpdateSource();
             model.Apply();
-            var name = Find<TextBox>(controls, "Profile name");
-            name.SetCurrentValue(TextBox.TextProperty, "Still typing");
+            var name = Find<TextBox>(controls, "Software minimum");
+            name.SetCurrentValue(TextBox.TextProperty, "1.23456");
             name.CaretIndex = 5;
             name.Select(2, 4);
             for (var i = 0; i < 100; i++) { model.Refresh(); }
-            Assert.Equal("Still typing", name.Text);
+            Assert.Equal("1.23456", name.Text);
             Assert.Equal(2, name.SelectionStart);
             Assert.Equal(4, name.SelectionLength);
             var first = model.SelectedProfile;
@@ -90,7 +181,7 @@ public sealed class UiControlTests
             Assert.Same(model.SelectedProfile, profileSelector.SelectedItem);
             profileSelector.SetCurrentValue(Selector.SelectedItemProperty, first);
             Assert.Same(first, model.SelectedProfile);
-            Assert.Equal("Still typing", model.ProfileName);
+            Assert.Equal("1.23456", model.Editor.Minimum);
             Assert.Equal("MedianExponential", model.Editor.FilterKind);
             Assert.Equal("7", model.Editor.FilterWindowSamples);
             Assert.True(model.CanEdit);
@@ -124,11 +215,14 @@ public sealed class UiControlTests
             Assert.DoesNotContain("Clutch bite", DashboardViewModel.CurveKinds);
             Assert.DoesNotContain(controls.OfType<Expander>(), expander => Equals(expander.Header, "Curve details"));
             Assert.DoesNotContain(controls, c => AutomationProperties.GetName(c) == "Power exponent");
-            var calibration = Assert.Single(controls.OfType<Button>(), b => Equals(b.Content, "Calibrate"));
-            calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.False(model.IsCalibrating);
-            Assert.Contains("fresh readings", model.CalibrationInfo, StringComparison.Ordinal);
-            model.CancelCalibration();
+            Assert.Equal("Calibration", Assert.IsType<Button>(window.FindName("CalibrationModeButton")).Content);
+            Assert.False(model.IsCalibrationMode);
+            Assert.Null(window.FindName("WorkspaceTabs"));
+            Assert.DoesNotContain(controls.OfType<GroupBox>(), group => Equals(group.Header, "Calibration"));
+            Assert.Null(window.FindName("CalibrationButton"));
+            Assert.Null(window.FindName("SoftwareCalibrationButton"));
+            Assert.Null(window.FindName("SoftwareInputMapping"));
+            Assert.DoesNotContain(controls.OfType<Button>(), button => button.Content is "Calibrate software" or "Cancel calibration" or "Use current" or "Use observed range");
             var pause = Assert.IsType<Button>(window.FindName("GraphPauseButton"));
             pause.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.True(model.GraphPaused);
@@ -151,39 +245,43 @@ public sealed class UiControlTests
     });
 
     [Fact]
-    public Task CalibrationButtonCapturesBetweenRefreshesAndDoneActivatesTheRange()
+    public Task ResettingAdvancedInputMappingPreservesThePedalsOtherProfileSettings()
     {
         var engine = new DashboardEngine();
         return OnSta(engine, window =>
         {
+            var mapping = Assert.IsType<Expander>(window.FindName("AdvancedInputMapping"));
+            Assert.False(mapping.IsExpanded);
+            mapping.IsExpanded = true;
             var content = (FrameworkElement)window.Content;
             content.Measure(new Size(1340, 900));
             content.Arrange(new Rect(0, 0, 1340, 900));
             content.UpdateLayout();
             var model = Assert.IsType<DashboardViewModel>(window.DataContext);
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 300, 0)));
-            model.Refresh();
-            model.GraphPaused = true;
-            var button = Assert.IsType<Button>(window.FindName("CalibrationButton"));
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.True(model.IsCalibrating);
-            Assert.Equal("Done", button.Content);
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.002), 1, new(0, 100, 0)));
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.004), 1, new(0, 500, 0)));
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.006), 1, new(0, 300, 0)));
-            model.Refresh();
-            Assert.Equal("0% = 100\n100% = 500\nInput: 300", model.CalibrationRangeInfo);
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.Equal("Calibrate", button.Content);
-            Assert.False(model.IsCalibrating);
-            Assert.Equal("0% = 100\n100% = 500", model.CalibrationRangeInfo);
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.008), 1, new(0, 300, 0)));
-            model.Refresh();
-            Assert.Equal(50, model.Cards[1].OutputPercent);
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            var cancel = Descendants((FrameworkElement)window.Content).OfType<Button>().Single(b => Equals(b.Content, "Cancel calibration"));
-            cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.False(model.IsCalibrating);
+            model.Editor.Minimum = "100";
+            model.Editor.Maximum = "500";
+            model.Editor.Inverted = true;
+            model.Editor.LowerDeadzone = "5";
+            model.SetCurvePreset(PedalAxis.Brake, "Progressive");
+            model.SetFilterPreset("Smooth");
+            var before = model.ValidateEditors().Profile;
+            Descendants(content).OfType<Button>().Single(button => Equals(button.Content, "Reset input mapping"))
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var after = model.ValidateEditors().Profile;
+            var brake = after.Axes[PedalAxis.Brake];
+            Assert.Equal(0, brake.Calibration.Minimum);
+            Assert.Equal(DashboardEngine.DeviceMaximum(PedalAxis.Brake), brake.Calibration.Maximum);
+            Assert.False(brake.Calibration.Inverted);
+            Assert.Equal(before.Axes[PedalAxis.Brake].Deadzone.Lower, brake.Deadzone.Lower);
+            Assert.Equal(before.Axes[PedalAxis.Brake].Deadzone.Upper, brake.Deadzone.Upper);
+            Assert.Equal("Progressive", model.Editor.CurveKind);
+            Assert.Equal("Smooth", model.FilterPreset);
+            foreach (var axis in new[] { PedalAxis.Throttle, PedalAxis.Clutch })
+            {
+                Assert.Equal(before.Axes[axis].Calibration.Minimum, after.Axes[axis].Calibration.Minimum);
+                Assert.Equal(before.Axes[axis].Calibration.Maximum, after.Axes[axis].Calibration.Maximum);
+                Assert.Equal(before.Axes[axis].Calibration.Inverted, after.Axes[axis].Calibration.Inverted);
+            }
         });
     }
 
@@ -199,7 +297,7 @@ public sealed class UiControlTests
         {
             try
             {
-                var window = new MainWindow(engine);
+                var window = new MainWindow(engine, desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
                 try { check(window); }
                 finally { window.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
                 done.SetResult();

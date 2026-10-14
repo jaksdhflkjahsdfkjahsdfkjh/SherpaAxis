@@ -8,6 +8,54 @@ namespace SherpaAxis.App.Tests;
 public sealed class GraphInteractionTests
 {
     [Fact]
+    public void WindowDefaultsToTenSecondsAndLongerWindowsRetainActualHistory()
+    {
+        var engine = new DashboardEngine();
+        var model = new DashboardViewModel(engine);
+        Assert.Equal(10, model.GraphWindow);
+        model.GraphWindow = 30;
+        for (var i = 0; i <= 1400; i++)
+        {
+            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(i * .025), 1, new(i % 100, i % 100, 0)));
+        }
+        model.Refresh();
+        var graph = SignalGraph.Prepare(model.PedalHistories, "Brake", "Input", false, model.GraphWindow);
+        Assert.Equal(30, graph.End - graph.Start);
+        Assert.False(graph.Lanes[0].Samples[0].IsPadding);
+        foreach (var invalid in new[] { 0, -.1, double.NaN, double.PositiveInfinity, 60.1 })
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => model.GraphWindow = invalid);
+            Assert.Equal(30, model.GraphWindow);
+        }
+    }
+
+    [Fact]
+    public void FilterDraftIndicatorTracksAppliedValuesPerPedalAndInvalidEdits()
+    {
+        var model = new DashboardViewModel(new DashboardEngine());
+        Assert.False(model.HasFilterDraft);
+        model.SetFilterPreset("Smooth");
+        Assert.True(model.HasFilterDraft);
+        model.Apply();
+        Assert.False(model.HasFilterDraft);
+        Assert.Equal("Filter settings applied", model.FilterApplyInfo);
+        model.Editor.FilterMilliseconds = "20.0";
+        Assert.False(model.HasFilterDraft);
+        model.Editor.FilterMilliseconds = "25";
+        Assert.True(model.HasFilterDraft);
+        model.SelectedAxis = PedalAxis.Throttle;
+        Assert.False(model.HasFilterDraft);
+        model.SelectedAxis = PedalAxis.Brake;
+        Assert.True(model.HasFilterDraft);
+        model.Editor.FilterMilliseconds = "invalid";
+        Assert.True(model.HasFilterDraft);
+        Assert.Throws<ArgumentException>(model.Apply);
+        Assert.True(model.HasFilterDraft);
+        model.SetFilterPreset("Smooth");
+        Assert.False(model.HasFilterDraft);
+    }
+
+    [Fact]
     public void StartupUsesACompleteWindowOfDisplayOnlyZeros()
     {
         PedalHistory[] history = [new(PedalAxis.Brake, [], "Off")];

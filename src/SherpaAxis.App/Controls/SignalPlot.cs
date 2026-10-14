@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -18,7 +19,7 @@ public sealed class SignalPlot : FrameworkElement
     public static readonly DependencyProperty ZoomProperty = DependencyProperty.Register(nameof(Zoom),
         typeof(bool), typeof(SignalPlot), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty WindowSecondsProperty = DependencyProperty.Register(nameof(WindowSeconds),
-        typeof(double), typeof(SignalPlot), new FrameworkPropertyMetadata(12d, FrameworkPropertyMetadataOptions.AffectsRender, ResetViewChanged),
+        typeof(double), typeof(SignalPlot), new FrameworkPropertyMetadata(10d, FrameworkPropertyMetadataOptions.AffectsRender, ResetViewChanged),
         value => value is double d && double.IsFinite(d) && d > 0);
     public static readonly DependencyProperty PausedProperty = DependencyProperty.Register(nameof(Paused),
         typeof(bool), typeof(SignalPlot), new FrameworkPropertyMetadata(false, (d, e) => { if (!(bool)e.NewValue) { ((SignalPlot)d).ResetZoom(); } }));
@@ -26,7 +27,15 @@ public sealed class SignalPlot : FrameworkElement
     private double? selectionStart;
     private double selectionEnd;
     public event EventHandler? InspectionStarted;
-    public SignalPlot() { Focusable = true; Cursor = Cursors.Cross; }
+    public SignalPlot()
+    {
+        Focusable = true; Cursor = Cursors.Cross;
+        PropertyChangedEventManager.AddHandler(Localization.Localizer.Instance, (_, _) =>
+        {
+            if (Dispatcher.CheckAccess()) { InvalidateVisual(); }
+            else if (!Dispatcher.HasShutdownStarted) { _ = Dispatcher.InvokeAsync(InvalidateVisual); }
+        }, nameof(Localization.Localizer.Language));
+    }
 
     public IReadOnlyList<PedalHistory>? Series { get => (IReadOnlyList<PedalHistory>?)GetValue(SeriesProperty); set => SetValue(SeriesProperty, value); }
     public string Pedal { get => (string)GetValue(PedalProperty); set => SetValue(PedalProperty, value); }
@@ -167,7 +176,7 @@ public sealed class SignalPlot : FrameworkElement
 
     private void Label(DrawingContext context, string text, double x, double y, Brush brush, double maximumWidth = double.PositiveInfinity)
     {
-        var formatted = new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+        var formatted = new FormattedText(Localization.Localizer.Translate(text), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             new Typeface("Segoe UI"), 10, brush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         if (double.IsFinite(maximumWidth)) { formatted.MaxTextWidth = Math.Max(1, maximumWidth); formatted.MaxLineCount = 1; formatted.Trimming = TextTrimming.CharacterEllipsis; }
         context.DrawText(formatted, new(x, y));
