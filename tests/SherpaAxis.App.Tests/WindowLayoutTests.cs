@@ -9,6 +9,7 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Tests;
 
+[Collection("WPF UI")]
 public sealed class WindowLayoutTests
 {
     [Theory]
@@ -21,13 +22,12 @@ public sealed class WindowLayoutTests
         {
             try
             {
-                var window = new MainWindow();
+                var window = new MainWindow(new SherpaAxis.App.Models.DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
                 try
                 {
                     Assert.Equal(WindowState.Maximized, window.WindowState);
                     var content = Assert.IsAssignableFrom<FrameworkElement>(window.Content);
-                    Assert.False(Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded);
-                    Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded = true;
+                    Assert.True(Assert.IsType<Expander>(window.FindName("CurvesSection")).IsExpanded);
                     content.Measure(new Size(width, height));
                     content.Arrange(new Rect(0, 0, width, height));
                     content.UpdateLayout();

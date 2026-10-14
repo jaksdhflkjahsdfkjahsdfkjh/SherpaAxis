@@ -53,6 +53,17 @@ public partial class MainWindow
         }
     }
 
+    private void CorrectionModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (viewModel is not null && sender is ComboBox { SelectedItem: string mode } && mode != viewModel.SelectedCorrectionMode)
+        { Run(() => viewModel.SetCorrectionMode(mode)); }
+    }
+    private void BindCorrectionClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new BindButtonDialog(this, buttons);
+        if (dialog.ShowDialog() == true && dialog.Binding is { } button) { Run(() => viewModel.BindCorrection(button)); }
+    }
+
     private void FilterValuesChanged(object sender, RoutedEventArgs e)
     {
         if (viewModel is null || filterRefreshPending || closing) { return; }
@@ -63,12 +74,19 @@ public partial class MainWindow
     private void FilterSelectionChanged(object sender, SelectionChangedEventArgs e) => FilterValuesChanged(sender, e);
     private void FilterFocusChanged(object sender, KeyboardFocusChangedEventArgs e) => FilterValuesChanged(sender, e);
 
-    private void ParameterFocused(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (viewModel is not null && e.NewFocus is FrameworkElement { ToolTip: string hint }) { viewModel.ContextHint = hint; }
-    }
-
     private void ToggleGraphPauseClick(object sender, RoutedEventArgs e) => viewModel.GraphPaused = !viewModel.GraphPaused;
+    private void GraphWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is TextBox input)
+        {
+            input.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+            e.Handled = true;
+        }
+    }
+    private void GraphModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (viewModel is not null && !viewModel.IsCalibrationMode && sender is ComboBox { SelectedItem: string mode }) { viewModel.GraphMode = mode; }
+    }
     private void ResetGraphZoomClick(object sender, RoutedEventArgs e) => MainSignalPlot.ResetZoom();
     private void GraphInspectionStarted(object? sender, EventArgs e) => viewModel.GraphPaused = true;
     private void FilterHelpClick(object sender, RoutedEventArgs e)

@@ -38,6 +38,38 @@ public sealed class PlaybackTests
         }
     }
 
+    [Fact]
+    public async Task ShutdownCancellationStopsInputAndPreventsStartingAnotherSource()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var starts = 0;
+        var engine = new DashboardEngine();
+        await using var source = new DashboardSource(engine);
+        using var lifetime = new CancellationTokenSource();
+        await source.StartAsync(Input, cancellationToken: lifetime.Token);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await lifetime.CancelAsync();
+        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await source.StopAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => source.StartAsync(Input, cancellationToken: lifetime.Token));
+        Assert.Equal(1, starts);
+        Assert.False(source.IsRunning);
+        Assert.All(engine.Snapshot(PedalAxis.Brake).Axes, axis => Assert.False(axis.IsFresh));
+
+        async IAsyncEnumerable<PedalMonitorEvent> Input([EnumeratorCancellation] CancellationToken token)
+        {
+            starts++;
+            try
+            {
+                yield return new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 100, 0));
+                started.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            finally { stopped.TrySetResult(); }
+        }
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("elapsed,input\n0,1\n")]

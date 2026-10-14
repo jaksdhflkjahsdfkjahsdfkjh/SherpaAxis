@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Services;
 using SherpaAxis.Core;
 using SherpaAxis.Profiles;
 
@@ -17,14 +18,16 @@ public sealed class DashboardViewModel : ObservableObject
     private ProfileTab? selectedProfile;
     private bool isCalibrating;
     public bool IsCalibrating => isCalibrating;
-    public string CalibrationButtonText => IsCalibrating ? "Done" : "Calibrate";
+    public string CalibrationButtonText => IsCalibrating ? "Done" : "Calibrate software";
 
     public DashboardViewModel(DashboardEngine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
         this.engine = engine;
         Load(applied);
-        ShowMessage("Start live input or open a capture. All editable settings affect the software preview; hardware calibration is separate.");
+        selectedProfile!.Recoverable = false;
+        MarkSelectedSaved();
+        ShowMessage("Connecting to the pedals automatically. Select a profile or tune the pedals; hardware calibration is separate.");
     }
 
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = Enum.GetValues<PedalAxis>().Select(axis => new AxisCardViewModel(axis)).ToArray();
@@ -40,26 +43,58 @@ public sealed class DashboardViewModel : ObservableObject
     ];
     public ObservableCollection<ProfileTab> ProfileTabs { get; } = [];
     public ProfileTab? SelectedProfile => selectedProfile;
+    private string? autoLoadPath;
+    public bool SelectedAutoLoad => selectedProfile?.FilePath is { } path && string.Equals(path, autoLoadPath, StringComparison.OrdinalIgnoreCase);
+    public void SetAutoLoadPath(string? path)
+    {
+        autoLoadPath = path;
+        foreach (var tab in ProfileTabs) { tab.AutoLoad = tab.FilePath is { } file && string.Equals(file, path, StringComparison.OrdinalIgnoreCase); }
+        Changed(nameof(SelectedAutoLoad));
+    }
+    public ProfileTab AddSavedProfile(PedalProfile profile, string path)
+    {
+        var tab = new ProfileTab { Name = profile.Name, FilePath = path };
+        var defaults = DashboardEngine.DefaultProfile();
+        foreach (var axis in AxisNames) { tab.Editors[axis] = AxisEditor.FromProfile(profile.Axes.TryGetValue(axis, out var settings) ? settings : defaults.Axes[axis]); }
+        ProfileTabs.Add(tab);
+        MarkSaved(tab);
+        return tab;
+    }
     public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
     public IReadOnlyList<PlotSample> DraftCurve { get; private set; } = [];
-    public string CalibrationInfo { get; private set; } = "Start input, then Calibrate. Release and press this pedal through its range; Done applies the captured bounds.";
+    public string CalibrationInfo { get; private set; } = "Start input, then Calibrate software. Done maps the captured controller output to 0–100% for this profile.";
     public string CalibrationRangeInfo { get; private set; } = "";
-    public static IReadOnlyList<double> PlaybackSpeeds { get; } = [1, 5, 20];
-    public double PlaybackSpeed { get; set; } = 1;
     private bool canEdit = true;
-    public bool CanEdit { get => canEdit; set => Set(ref canEdit, value); }
-    private bool canRecord;
-    public bool CanRecord { get => canRecord; set => Set(ref canRecord, value); }
-    private bool canFinishRecording;
-    public bool CanFinishRecording { get => canFinishRecording; set => Set(ref canFinishRecording, value); }
-    private string recordingInfo = "Not recording";
-    public string RecordingInfo { get => recordingInfo; set => Set(ref recordingInfo, value); }
-    private string outputInfo = "Output disabled";
+    public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); } } }
+    private SidePanelMode panelMode;
+    private bool isSwitchingMode;
+    private HardwarePedalViewModel? hardwareDisplay;
+    public SidePanelMode PanelMode
+    {
+        get => panelMode;
+        set
+        {
+            if (Set(ref panelMode, value))
+            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(CanTune)); NotifyDisplay(); }
+        }
+    }
+    public bool IsCalibrationMode { get => PanelMode == SidePanelMode.Calibration; set => PanelMode = value ? SidePanelMode.Calibration : SidePanelMode.Tuning; }
+    public bool IsSettingsMode => PanelMode == SidePanelMode.Settings;
+    public bool IsTuningMode => PanelMode == SidePanelMode.Tuning;
+    public PreferencesViewModel Preferences { get; } = new();
+    public StartupRecoveryViewModel Recovery { get; } = new();
+    public DeviceDiagnosticsViewModel Diagnostics { get; } = new();
+    public FirmwareUpdateViewModel Firmware { get; } = new();
+    public int InputConnection { get; private set; }
+    public bool IsSwitchingMode { get => isSwitchingMode; set { if (Set(ref isSwitchingMode, value)) { Changed(nameof(CanTune)); } } }
+    public bool CanTune => CanEdit && !IsCalibrationMode && !IsSwitchingMode;
+    public HardwarePedalViewModel? HardwareDisplay { get => hardwareDisplay; set { if (Set(ref hardwareDisplay, value)) { value?.SetGraphWindow(GraphWindow); NotifyDisplay(); } } }
+    public string DisplayGraphMode => IsCalibrationMode ? "Device counts" : GraphMode;
+    public string DisplayGraphLegend => IsCalibrationMode ? HardwareDisplay?.GraphLegend ?? "Calibration · connect a controller to view live counts" : GraphLegend;
+    public IReadOnlyList<PedalHistory> DisplayHistories => IsCalibrationMode ? HardwareDisplay?.Histories ?? HardwarePedalViewModel.EmptyHistories : PedalHistories;
+    public string DisplaySampleInfo => IsCalibrationMode ? HardwareDisplay?.StateInfo ?? "Waiting for controller" : SampleInfo;
+    private string outputInfo = "Waiting for live input";
     public string OutputInfo { get => outputInfo; set => Set(ref outputInfo, value); }
-    private string vJoyPath = Bridge.VJoyController.DefaultLibraryPath;
-    private string vJoyDevice = "1";
-    public string VJoyPath { get => vJoyPath; set => Set(ref vJoyPath, value); }
-    public string VJoyDevice { get => vJoyDevice; set => Set(ref vJoyDevice, value); }
     public bool PlotCounts
     {
         get => plotCounts;
@@ -68,7 +103,6 @@ public sealed class DashboardViewModel : ObservableObject
 
     public static IReadOnlyList<string> GraphPedals { get; } = ["All pedals", "Throttle", "Brake", "Clutch"];
     public static IReadOnlyList<string> GraphModes { get; } = ["Input vs filtered", "Filtered vs curved", "Output", "Input", "Filtered", "Filter difference", "Device counts"];
-    public static IReadOnlyList<double> GraphWindows { get; } = [1, 3, 6, 12];
     public static IReadOnlyList<string> FilterTimes { get; } = ["1", "3", "5", "8", "10", "15", "20", "30", "50"];
     public static IReadOnlyList<string> FilterWindows { get; } = ["3", "5", "7", "9", "11", "15", "21", "31"];
     public static IReadOnlyList<string> ResetGaps { get; } = ["50", "100", "200", "500", "1000"];
@@ -76,13 +110,20 @@ public sealed class DashboardViewModel : ObservableObject
     private string graphPedal = "All pedals";
     private string graphMode = "Input vs filtered";
     private bool graphZoom;
-    private double graphWindow = 12;
+    private double graphWindow = 10;
     private bool graphPaused;
-    public bool GraphPaused { get => graphPaused; set { if (Set(ref graphPaused, value)) { Changed(nameof(GraphPauseText)); } } }
+    public bool GraphPaused
+    {
+        get => IsCalibrationMode && HardwareDisplay is not null ? HardwareDisplay.GraphPaused : graphPaused;
+        set
+        {
+            if (IsCalibrationMode && HardwareDisplay is not null) { HardwareDisplay.GraphPaused = value; Changed(); Changed(nameof(GraphPauseText)); }
+            else if (Set(ref graphPaused, value)) { Changed(nameof(GraphPauseText)); }
+        }
+    }
     public string GraphPauseText => GraphPaused ? "Resume graph" : "Pause graph";
-    private string contextHint = "Hover a control for help, or focus it with Tab. Edit a pedal, then Apply settings.";
     public string GraphPedal { get => graphPedal; set => Set(ref graphPedal, value); }
-    public string GraphMode { get => graphMode; set { if (Set(ref graphMode, value)) { Changed(nameof(GraphLegend)); } } }
+    public string GraphMode { get => graphMode; set { if (Set(ref graphMode, value)) { Changed(nameof(GraphLegend)); NotifyDisplay(); } } }
     public string GraphLegend => GraphMode switch
     {
         "Input vs filtered" => "Dashed: input · Color: filtered · Before curve/deadzones · Applied settings",
@@ -93,8 +134,31 @@ public sealed class DashboardViewModel : ObservableObject
         _ => "Normalized signal before deadzones and curve · Applied settings"
     };
     public bool GraphZoom { get => graphZoom; set => Set(ref graphZoom, value); }
-    public double GraphWindow { get => graphWindow; set => Set(ref graphWindow, value); }
-    public string ContextHint { get => contextHint; set => Set(ref contextHint, value); }
+    public double GraphWindow
+    {
+        get => graphWindow;
+        set
+        {
+            if (!double.IsFinite(value) || value is < .1 or > 60) { throw new ArgumentOutOfRangeException(nameof(value), "Enter a time window from 0.1 to 60 seconds."); }
+            if (Set(ref graphWindow, value)) { engine.SetGraphWindow(value); HardwareDisplay?.SetGraphWindow(value); }
+        }
+    }
+    public bool HasFilterDraft
+    {
+        get
+        {
+            try
+            {
+                var draft = Editor.BuildProfile().Filter;
+                var current = applied.Axes[SelectedAxis].Filter;
+                return draft is null ? current is not null : current is null || draft.Kind != current.Kind
+                    || draft.TimeConstantSeconds != current.TimeConstantSeconds || draft.WindowSamples != current.WindowSamples
+                    || draft.ResetAfterSeconds != current.ResetAfterSeconds;
+            }
+            catch (ArgumentException) { return true; }
+        }
+    }
+    public string FilterApplyInfo => HasFilterDraft ? "Filter draft · Apply settings to update" : "Filter settings applied";
     public IReadOnlyList<PedalHistory> PedalHistories { get; private set; } = [];
     public string FilterPreset => FilterPresets.Identify(Editor);
     public string SelectedFilterKind => Editor.FilterEnabled ? Editor.FilterKind : "Off";
@@ -133,7 +197,43 @@ public sealed class DashboardViewModel : ObservableObject
         Changed(nameof(UsesWindowFilter));
         Changed(nameof(UsesTimeFilter));
         Changed(nameof(FilterInfo));
+        Changed(nameof(HasFilterDraft)); Changed(nameof(FilterApplyInfo));
+        Changed(nameof(SelectedCorrectionMode)); Changed(nameof(IsButtonCorrection)); Changed(nameof(CorrectionModeHint)); Changed(nameof(CorrectionBindingLabel));
+        Changed(nameof(SelectedAutoLoad));
     }
+
+    public static IReadOnlyList<string> CorrectionModes { get; } = ["Off", "Auto", "By button"];
+    public string SelectedCorrectionMode => Editor.CorrectionMode switch { BaselineCorrectionMode.Auto => "Auto", BaselineCorrectionMode.ByButton => "By button", _ => "Off" };
+    public bool IsButtonCorrection => Editor.CorrectionMode == BaselineCorrectionMode.ByButton;
+    public string CorrectionModeHint => Editor.CorrectionMode switch
+    {
+        BaselineCorrectionMode.Auto => "Captures one stable near-zero baseline after a press and release. Limited to 0.5% of the axis range; active pedal travel is excluded. Hardware-clipped values cannot be recovered.",
+        BaselineCorrectionMode.ByButton => "Hold the bound key or controller button only while this pedal is fully released. Adjustment is bounded and stops when you release the button.",
+        _ => "Baseline adjustment is off. Hardware calibration remains unchanged."
+    };
+    public string CorrectionBindingLabel => Editor.CorrectionButton is not { } button ? "No button bound" : button.Kind == "keyboard"
+        ? "Key: " + System.Windows.Input.KeyInterop.KeyFromVirtualKey(button.Code) : $"Controller button {button.Code}";
+    public void SetCorrectionMode(string mode)
+    {
+        var selected = mode switch
+        {
+            "Off" => BaselineCorrectionMode.Off,
+            "Auto" => BaselineCorrectionMode.Auto,
+            "By button" => BaselineCorrectionMode.ByButton,
+            _ => throw new ArgumentException("Choose a supported correction mode.", nameof(mode))
+        };
+        Editor.CorrectionMode = selected;
+        if (selected == BaselineCorrectionMode.Off) { Editor.MaximumCorrection = "0"; }
+        else if (Editor.BuildProfile().MaximumBaselineCorrection == 0)
+        {
+            var span = Editor.BuildProfile().Calibration.Span;
+            Editor.MaximumCorrection = (span * .005).ToString("R", CultureInfo.InvariantCulture);
+            Editor.CorrectionRate = (span * .1).ToString("R", CultureInfo.InvariantCulture);
+        }
+        NotifyFilterSettings(); Apply();
+    }
+    public void BindCorrection(CorrectionButton button)
+    { Editor.CorrectionButton = button; NotifyFilterSettings(); Apply(); }
 
     public void SetFilterKind(string kind)
     {
@@ -186,11 +286,11 @@ public sealed class DashboardViewModel : ObservableObject
     public string ActiveProfileInfo => "Applied: " + applied.Name;
     private string sourceName = "No source selected";
     public string SourceName { get => sourceName; set => Set(ref sourceName, value); }
-    private string status = "Stopped";
+    private string status = "Not connected";
     public string Status { get => status; private set => Set(ref status, value); }
     private bool isReceiving;
     public bool IsReceiving { get => isReceiving; private set => Set(ref isReceiving, value); }
-    private string sampleInfo = "Start live input or open a recorded capture";
+    private string sampleInfo = "Waiting for live pedal input";
     public string SampleInfo { get => sampleInfo; private set => Set(ref sampleInfo, value); }
     private string observedRange = "—";
     public string ObservedRange { get => observedRange; private set => Set(ref observedRange, value); }
@@ -204,21 +304,32 @@ public sealed class DashboardViewModel : ObservableObject
     public IReadOnlyList<PlotSample> History { get; private set; } = [];
     public IReadOnlyList<PlotSample> Curve { get; private set; } = [];
 
-    public void Refresh()
+    public void Refresh(bool force = false)
     {
+        if (IsSwitchingMode && !force) { return; }
         var frame = engine.Snapshot(selectedAxis);
+        InputConnection = frame.Connection;
         RefreshCalibration();
         foreach (var card in Cards)
         {
-            card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis));
+            if (IsCalibrationMode)
+            {
+                var input = HardwareDisplay?.CurrentAxes;
+                var count = input.HasValue ? card.Axis switch
+                { PedalAxis.Throttle => input.Value.Throttle, PedalAxis.Brake => input.Value.Brake, _ => input.Value.Clutch } : (int?)null;
+                card.UpdateControllerInput(count, HardwareDisplay?.SensorChannel?.ToString() == card.Axis.ToString());
+            }
+            else { card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis)); }
         }
 
         var selected = frame.Axes.Single(axis => axis.Axis == selectedAxis);
         IsReceiving = selected.IsFresh;
-        Status = selected.IsFresh ? "Receiving" : frame.State == FeelVR.PedalConnectionState.Connected ? "Waiting for fresh input" : frame.Detail ?? frame.State.ToString();
-        if (Status.StartsWith("Source error:", StringComparison.Ordinal))
+        Status = selected.IsFresh ? "Connected" : "Not connected";
+        if (IsCalibrationMode)
+        { Status = HardwareDisplay?.CurrentAxes is not null ? "Connected" : "Not connected"; }
+        if (frame.Detail?.StartsWith("Source error:", StringComparison.Ordinal) == true)
         {
-            ShowMessage(Status);
+            ShowMessage(frame.Detail);
         }
         SampleInfo = FormattableString.Invariant($"{frame.SampleCount:N0} reports · {frame.ReportsPerSecond:F0} source Hz · {frame.ElapsedSeconds:F1} s · connection {frame.Connection}");
         ObservedRange = selected.ObservedMinimum.HasValue
@@ -235,6 +346,12 @@ public sealed class DashboardViewModel : ObservableObject
             PedalHistories = frame.Axes.Select(axis => new PedalHistory(axis.Axis, axis.History ?? [], FilterLabel(applied.Axes[axis.Axis]))).ToArray();
             Changed(nameof(PedalHistories));
         }
+        NotifyDisplay();
+    }
+
+    private void NotifyDisplay()
+    {
+        foreach (var name in new[] { nameof(DisplayGraphMode), nameof(DisplayGraphLegend), nameof(DisplayHistories), nameof(DisplaySampleInfo), nameof(GraphPaused), nameof(GraphPauseText) }) { Changed(name); }
     }
 
     public (PedalProfile Profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> Limits) ValidateEditors()
@@ -262,10 +379,13 @@ public sealed class DashboardViewModel : ObservableObject
         var (profile, limits) = ValidateEditors();
         engine.Configure(profile, limits);
         applied = profile;
+        if (selectedProfile is not null) { selectedProfile.RequiresApply = false; }
         UpdateCurve();
         RefreshDraftCurve();
         Changed(nameof(ActiveProfileInfo));
-        ShowMessage("Applied to software preview. All correction and filter histories were cleared.");
+        NotifyFilterSettings();
+        RefreshUnsavedState();
+        ShowMessage("Settings applied. Correction and filter histories reset; vJoy resumes with fresh pedal input.");
     }
 
     public void Load(PedalProfile profile)
@@ -333,6 +453,19 @@ public sealed class DashboardViewModel : ObservableObject
         ShowMessage("Device-range defaults are in the editor. Apply to activate them.");
     }
 
+    public void ResetInputMapping()
+    {
+        CancelCalibration();
+        editors[selectedAxis] = Editor with
+        {
+            Minimum = "0",
+            Maximum = DashboardEngine.DeviceMaximum(selectedAxis).ToString("R", CultureInfo.InvariantCulture),
+            Inverted = false
+        };
+        Changed(nameof(Editor));
+        ShowMessage("Full controller range is in the draft. Apply settings to activate. Curves, filters and deadzones are retained.");
+    }
+
     public void ShowMessage(string message)
     {
         if (Message == message) { return; }
@@ -351,13 +484,129 @@ public sealed class DashboardViewModel : ObservableObject
         selectedProfile = tab;
         foreach (var (axis, editor) in tab.Editors) { editors[axis] = editor with { }; }
         ProfileName = tab.Name;
-        try { Apply(); }
+        try
+        {
+            if (!tab.RequiresApply) { Apply(); }
+            else { ShowMessage("Recovered draft selected. Review it and Apply settings to activate it."); }
+        }
         catch (ArgumentException exception) { ShowMessage($"Draft restored; previous processing remains active until Apply: {exception.Message}"); }
         RefreshDraftCurve();
         Changed(nameof(SelectedProfile));
         Changed(nameof(Editor));
         NotifyFilterSettings();
         Refresh();
+        RefreshUnsavedState();
+    }
+
+    private bool hasRecoverableDrafts;
+    public bool HasRecoverableDrafts { get => hasRecoverableDrafts; set => Set(ref hasRecoverableDrafts, value); }
+    private bool canUndoDelete;
+    public bool CanUndoDelete { get => canUndoDelete; set => Set(ref canUndoDelete, value); }
+    private string draftStatus = "";
+    public string DraftStatus { get => draftStatus; private set => Set(ref draftStatus, value); }
+
+    public void RefreshUnsavedState()
+    {
+        StoreDraft();
+        foreach (var tab in ProfileTabs)
+        {
+            var changed = tab.Name != tab.SavedName || tab.Editors.Count != tab.SavedEditors.Count
+                || tab.Editors.Any(pair => !tab.SavedEditors.TryGetValue(pair.Key, out var saved) || pair.Value != saved);
+            tab.HasUnsavedChanges = changed || tab.FilePath is null && tab.Recoverable;
+            if (changed) { tab.Recoverable = true; }
+        }
+        var pending = true;
+        try { pending = !ProfileJson.Serialize(ValidateEditors().Profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied)); }
+        catch (ArgumentException) { }
+        DraftStatus = pending ? "Unapplied edits · Apply settings to activate"
+            : selectedProfile?.HasUnsavedChanges == true ? "Unsaved profile · Save to keep these settings"
+            : selectedProfile?.FilePath is null ? "Default settings · Save to create a profile" : "Profile saved · Settings applied";
+    }
+
+    public void MarkSelectedSaved()
+    {
+        StoreDraft();
+        if (selectedProfile is not null) { MarkSaved(selectedProfile); }
+        RefreshUnsavedState();
+    }
+    private static void MarkSaved(ProfileTab tab)
+    {
+        tab.SavedName = tab.Name;
+        tab.SavedEditors.Clear();
+        foreach (var (axis, editor) in tab.Editors) { tab.SavedEditors[axis] = editor with { }; }
+        tab.HasUnsavedChanges = false;
+    }
+    public ProfileDraftSession CaptureDrafts()
+    {
+        RefreshUnsavedState();
+        return new(1, ProfileTabs.Where(tab => tab.HasUnsavedChanges && tab.Recoverable).Select(tab => new ProfileDraft(tab.DraftId,
+            tab.Name, tab.FilePath is null ? null : System.IO.Path.GetFileName(tab.FilePath), tab.Editors.ToDictionary(pair => pair.Key, pair => pair.Value with { }))).ToArray());
+    }
+    public void RestoreDrafts(ProfileDraftSession session, string libraryDirectory)
+    {
+        RefreshUnsavedState();
+        var restored = new List<ProfileTab>();
+        foreach (var draft in session.Profiles)
+        {
+            // Keep the saved version intact; restored editors always require explicit Apply.
+            var tab = new ProfileTab { DraftId = draft.Id, Name = draft.Name, RequiresApply = true };
+            foreach (var (axis, editor) in draft.Editors) { tab.Editors[axis] = editor with { }; }
+            if (draft.SavedFileName is { } name)
+            {
+                var path = System.IO.Path.Combine(libraryDirectory, name);
+                var saved = ProfileTabs.FirstOrDefault(candidate => string.Equals(candidate.FilePath, path, StringComparison.OrdinalIgnoreCase));
+                if (saved is not null && !saved.HasUnsavedChanges)
+                {
+                    tab.FilePath = saved.FilePath; tab.SavedName = saved.SavedName;
+                    foreach (var (axis, editor) in saved.SavedEditors) { tab.SavedEditors[axis] = editor with { }; }
+                    ProfileTabs.Remove(saved);
+                }
+            }
+            ProfileTabs.Add(tab); restored.Add(tab);
+        }
+        if (restored.Count > 0) { SwitchProfile(restored[0]); }
+        HasRecoverableDrafts = false;
+        RefreshUnsavedState();
+        ShowMessage("Unsaved drafts recovered. Review them and Apply settings to activate; Save keeps them as profiles.");
+    }
+
+    public ProfileTab DetachSelectedProfile()
+    {
+        StoreDraft();
+        var removed = selectedProfile ?? throw new InvalidOperationException("Select a profile first.");
+        RemoveSelectedProfile();
+        return removed;
+    }
+    public void RestoreDeletedProfile(ProfileTab tab, int index)
+    {
+        tab.RequiresApply = true;
+        ProfileTabs.Insert(Math.Clamp(index, 0, ProfileTabs.Count), tab);
+        SwitchProfile(tab);
+    }
+
+    public void RemoveSelectedProfile()
+    {
+        if (selectedProfile is not { } removed) { return; }
+        var index = ProfileTabs.IndexOf(removed);
+        var next = ProfileTabs.Skip(index + 1).Concat(ProfileTabs.Take(index).Reverse()).FirstOrDefault(CanApply);
+        if (next is not null) { SwitchProfile(next); }
+        else
+        {
+            Load(DashboardEngine.DefaultProfile());
+            selectedProfile!.Recoverable = false;
+            MarkSelectedSaved();
+        }
+        ProfileTabs.Remove(removed);
+
+        static bool CanApply(ProfileTab tab)
+        {
+            try
+            {
+                _ = new PedalProfile(tab.Name, tab.Editors.ToDictionary(pair => pair.Key, pair => pair.Value.BuildProfile()));
+                return true;
+            }
+            catch (ArgumentException) { return false; }
+        }
     }
 
     public void RefreshDraftCurve()
@@ -412,7 +661,7 @@ public sealed class DashboardViewModel : ObservableObject
     {
         engine.CancelCalibration();
         SetCalibrating(false);
-        CalibrationInfo = "Start input, then Calibrate. Release and press this pedal through its range; Done applies the captured bounds.";
+        CalibrationInfo = "Start input, then Calibrate software. Done maps the captured controller output to 0–100% for this profile.";
         CalibrationRangeInfo = "";
         Changed(nameof(CalibrationInfo));
         Changed(nameof(CalibrationRangeInfo));
@@ -440,7 +689,7 @@ public sealed class DashboardViewModel : ObservableObject
                     Inverted = false
                 };
                 SetCalibrating(false);
-                CalibrationInfo = "Calibration applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart. Other draft settings still require Apply.";
+                CalibrationInfo = "Software mapping applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart. Other draft settings still require Apply.";
                 CalibrationRangeInfo = FormattableString.Invariant($"0% = {result.Minimum:N0}\n100% = {result.Maximum:N0}");
                 Changed(nameof(CalibrationRangeInfo));
                 Changed(nameof(Editor));
@@ -475,7 +724,7 @@ public sealed class DashboardViewModel : ObservableObject
         if (capture is not { IsActive: true } || capture.Axis != selectedAxis)
         {
             SetCalibrating(false);
-            CalibrationInfo = capture?.Failure ?? "Calibration cancelled. Click Calibrate to start again.";
+            CalibrationInfo = capture?.Failure ?? "Software calibration cancelled. Click Calibrate software to start again.";
             CalibrationRangeInfo = "";
             Changed(nameof(CalibrationInfo));
             Changed(nameof(CalibrationRangeInfo));

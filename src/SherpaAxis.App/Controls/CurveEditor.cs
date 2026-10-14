@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -16,7 +17,15 @@ public sealed class CurveEditor : FrameworkElement
     public static readonly DependencyProperty AppliedProperty = DependencyProperty.Register(nameof(Applied),
         typeof(IReadOnlyList<PlotSample>), typeof(CurveEditor), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     private int selected = -1;
-    public CurveEditor() { Focusable = true; Cursor = Cursors.Cross; }
+    public CurveEditor()
+    {
+        Focusable = true; Cursor = Cursors.Cross;
+        PropertyChangedEventManager.AddHandler(Localization.Localizer.Instance, (_, _) =>
+        {
+            if (Dispatcher.CheckAccess()) { InvalidateVisual(); }
+            else if (!Dispatcher.HasShutdownStarted) { _ = Dispatcher.InvokeAsync(InvalidateVisual); }
+        }, nameof(Localization.Localizer.Language));
+    }
     public IReadOnlyList<CurvePoint>? Points { get => (IReadOnlyList<CurvePoint>?)GetValue(PointsProperty); set => SetValue(PointsProperty, value); }
     public IReadOnlyList<PlotSample>? Preview { get => (IReadOnlyList<PlotSample>?)GetValue(PreviewProperty); set => SetValue(PreviewProperty, value); }
     public IReadOnlyList<PlotSample>? Applied { get => (IReadOnlyList<PlotSample>?)GetValue(AppliedProperty); set => SetValue(AppliedProperty, value); }
@@ -45,7 +54,7 @@ public sealed class CurveEditor : FrameworkElement
         {
             drawingContext.DrawEllipse(i == selected ? Brushes.White : pen.Brush, grid, Screen(points[i]), 5, 5);
         }
-        var text = new FormattedText("INPUT →", CultureInfo.InvariantCulture,
+        var text = new FormattedText(Localization.Localizer.Translate("INPUT →"), CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, Brushes.LightSlateGray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         drawingContext.DrawText(text, new(Plot.Left + (Plot.Width - text.Width) / 2, Plot.Bottom + 4));
         var end = new FormattedText("100%", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,

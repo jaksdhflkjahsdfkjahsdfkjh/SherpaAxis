@@ -21,25 +21,29 @@ public partial class MainWindow : Window, IAsyncDisposable
     private readonly DashboardViewModel viewModel;
     private readonly DashboardSource source;
     private readonly DispatcherTimer refresh;
-    private readonly CancellationTokenSource lifetime = new();
-    private PedalAxis? heldAxis;
+    private CancellationTokenSource lifetime = new();
     private bool canClose;
+    private bool closeRequestPending;
     private bool closing;
     private bool disposed;
+    private Task? disposal;
     private Task? activeOperation;
-    private RecordingSession? recording;
-    private string? recordingPath;
-    private bool recordingNoticeShown;
-    private readonly ProfileLibrary library = new(ProfileLibrary.DefaultDirectory);
+    private readonly ProfileLibrary library;
     private bool editingCurve;
-    private OutputBridge? bridge;
+    private long unsavedRefreshAt;
 
     public MainWindow() : this(new DashboardEngine()) { }
 
-    public MainWindow(DashboardEngine engine)
+    public MainWindow(DashboardEngine engine,
+        Func<PedalChannel, ResourceDictionary, CancellationToken, Task<HardwareCalibrationSession>>? hardwareSessionFactory = null,
+        DesktopServices? desktopServices = null, ProfileLibrary? profileLibrary = null)
     {
         ArgumentNullException.ThrowIfNull(engine);
         this.engine = engine;
+        desktop = desktopServices ?? DesktopServices.Default();
+        library = profileLibrary ?? new(ProfileLibrary.DefaultDirectory);
+        createHardwareSession = hardwareSessionFactory ?? ((channel, theme, token) =>
+            HardwareCalibrationSession.ConnectAsync(channel, theme, token, cachedCalibrationView));
         InitializeComponent();
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
         var workArea = SystemParameters.WorkArea;
@@ -49,139 +53,31 @@ public partial class MainWindow : Window, IAsyncDisposable
         Height = Math.Min(Height, workArea.Height);
         viewModel = new(engine);
         source = new(engine);
+        source.Log = desktop.Log;
         DataContext = viewModel;
         refresh = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, RefreshTick, Dispatcher);
         refresh.Start();
         Loaded += LoadLibrary;
+        Loaded += DesktopLoaded;
+        StateChanged += WindowStateChanged;
+        IsVisibleChanged += (_, _) => UpdateRefreshPolicy();
     }
 
     private void RefreshTick(object? sender, EventArgs e)
     {
-        if (heldAxis.HasValue && heldAxis.Value == viewModel.SelectedAxis && IsActive)
-        {
-            engine.AuthorizeRelease(heldAxis.Value);
-        }
-        else if (heldAxis.HasValue)
-        {
-            StopHold();
-        }
-
+        if (Environment.TickCount64 - unsavedRefreshAt >= 500)
+        { unsavedRefreshAt = Environment.TickCount64; viewModel.RefreshUnsavedState(); }
         if (source.Failure is { } failure)
         {
             viewModel.ShowMessage($"Source failed: {failure}");
         }
 
-        UpdateRecordingStatus();
-        viewModel.OutputInfo = bridge?.Status ?? "Output disabled";
+
+        viewModel.OutputInfo = viewModel.Firmware.Blocked || viewModel.Firmware.Running ? "Virtual output paused · firmware update needs review"
+            : viewModel.Recovery.IsBlocked ? "Virtual output paused · hardware recovery required" : runtime?.Status ?? "Waiting for live input";
         viewModel.Refresh();
-        if (recording?.Status is { IsComplete: true } status && !recordingNoticeShown)
-        {
-            recordingNoticeShown = true;
-            viewModel.ShowMessage(status.Failure is { } error ? $"Recording failed: {error.Message} Files may be partial."
-                : $"Recording complete: {status.WrittenSamples:N0} reports in {Path.GetFileName(recordingPath)} and companion files.");
-        }
+
     }
-
-    private void UpdateRecordingStatus()
-    {
-        var status = recording?.Status;
-        viewModel.CanRecord = source.IsRunning && (status is null || status.IsComplete) && viewModel.CanEdit;
-        viewModel.CanFinishRecording = status is { IsComplete: false } && viewModel.CanEdit;
-        viewModel.RecordingInfo = status is null ? "Not recording" : status.Failure is not null ? "Recording FAILED · files may be partial"
-            : status.IsComplete ? $"Saved {status.WrittenSamples:N0} reports" : status.IsStopping ? "Finishing recording…" : $"● Recording · {status.AcceptedSamples:N0} reports";
-    }
-
-    private async void RecordClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new SaveFileDialog
-        {
-            Filter = "SherpaAxis recording (*.csv)|*.csv",
-            DefaultExt = ".csv",
-            OverwritePrompt = false,
-            InitialDirectory = Directory.Exists("research") ? Path.GetFullPath("research") : "",
-            FileName = FormattableString.Invariant($"pedals-{DateTime.Now:yyyyMMdd-HHmmss}.csv"),
-            Title = "Record input CSV, processed CSV, and session events (new files only)"
-        };
-        if (dialog.ShowDialog(this) != true)
-        {
-            return;
-        }
-
-        await RunAsync(async () =>
-        {
-            await FinishRecordingAsync();
-            if (!source.IsRunning)
-            {
-                throw new InvalidOperationException("Start live input or playback before recording.");
-            }
-
-            recording = await RecordingSession.CreateAsync(dialog.FileName, lifetime.Token);
-            recordingPath = dialog.FileName;
-            recordingNoticeShown = false;
-            try { engine.AttachRecording(recording); }
-            catch (Exception exception) when (IsExpected(exception))
-            {
-                recording.Abort(exception);
-                await recording.StopAsync();
-                throw;
-            }
-
-            viewModel.ShowMessage("Recording every report. Active settings and session events are saved alongside the input and processed CSVs.");
-        });
-    }
-
-    private async void FinishRecordingClick(object sender, RoutedEventArgs e) => await RunAsync(FinishRecordingAsync);
-
-    private Task FinishRecordingAsync() => FinishRecordingAsync("user-finished");
-
-    private async Task FinishRecordingAsync(string reason)
-    {
-        engine.DetachRecording(reason);
-        if (recording is not null)
-        {
-            await recording.StopAsync();
-        }
-    }
-
-    private async void StartLiveClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
-    {
-        StopHold();
-        viewModel.CancelCalibration();
-        await FinishRecordingAsync("source-switch");
-        var monitor = new PedalMonitor(new WindowsHidInputSource(), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
-        await source.StartAsync(token => monitor.WatchAsync(cancellationToken: token), new("live-device-axis"));
-        viewModel.SourceName = "Live · FEEL-VR device axes";
-        viewModel.HardwareInfo = "Not read for this live session. Read hardware calibration to inspect current stored bounds.";
-        viewModel.ShowMessage("Live read-only input. Start with device-range defaults; hardware RAW profiles may use different units.");
-    });
-
-    private async void OpenCaptureClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog { Filter = "SherpaAxis monitor capture (*.csv)|*.csv", Title = "Open an original monitor capture" };
-        if (dialog.ShowDialog(this) != true)
-        {
-            return;
-        }
-
-        await RunAsync(async () =>
-        {
-            StopHold();
-            viewModel.CancelCalibration();
-            await FinishRecordingAsync("source-switch");
-            var speed = viewModel.PlaybackSpeed;
-            await source.StartAsync(token => CapturePlayback.ReadAsync(dialog.FileName, speed, token), new("capture-replay", Path.GetFileName(dialog.FileName), speed));
-            viewModel.SourceName = $"Replay · {Path.GetFileName(dialog.FileName)} · {speed}×";
-            viewModel.ShowMessage("Playback uses recorded timestamps for processing. Confirm release only in independently known released intervals.");
-        });
-    }
-
-    private async void StopClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
-    {
-        StopHold();
-        await source.StopAsync();
-        engine.End("Stopped");
-        await FinishRecordingAsync();
-    });
 
     private void SelectAxisClick(object sender, RoutedEventArgs e)
     {
@@ -189,28 +85,19 @@ public partial class MainWindow : Window, IAsyncDisposable
         if (sender is Button { Tag: PedalAxis axis })
         {
             viewModel.SelectedAxis = axis;
+            if (viewModel.IsCalibrationMode && viewModel.HardwareDisplay is { CanSelect: true } hardware)
+            { hardware.SelectedChannel = axis switch { PedalAxis.Throttle => PedalChannel.Throttle, PedalAxis.Brake => PedalChannel.Brake, _ => PedalChannel.Clutch }; }
         }
     }
 
     private void ApplyClick(object sender, RoutedEventArgs e) => Run(() => { StopHold(); viewModel.Apply(); });
-    private void NewProfileClick(object sender, RoutedEventArgs e) => Run(() => { StopHold(); viewModel.Load(DashboardEngine.DefaultProfile()); });
-    private void CaptureMinimumClick(object sender, RoutedEventArgs e) => Run(() => viewModel.CaptureEndpoint(false));
-    private void CaptureMaximumClick(object sender, RoutedEventArgs e) => Run(() => viewModel.CaptureEndpoint(true));
-    private void ObservedRangeClick(object sender, RoutedEventArgs e) => Run(viewModel.UseObservedRange);
-    private void DefaultsClick(object sender, RoutedEventArgs e) => viewModel.ResetEditor();
-    private void CalibrateClick(object sender, RoutedEventArgs e) => Run(() => { StopHold(); viewModel.AdvanceCalibration(); });
-    private void CancelCalibrationClick(object sender, RoutedEventArgs e) => viewModel.CancelCalibration();
-    private void ConfirmBaselineClick(object sender, RoutedEventArgs e) => Run(() =>
+    private void NewProfileClick(object sender, RoutedEventArgs e) => Run(() =>
     {
-        engine.ConfirmBaseline(viewModel.SelectedAxis);
-        viewModel.ShowMessage("Baseline requested from the current sample. Hold the release control only while this pedal is fully released.");
+        StopHold();
+        viewModel.Load(new(Localization.Localizer.Translate("new profile"), DashboardEngine.DefaultProfile().Axes));
+        viewModel.ShowMessage("New profile created. Save to keep it after restart.");
     });
-    private void DisableCorrectionClick(object sender, RoutedEventArgs e) => Run(() =>
-    {
-        engine.DisableCompensation(viewModel.SelectedAxis);
-        viewModel.ShowMessage("Zero correction requested. Hold the release control while released to ramp the applied correction back to zero.");
-    });
-
+    private void ResetInputMappingClick(object sender, RoutedEventArgs e) => Run(viewModel.ResetInputMapping);
     private async void ReadHardwareClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var reader = new CalibrationSnapshotReader(new WindowsHidInputSource(), new WindowsHidFeatureReader());
@@ -221,54 +108,8 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.ShowMessage($"Read-only hardware snapshot · Throttle {Range(snapshot.Calibration.Throttle)} · Brake {Range(snapshot.Calibration.Brake)} · Clutch {Range(snapshot.Calibration.Clutch)}");
     });
 
-    private void ReleaseMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        ReleaseHold.Focus();
-        if (ReleaseHold.CaptureMouse())
-        {
-            heldAxis = viewModel.SelectedAxis;
-            engine.AuthorizeRelease(heldAxis.Value);
-            ReleaseHold.Content = "Release confirmed · applying changes";
-        }
-
-        e.Handled = true;
-    }
-
-    private void ReleaseMouseUp(object sender, MouseButtonEventArgs e) { StopHold(); e.Handled = true; }
-    private void ReleaseLostCapture(object sender, MouseEventArgs e) => StopHold();
-    private void ReleaseLostFocus(object sender, KeyboardFocusChangedEventArgs e) => StopHold();
+    private void StopHold() => engine.RevokeRelease();
     private void WindowDeactivated(object? sender, EventArgs e) => StopHold();
-    private void ReleaseKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Space && !e.IsRepeat)
-        {
-            heldAxis = viewModel.SelectedAxis;
-            engine.AuthorizeRelease(heldAxis.Value);
-            ReleaseHold.Content = "Release confirmed · applying changes";
-            e.Handled = true;
-        }
-    }
-
-    private void ReleaseKeyUp(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Space)
-        {
-            StopHold();
-            e.Handled = true;
-        }
-    }
-
-    private void StopHold()
-    {
-        heldAxis = null;
-        engine.RevokeRelease();
-        ReleaseHold.Content = "Hold to apply · pedal released";
-        if (ReleaseHold.IsMouseCaptured)
-        {
-            ReleaseHold.ReleaseMouseCapture();
-        }
-    }
-
     private void Run(Action action)
     {
         if (closing)
@@ -277,7 +118,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         try { action(); }
-        catch (Exception exception) when (IsExpected(exception)) { viewModel.ShowMessage(exception.Message); }
+        catch (Exception exception) when (IsExpected(exception)) { desktop.Log?.Write("ui-action", "An action could not finish.", exception); viewModel.ShowMessage(exception.Message); }
     }
 
     private async Task RunAsync(Func<Task> action)
@@ -297,19 +138,19 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.CanEdit = false;
         viewModel.Refresh();
         try { activeOperation = action(); await activeOperation; }
-        catch (Exception exception) when (IsExpected(exception)) { viewModel.ShowMessage(exception.Message); }
+        catch (Exception exception) when (IsExpected(exception)) { desktop.Log?.Write("ui-action", "An operation could not finish.", exception); if (!closing) { viewModel.ShowMessage(exception.Message); } }
         finally
         {
             activeOperation = null;
             InputManager.Current.PreProcessInput -= ObserveInput;
             viewModel.CanEdit = !closing;
-            viewModel.Refresh();
+            if (!closing) { viewModel.Refresh(); }
             if (!closing && IsActive && !userMovedFocus && priorFocus is FrameworkElement { IsEnabled: true, IsVisible: true } element) { element.Focus(); }
         }
     }
 
     private static bool IsExpected(Exception exception) => exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException
-        or InvalidOperationException or TimeoutException or OperationCanceledException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException;
+        or InvalidOperationException or TimeoutException or OperationCanceledException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException or System.Security.SecurityException;
 
     private async void WindowClosing(object? sender, CancelEventArgs e)
     {
@@ -319,41 +160,108 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         e.Cancel = true;
-        if (closing)
+        if (viewModel.Firmware.Running)
+        { viewModel.ShowMessage("Firmware updating is active. Keep the pedals connected; closing is available after the operation finishes."); return; }
+        if (closing || closeRequestPending)
         {
             return;
         }
-
-        closing = true;
-        await DisposeAsync();
-        canClose = true;
-        Close();
+        closeRequestPending = true;
+        // Let WPF finish cancelling this close event before hiding, restoring, or closing the native window again.
+        await Dispatcher.Yield(DispatcherPriority.Normal);
+        try
+        {
+            if (!exitRequested && preferences.MinimizeOnClose && tray is not null)
+            {
+                await HideToTrayAsync();
+                if (!exitRequested) { return; }
+            }
+            try { await DisposeAsync(); }
+            catch (Exception failure) when (IsExpected(failure))
+            {
+                desktop.Log?.Write("shutdown", "Could not finish closing.", failure);
+                exitRequested = false;
+                RestoreFromTray();
+                viewModel.ShowMessage($"Could not finish closing: {failure.Message}");
+                return;
+            }
+            canClose = true;
+            Close();
+        }
+        finally { closeRequestPending = false; }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (disposed)
-        {
-            return;
-        }
+        if (disposed) { return; }
+        if (disposal is null || disposal.IsCompleted) { disposal = DisposeCoreAsync(); }
+        await disposal;
+        GC.SuppressFinalize(this);
+    }
 
-        disposed = true;
+    private async Task DisposeCoreAsync()
+    {
+        if (libraryInitialization is { } loadingLibrary) { await loadingLibrary; }
+        // Refuse a lossy exit before stopping input or changing the window's lifecycle state.
+        closing = true;
+        viewModel.CanEdit = false;
         refresh.Stop();
         StopHold();
-        await lifetime.CancelAsync();
-        await Task.WhenAll(profileSelections.ToArray());
-        profileSelectionGate.Dispose();
-        if (activeOperation is not null)
+        engine.SuspendOutput("window closing");
+        runtime?.StopPublishing();
+        viewModel.ShowMessage("Closing… Restoring controller settings and stopping live output.");
+        connectionCancellation?.Cancel();
+        try
         {
-            try { await activeOperation; }
-            catch (Exception exception) when (IsExpected(exception)) { }
-        }
+            await lifetime.CancelAsync();
+            if (desktopInitialization is { } initializing) { await initializing; }
+            if (runtimeInitialization is { } startingRuntime) { await startingRuntime; }
+            if (recoveryCheck is { } checkingRecovery) { await checkingRecovery; }
+            if (settingsOperation is { } savingSettings) { await savingSettings; }
+            if (activeOperation is { } pending)
+            {
+                try { await pending; }
+                catch (Exception exception) when (IsExpected(exception)) { }
+            }
+            if (modeOperation is { } pendingMode) { await pendingMode; }
 
-        await source.DisposeAsync();
-        engine.SuspendOutput("window closed");
-        if (bridge is not null) { await bridge.DisposeAsync(); }
-        await FinishRecordingAsync();
-        lifetime.Dispose();
-        GC.SuppressFinalize(this);
+            // These own separate resources. Start all cleanup before waiting for slow storage or HID restoration.
+            var stopInput = source.DisposeAsync().AsTask();
+            var stopRuntime = runtime?.DisposeAsync().AsTask() ?? Task.CompletedTask;
+            await Task.WhenAll(stopInput, stopRuntime, CloseHardwareAsync());
+            CalibrationHost.Content = null;
+            cachedCalibrationView = null;
+            viewModel.HardwareDisplay = null;
+            buttons.Dispose();
+            tray?.Dispose();
+            tray = null;
+            activationSource?.RemoveHook(ActivationMessage);
+            activationSource = null;
+            if (Application.Current is { } application) { application.SessionEnding -= SessionEnding; }
+            lifetime.Dispose();
+            disposed = true;
+            if (desktopInitialization is not null) { desktop.Log?.Write("lifecycle", "Application closed normally."); }
+        }
+        catch
+        {
+            // Failed restoration must leave the recovery controls usable, including a later close attempt.
+            lifetime.Dispose();
+            lifetime = new();
+            closing = false;
+            viewModel.CanEdit = true;
+            if (runtime is not null && desktop.Runtime is not null)
+            {
+                runtime = new(engine, source, desktop.Runtime, buttons, desktop.Log);
+                if (hardwareSession is null) { await CheckStartupRecoveryAsync(); await ResumeLiveAfterRecoveryAsync(); }
+            }
+            if (hardwareSession is null) { SetPanelMode(false); viewModel.HardwareDisplay = null; }
+            refresh.Start();
+            throw;
+        }
+    }
+
+    private async Task CloseHardwareAsync()
+    {
+        if (!await EndCalibrationAsync()) { throw new IOException("Restore controller calibration or keep its recovery backup before closing."); }
     }
 }

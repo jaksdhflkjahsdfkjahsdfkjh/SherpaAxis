@@ -179,6 +179,99 @@ public sealed class StartupRecoveryTests
         Assert.True(File.Exists(fixture.Path));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task StartupHoldsInputAndOutputShowsRecoveryEvenForTrayStartupAndResumesAfterTheRestoreButton(bool uncertain) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fixture = new Fixture();
+        await fixture.Journal(uncertain: uncertain);
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        desktop.Store.Value = new(StartInTray: true);
+        var inputStarts = 0; var outputs = new ConcurrentQueue<Controller>(); var hardwareOpens = 0;
+        var services = desktop.Services with
+        {
+            Recovery = fixture.Service,
+            Runtime = new(token => Input(() => Interlocked.Increment(ref inputStarts), token),
+            () => { var controller = new Controller(); outputs.Enqueue(controller); return controller; })
+        };
+        await using var main = new MainWindow(new DashboardEngine(), (_, _, _) =>
+        { hardwareOpens++; throw new InvalidOperationException("A new hardware session must stay blocked."); }, services);
+        await main.InitializeForLaunchAsync();
+        main.Show(); main.UpdateLayout();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.True(model.Recovery.IsBlocked); Assert.False(main.ShouldStartHidden);
+        Assert.Equal(Visibility.Visible, Assert.IsType<Border>(main.FindName("StartupRecoveryPanel")).Visibility);
+        Assert.Equal(0, inputStarts); Assert.Empty(outputs); Assert.Empty(fixture.Device.Writes);
+        await main.RequestPanelModeAsync(SidePanelMode.Calibration);
+        Assert.Equal(0, hardwareOpens);
+        var restore = Assert.IsType<Button>(main.FindName("RestoreRecoveryButton"));
+        Assert.True(restore.IsEnabled);
+        restore.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (uncertain)
+        {
+            await Until(() => model.Recovery.CanSave);
+            Assert.True(model.Recovery.IsBlocked); Assert.Equal(0, inputStarts); Assert.Empty(outputs);
+            Assert.All(fixture.Device.Writes, bytes => Assert.Equal(3, bytes[0]));
+            var save = Assert.IsType<Button>(main.FindName("SaveRecoveryButton"));
+            Assert.True(save.IsEnabled);
+            save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        }
+        await Until(() => !model.Recovery.IsBlocked && outputs.Any(controller => controller.Values.Any(value => value.Throttle > 0)));
+        Assert.Equal(Original, fixture.Device.State);
+        Assert.Equal(1, inputStarts);
+        Assert.False(File.Exists(fixture.Path));
+        main.UpdateLayout();
+        Assert.Equal(Visibility.Collapsed, Assert.IsType<Border>(main.FindName("StartupRecoveryPanel")).Visibility);
+    });
+
+    [Fact]
+    public Task OutputCannotStartWhileTheStartupVerificationIsStillPendingAndExitCancelsTheCheck() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fixture = new Fixture();
+        await fixture.Journal();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new StartupHardwareRecovery(fixture.Directory, async (_, token) =>
+        { entered.SetResult(); await Task.Delay(Timeout.InfiniteTimeSpan, token); throw new InvalidOperationException(); });
+        var starts = 0;
+        var services = new SettingsAndTrayTests.FakeDesktop().Services with
+        {
+            Recovery = service,
+            Runtime = new(token => Input(() => Interlocked.Increment(ref starts), token), () => new Controller())
+        };
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: services);
+        var starting = main.InitializeForLaunchAsync();
+        await entered.Task;
+        Assert.Equal(0, starts);
+        Assert.True(Assert.IsType<DashboardViewModel>(main.DataContext).Recovery.IsBlocked);
+        await main.DisposeAsync(); await starting;
+        Assert.Equal(0, starts); Assert.True(File.Exists(fixture.Path));
+    });
+
+    [Fact]
+    public Task FailedFolderScanBlocksStartupAndCheckAgainCanResumeAfterTheFolderIsFixed() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fixture = new Fixture();
+        await File.WriteAllTextAsync(fixture.Path, "A file is occupying the recovery directory path.");
+        var service = new StartupHardwareRecovery(fixture.Path, (_, _) => throw new InvalidOperationException("No device must be opened."));
+        var starts = 0;
+        var services = new SettingsAndTrayTests.FakeDesktop().Services with
+        {
+            Recovery = service,
+            Runtime = new(token => Input(() => Interlocked.Increment(ref starts), token), () => new Controller())
+        };
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: services);
+        await main.InitializeForLaunchAsync();
+        var recovery = Assert.IsType<DashboardViewModel>(main.DataContext).Recovery;
+        Assert.True(recovery.IsBlocked); Assert.True(recovery.CanCheck);
+        Assert.Contains("could not finish", recovery.Status, StringComparison.Ordinal);
+        Assert.Equal(0, starts);
+        File.Delete(fixture.Path); Directory.CreateDirectory(fixture.Path);
+        await main.ResolveStartupRecoveryAsync(false, false);
+        await Until(() => starts > 0);
+        Assert.False(recovery.IsBlocked);
+    });
+
     private static async Task Until(Func<bool> condition)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));

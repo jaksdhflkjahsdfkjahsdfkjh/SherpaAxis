@@ -18,3 +18,6 @@ Firmware tools and the reviewed vendor image are separate prerequisites; see
 
 SherpaAxis does not edit game configurations or hide physical devices.
 Driver installation and physical/simulator acceptance require separate testing.
+
+The elevated `--configure-vjoy` helper bypasses normal acquisition and instance
+activation. Exit codes are 0 for readiness, 3010 for restart/recheck and 1 for failure.

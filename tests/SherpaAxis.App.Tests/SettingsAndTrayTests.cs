@@ -50,6 +50,153 @@ public sealed class SettingsAndTrayTests
         Assert.Throws<ArgumentException>(() => WindowsStartupRegistration.BuildCommand("C:\\" + new string('a', 260) + "\\app.exe"));
     }
 
+    [Fact]
+    public Task SettingsCheckboxesSaveAndRestartUsesPreferencesAndActualStartupState() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new FakeDesktop();
+        await using (var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services))
+        {
+            await main.InitializeDesktopAsync();
+            await main.RequestPanelModeAsync(SidePanelMode.Settings);
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
+            Assert.True(dashboard.IsSettingsMode);
+            var close = Assert.IsType<CheckBox>(main.FindName("MinimizeOnCloseSetting"));
+            close.IsChecked = true;
+            close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(desktop.Store.Value.MinimizeOnClose);
+            dashboard.Preferences.StartWithWindows = true;
+            dashboard.Preferences.StartInTray = true;
+            dashboard.Preferences.MinimizeToTray = true;
+            await main.SavePreferencesAsync();
+            Assert.True(Assert.Single(desktop.Startup.Changes));
+            Assert.True(main.ShouldStartHidden);
+        }
+        desktop.Startup.Enabled = false; // Windows Startup Apps can disable it independently.
+        await using var restarted = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+        await restarted.InitializeDesktopAsync();
+        var settings = Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences;
+        Assert.True(settings.MinimizeOnClose && settings.StartInTray && settings.MinimizeToTray);
+        Assert.False(settings.StartWithWindows);
+        Assert.Single(desktop.Startup.Changes);
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task FailedSettingsSaveRollsBackTheCheckboxAndNeverClaimsStartupSucceeded(bool failRegistry) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new FakeDesktop();
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+        await main.InitializeDesktopAsync();
+        desktop.Store.Fail = !failRegistry;
+        desktop.Startup.Fail = failRegistry;
+        var settings = Assert.IsType<DashboardViewModel>(main.DataContext).Preferences;
+        settings.StartWithWindows = true;
+        settings.MinimizeOnClose = true;
+        await main.SavePreferencesAsync();
+        Assert.False(settings.StartWithWindows || settings.MinimizeOnClose || settings.Saving);
+        Assert.Equal(new(), desktop.Store.Value);
+        Assert.False(desktop.Startup.Enabled);
+        Assert.Contains("not changed", settings.Status, StringComparison.Ordinal);
+    });
+
+    [Fact]
+    public Task CloseHidesButTrayExitClosesAndReleasesTheTray() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new FakeDesktop();
+        desktop.Store.Value = new(MinimizeOnClose: true, StartInTray: true);
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+        await main.InitializeDesktopAsync();
+        var closed = false;
+        main.Closed += (_, _) => closed = true;
+        main.Close();
+        await Task.Yield();
+        Assert.False(closed || main.IsDisposed || desktop.Tray.Disposed);
+        var timer = Assert.IsType<DispatcherTimer>(typeof(MainWindow).GetField("refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(main));
+        Assert.False(timer.IsEnabled);
+        desktop.Tray.Command(TrayCommand.Exit);
+        for (var attempt = 0; attempt < 100 && !closed; attempt++) { await Task.Delay(5); }
+        Assert.True(closed && main.IsDisposed && desktop.Tray.Disposed);
+    });
+
+    [Fact]
+    public Task RapidPreferenceChangesSaveTheLatestValuesAndExitWaitsForThem() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new FakeDesktop();
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+        await main.InitializeDesktopAsync();
+        var settings = Assert.IsType<DashboardViewModel>(main.DataContext).Preferences;
+        var write = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        desktop.Store.WriteBarrier = write.Task;
+        try
+        {
+            settings.MinimizeOnClose = true;
+            var first = main.SavePreferencesAsync();
+            settings.MinimizeOnClose = false;
+            settings.StartInTray = true;
+            var last = main.SavePreferencesAsync();
+            Assert.Same(first, last);
+            var exit = main.DisposeAsync().AsTask();
+            Assert.False(exit.IsCompleted);
+            write.SetResult();
+            await exit;
+            Assert.False(desktop.Store.Value.MinimizeOnClose);
+            Assert.True(desktop.Store.Value.StartInTray);
+        }
+        finally { write.TrySetResult(); }
+    });
+
+    [Fact]
+    public Task TrayCommandsUseTheSameModeAndProfileLogic() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new FakeDesktop();
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services)
+        { Opacity = 0, ShowActivated = false, ShowInTaskbar = false, WindowState = WindowState.Normal };
+        await main.InitializeForLaunchAsync();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        var first = model.SelectedProfile!;
+        model.Load(DashboardEngine.DefaultProfile());
+        desktop.Tray.Profile(first);
+        Assert.Same(first, model.SelectedProfile);
+        desktop.Tray.Command(TrayCommand.Settings);
+        Assert.True(model.IsSettingsMode && main.IsVisible);
+        desktop.Tray.Command(TrayCommand.Tune);
+        Assert.True(model.IsTuningMode);
+        Assert.True(await main.HideToTrayAsync());
+        Assert.False(main.IsVisible);
+        desktop.Tray.Command(TrayCommand.Show);
+        Assert.True(main.IsVisible);
+        // Closing a UI test must use the same real exit route, without leaving a hidden native window.
+        main.RequestExit();
+    });
+
+    [Fact]
+    public Task NativeTrayMenuWiresActionsAndChecksTheActiveProfile() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var profile = new ProfileTab { Name = "Balanced" };
+        var current = new TrayMenuState([profile], profile, SidePanelMode.Settings, true, true);
+        using var tray = new ApplicationTray(() => current);
+        tray.RebuildMenu();
+        var menu = Assert.IsType<Forms.ContextMenuStrip>(typeof(ApplicationTray).GetField("menu", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(tray));
+        var commands = new List<TrayCommand>();
+        ProfileTab? selected = null;
+        tray.CommandRequested += commands.Add;
+        tray.ProfileRequested += value => selected = value;
+        foreach (var label in TrayLabels)
+        { menu.Items.OfType<Forms.ToolStripMenuItem>().Single(item => item.Text == label).PerformClick(); }
+        Assert.Equal(ExpectedTrayCommands, commands);
+        var profiles = menu.Items.OfType<Forms.ToolStripMenuItem>().Single(item => item.Text == "Switch profile");
+        var item = Assert.Single(profiles.DropDownItems.OfType<Forms.ToolStripMenuItem>());
+        Assert.True(item.Checked);
+        item.PerformClick();
+        Assert.Same(profile, selected);
+        current = current with { CanSwitchProfile = false, Mode = SidePanelMode.Calibration };
+        tray.RebuildMenu();
+        Assert.False(menu.Items.OfType<Forms.ToolStripMenuItem>().Single(item => item.Text == "Switch profile").Enabled);
+        await Task.CompletedTask;
+    });
+
     internal sealed class FakeDesktop
     {
         internal FakeStore Store { get; } = new();
