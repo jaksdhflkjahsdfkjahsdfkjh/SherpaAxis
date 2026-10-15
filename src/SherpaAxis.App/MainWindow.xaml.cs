@@ -76,7 +76,12 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.OutputInfo = viewModel.Firmware.Blocked || viewModel.Firmware.Running ? "Virtual output paused · firmware update needs review"
             : viewModel.Recovery.IsBlocked ? "Virtual output paused · hardware recovery required" : runtime?.Status ?? "Waiting for live input";
         viewModel.Refresh();
-
+        if (!viewModel.IsCalibrationMode && (viewModel.InputConnection != diagnosedConnection || viewModel.IsReceiving != diagnosedReceiving))
+        {
+            diagnosedConnection = viewModel.InputConnection;
+            diagnosedReceiving = viewModel.IsReceiving;
+            _ = CheckDeviceDiagnosticsAsync();
+        }
     }
 
     private void SelectAxisClick(object sender, RoutedEventArgs e)
@@ -217,6 +222,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             if (desktopInitialization is { } initializing) { await initializing; }
             if (runtimeInitialization is { } startingRuntime) { await startingRuntime; }
             if (recoveryCheck is { } checkingRecovery) { await checkingRecovery; }
+            if (diagnosticsCheck is { } checkingDevices) { await checkingDevices; }
             if (settingsOperation is { } savingSettings) { await savingSettings; }
             if (activeOperation is { } pending)
             {

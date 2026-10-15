@@ -101,6 +101,7 @@ public partial class MainWindow
                     if (hadSession) { await CheckStartupRecoveryAsync(); }
                     await ResumeLiveAfterRecoveryAsync();
                     SetPanelMode(requestedPanel);
+                    if (requestedPanel == SidePanelMode.Settings) { _ = CheckDeviceDiagnosticsAsync(); }
                     if (hadSession && runtime is null) { engine.End("Stopped"); }
                     break;
                 }
