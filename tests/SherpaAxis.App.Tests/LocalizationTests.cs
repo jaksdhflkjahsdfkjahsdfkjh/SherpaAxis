@@ -1,0 +1,149 @@
+using System.IO;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using SherpaAxis.App.Controls;
+using SherpaAxis.App.Localization;
+using SherpaAxis.App.Models;
+using SherpaAxis.App.Services;
+using SherpaAxis.App.ViewModels;
+using SherpaAxis.Profiles;
+
+namespace SherpaAxis.App.Tests;
+
+[Collection("WPF UI")]
+public sealed class LocalizationTests
+{
+    [Fact]
+    public Task LanguageSelectorChangesTheInterfaceImmediatelyPreservesProfilesAndSurvivesRestart() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        try
+        {
+            await using (var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services))
+            {
+                await main.InitializeDesktopAsync();
+                main.Show();
+                await main.RequestPanelModeAsync(SidePanelMode.Settings);
+                var viewModel = Assert.IsType<DashboardViewModel>(main.DataContext);
+                viewModel.Load(new PedalProfile("Throttle", DashboardEngine.DefaultProfile().Axes));
+                var profile = ProfileJson.Serialize(viewModel.ValidateEditors().Profile);
+                var selector = Assert.IsType<StableComboBox>(main.FindName("LanguageSelector"));
+                selector.SelectedValue = "uk";
+                await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+                Assert.Equal("uk", desktop.Store.Value.Language);
+                Assert.Equal("uk", Localizer.Instance.Language);
+                Assert.Equal("Параметри", Assert.IsType<Button>(main.FindName("SettingsModeButton")).Content);
+                Assert.Equal("Калібрування", Assert.IsType<Button>(main.FindName("CalibrationModeButton")).Content);
+                Assert.Contains("утиліта", main.Title, StringComparison.Ordinal);
+                Assert.Equal(profile, ProfileJson.Serialize(viewModel.ValidateEditors().Profile));
+                Assert.Equal("Throttle", viewModel.ProfileName);
+                Assert.Equal("Brake", viewModel.SelectedAxis.ToString());
+                Assert.Equal("Input vs filtered", viewModel.GraphMode);
+                var filter = Descendants(main).OfType<StableComboBox>().Single(combo => ReferenceEquals(combo.ItemsSource, DashboardViewModel.FilterKinds));
+                filter.SelectedValue = "MovingAverage";
+                Assert.Equal("MovingAverage", viewModel.Editor.FilterKind);
+                Assert.Equal("MovingAverage", filter.SelectedValue);
+                using (var tray = new ApplicationTray(main.GetTrayState))
+                {
+                    tray.RebuildMenu();
+                    var menu = Assert.IsType<System.Windows.Forms.ContextMenuStrip>(typeof(ApplicationTray).GetField("menu", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(tray));
+                    Assert.Contains(menu.Items.Cast<System.Windows.Forms.ToolStripItem>(), item => item.Text == "Параметри");
+                    var profiles = menu.Items.Cast<System.Windows.Forms.ToolStripItem>().OfType<System.Windows.Forms.ToolStripMenuItem>().Single(item => item.Text == "Змінити профіль");
+                    Assert.Contains(profiles.DropDownItems.Cast<System.Windows.Forms.ToolStripItem>(), item => item.Text == "Throttle");
+                }
+                selector.IsDropDownOpen = true;
+                selector.IsDropDownOpen = false;
+                selector.SelectedValue = "en";
+                await main.SavePreferencesAsync();
+                await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+                Assert.Equal("Settings", Assert.IsType<Button>(main.FindName("SettingsModeButton")).Content);
+                selector.SelectedValue = "uk";
+                await main.SavePreferencesAsync();
+            }
+            await using var restarted = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+            await restarted.InitializeDesktopAsync();
+            Assert.Equal("uk", Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences.Language);
+            desktop.Store.Fail = true;
+            Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences.Language = "en";
+            await restarted.SavePreferencesAsync();
+            Assert.Equal("uk", Localizer.Instance.Language);
+            Assert.Equal("uk", Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences.Language);
+        }
+        finally { Localizer.Instance.Language = "en"; }
+    });
+
+    [Fact]
+    public Task CatalogTemplatesAndUkrainianFilterImagesAreComplete() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var localizer = Localizer.Instance;
+        Assert.True(localizer.Translations.Count > 350);
+        Assert.Equal("Гальмо", localizer.TranslateText("Brake", "uk"));
+        Assert.Equal("Brake", localizer.TranslateText("Brake", "en"));
+        Assert.Equal("Застосовано 0.25 · ціль 0.50", localizer.TranslateText("Applied 0.25 · target 0.50", "uk"));
+        Assert.Equal("Застосовано: My profile", localizer.TranslateText("Applied: My profile", "uk"));
+        Assert.Equal("Газ   ·   Фільтр вимкнено", localizer.TranslateText("Throttle   ·   Filter off", "uk"));
+        Assert.Equal("Гальмо — крива", localizer.TranslateText("Brake curve", "uk"));
+        Assert.Equal("Видалено профіль: Throttle.", localizer.TranslateText("Deleted profile: Throttle.", "uk"));
+        Assert.Equal("12 відліків · 500 Гц джерела · 0.5 с · з’єднання 1", localizer.TranslateText("12 reports · 500 source Hz · 0.5 s · connection 1", "uk"));
+        foreach (var (english, ukrainian) in localizer.Translations)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(ukrainian));
+            var expected = Regex.Matches(english, @"\{(\d+)\}").Select(match => match.Groups[1].Value).Order().ToArray();
+            var actual = Regex.Matches(ukrainian, @"\{(\d+)(?::t)?\}").Select(match => match.Groups[1].Value).Order().ToArray();
+            Assert.Equal(expected, actual);
+        }
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
+        var help = new FilteringHelpWindow(main.Resources) { Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            help.Show();
+            foreach (var expander in Descendants(help).OfType<Expander>().ToArray()) { expander.IsExpanded = true; }
+            help.UpdateLayout();
+            localizer.Language = "uk";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            help.UpdateLayout();
+            Assert.Equal("Довідка з фільтрації", help.Title);
+            var images = Descendants(help).OfType<Image>().ToArray();
+            Assert.Equal(14, images.Length);
+            foreach (var image in images)
+            {
+                var bitmap = Assert.IsType<BitmapImage>(image.Source);
+                Assert.Contains("/uk/", bitmap.UriSource.AbsoluteUri, StringComparison.Ordinal);
+                Assert.Equal(1280, bitmap.PixelWidth);
+            }
+        }
+        finally { help.Close(); localizer.Language = "en"; }
+    });
+
+    [Fact]
+    public async Task OlderSettingsDefaultToEnglishAndLanguageRoundTrips()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-language-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "settings.json");
+            await File.WriteAllTextAsync(path, "{\"SchemaVersion\":1,\"MinimizeOnClose\":true}");
+            var store = new ApplicationPreferencesStore(path);
+            var original = await store.LoadAsync(CancellationToken.None);
+            Assert.Equal("en", original.Language);
+            await store.SaveAsync(original with { Language = "uk" }, CancellationToken.None);
+            Assert.Equal(original with { Language = "uk" }, await store.LoadAsync(CancellationToken.None));
+            Assert.Equal("en", Localizer.NormalizeLanguage("unknown"));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index); yield return child;
+            foreach (var item in Descendants(child)) { yield return item; }
+        }
+    }
+}
