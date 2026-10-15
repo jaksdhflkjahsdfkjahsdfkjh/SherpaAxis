@@ -13,6 +13,12 @@ preserves existing descriptors and never passes the upstream overwrite flag.
 After creation it inspects driver state again: helper exit zero alone does
 not establish readiness.
 
+Settings provides device/output diagnostics, Configure vJoy and Windows
+controller test (`joy.cpl`). Checks inspect identity, SDK/driver compatibility,
+dedicated device axes and recovery status without feeding a virtual controller.
+Native hardware calibration supports PE0/017. Other firmware gets a compatibility
+warning; newer versions are never automatically downgraded.
+
 Firmware tools and the reviewed vendor image are separate prerequisites; see
 [firmware](firmware.md). No firmware is programmed during startup or setup.
 

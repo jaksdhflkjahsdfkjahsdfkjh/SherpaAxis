@@ -33,6 +33,7 @@ public partial class MainWindow
         await CheckStartupRecoveryAsync();
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
         await ResumeLiveAfterRecoveryAsync();
+        _ = CheckDeviceDiagnosticsAsync();
     }
     private async Task InitializeRuntimeAsync()
     {

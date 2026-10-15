@@ -180,7 +180,8 @@
                 <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#78E3C6" FontSize="14" HorizontalAlignment="Right" />
                 <TextBlock Text="{loc:Translate Value={Binding SourceName}}" TextTrimming="CharacterEllipsis" Foreground="#95A9C1" FontSize="11" HorizontalAlignment="Right" />
                 <TextBlock Text="{loc:Translate Value={Binding OutputInfo}}" ToolTip="{loc:Translate Value={Binding OutputInfo}}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+                <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
             <StackPanel><TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold" /><TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1" /></StackPanel>
         </DockPanel>
         <Grid Grid.Row="1" TextElement.Foreground="#E8EFF8">
@@ -414,6 +415,30 @@
                     <ScrollViewer x:Name="SettingsSidePanel" Visibility="Hidden" Margin="14,12,14,14" IsEnabled="{Binding CanEdit}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel DataContext="{Binding Preferences}">
                             <TextBlock Text="{loc:Text TD43FB8A961FF}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <StackPanel DataContext="{Binding DataContext.Diagnostics, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,14">
+                                <TextBlock Text="{loc:Text T81786B995CCB}" Style="{StaticResource Section}" />
+                                <ItemsControl ItemsSource="{Binding Checks}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{loc:Translate Value={Binding Detail}}" TextWrapping="Wrap" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}" FontSize="11" Margin="0,4,0,0">
+                                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#95A9C1" /><Style.Triggers><DataTrigger Binding="{Binding NeedsAttention}" Value="True"><Setter Property="Foreground" Value="#FFCE83" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <Button x:Name="CheckDeviceStatusButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckDiagnosticsClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                <Button x:Name="AutomaticVJoySetupButton" Content="{loc:Text TDB3B202B2FF5}" Click="AutomaticSetupClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                <Expander Header="{loc:Text T91D6882FB172}">
+                                    <StackPanel>
+                                        <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" HorizontalAlignment="Stretch" Margin="0,8,0,8" />
+                                        <Button Content="{loc:Text T9BAC4ED3CD46}" Click="ControllerTestClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <Button Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                            <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text T2140CBD331E9}" />
                             <TextBlock Text="{loc:Text TA4FE65264EF7}" Style="{StaticResource Section}" />
                             <controls:StableComboBox x:Name="LanguageSelector" ItemsSource="{x:Static vm:PreferencesViewModel.Languages}" SelectedValuePath="Code" DisplayMemberPath="Name" ItemTemplate="{x:Null}" SelectedValue="{Binding Language, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="LanguageChanged" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" AutomationProperties.Name="{loc:Text TA4FE65264EF7}" ToolTip="{loc:Text TB697FD987325}" />
                             <TextBlock Text="{loc:Text T52D53AF6440E}" Style="{StaticResource Section}" />

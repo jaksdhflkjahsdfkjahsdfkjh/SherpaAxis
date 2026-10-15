@@ -183,5 +183,29 @@ public sealed class DeviceDiagnosticsTests
 [Collection("WPF UI")]
 public sealed class DeviceDiagnosticsUiTests
 {
-
+    [Fact]
+    public Task SettingsChecksAndRetryAreBoundWithoutOpeningHardwareOrStealingFocus() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var checks = 0;
+        var diagnostics = new DeviceDiagnostics(_ => { checks++; return Task.FromResult<HidDeviceIdentity?>(new("FEEL-VR", "Pedals", "PE001600")); },
+            () => [new(2, VJoyDeviceState.Free, true, true)], () => null);
+        var fake = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: fake.Services with { Diagnostics = diagnostics });
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+        await main.CheckDeviceDiagnosticsAsync();
+        Assert.True(model.IsSettingsMode);
+        Assert.True(model.Diagnostics.FirmwareWarning);
+        Assert.Equal("Not connected", model.Status);
+        Assert.True(checks >= 1);
+        Assert.Contains(model.Diagnostics.Checks, check => check.Title == "Calibration recovery");
+        var retry = Assert.IsType<System.Windows.Controls.Button>(main.FindName("CheckDeviceStatusButton"));
+        var content = Assert.IsAssignableFrom<System.Windows.FrameworkElement>(main.Content);
+        content.Measure(new(1340, 900)); content.Arrange(new(0, 0, 1340, 900)); content.UpdateLayout();
+        Assert.True(retry.IsEnabled);
+        retry.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        await main.CheckDeviceDiagnosticsAsync();
+        Assert.True(checks >= 2);
+        Assert.False(model.Diagnostics.Busy);
+    });
 }
