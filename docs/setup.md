@@ -19,6 +19,18 @@ dedicated device axes and recovery status without feeding a virtual controller.
 Native hardware calibration supports PE0/017. Other firmware gets a compatibility
 warning; newer versions are never automatically downgraded.
 
+## Installation package
+
+Build with `./tools/Build-SetupPackage.ps1`. Extract the complete Windows x64
+setup ZIP and run `Install.cmd`; it requests administrator approval, installs
+the self-contained app and installs vJoy when missing. Existing drivers/devices
+are preserved. Restart Windows if requested. Building does not change drivers.
+
+This script-based package does not register an uninstaller. To remove it,
+remove the installed SherpaAxis directory and its Start menu shortcut. Retain
+profiles/settings and the shared vJoy driver when other applications need them.
+Fresh-machine installation remains a manual release check.
+
 Firmware tools and the reviewed vendor image are separate prerequisites; see
 [firmware](firmware.md). No firmware is programmed during startup or setup.
 
