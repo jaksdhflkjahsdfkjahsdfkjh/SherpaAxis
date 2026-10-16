@@ -37,6 +37,15 @@ protected against ordinary replacement during programming. Once the bootloader
 transition occurs, cancellation does not terminate programming. Slow operation
 continues while the UI reports the delay.
 
+## Desktop workflow
+
+1. Open Settings → Firmware update and select the reviewed image and DfuSe tool.
+2. Choose Prepare update and review the controller, old/new firmware and hash.
+3. Choose Flash prepared firmware and confirm that controller and image.
+4. After programming verifies, unplug/reconnect and choose Check updated controller.
+5. Review changed calibration before explicitly accepting it. Settings are never
+   restored automatically after flashing.
+
 ## Recovery and validation
 
 Private records live under `%LOCALAPPDATA%/SherpaAxis/FirmwareUpdates`.

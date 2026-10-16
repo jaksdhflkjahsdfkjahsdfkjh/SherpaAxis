@@ -31,6 +31,7 @@ public partial class MainWindow
         await InitializeDesktopAsync(); await InitializeLibraryAsync();
         if (closing) { return; }
         await CheckStartupRecoveryAsync();
+        await CheckFirmwareStartupAsync();
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
         await ResumeLiveAfterRecoveryAsync();
         _ = CheckDeviceDiagnosticsAsync();
