@@ -14,6 +14,7 @@ An incompatible existing vJoy installation requires repair, not silent replaceme
 The application remembers its selected vJoy ID per user so simulator bindings stay
 stable. Bind X=throttle, Y=brake and Z=clutch from that vJoy device in your game.
 Settings includes diagnostics, Automatic vJoy setup and Windows controller test.
+Firmware updates in Settings support the reviewed PE0017 vendor image only.
 Install ST DfuSe and its USB driver separately; these are not bundled here.
 Firmware is not redistributed and no firmware is flashed by this installer.
 Physical flashing still requires acceptance testing before public release.

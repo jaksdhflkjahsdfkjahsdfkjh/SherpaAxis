@@ -430,6 +430,24 @@
                                 <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <Button x:Name="CheckDeviceStatusButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckDiagnosticsClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
                                 <Button x:Name="AutomaticVJoySetupButton" Content="{loc:Text TDB3B202B2FF5}" Click="AutomaticSetupClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                <Expander x:Name="FirmwareUpdateSection" Header="{loc:Text TB13011C3CB2E}" Margin="0,8,0,12" IsExpanded="{Binding DataContext.Firmware.Blocked, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
+                                    <StackPanel DataContext="{Binding DataContext.Firmware, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <TextBlock Text="{loc:Text T3187C45AB973}" FontSize="11" Foreground="#95A9C1" TextWrapping="Wrap" Margin="0,10,0,10" />
+                                        <Button Content="{loc:Text TA0F5ECBD91DB}" Click="SelectFirmwareImageClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+                                        <TextBlock Text="{Binding ImagePath}" ToolTip="{Binding ImagePath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10" />
+                                        <Button Content="{loc:Text TC12C8D8857AB}" Click="SelectDfuToolClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+                                        <TextBlock Text="{Binding ToolPath}" ToolTip="{Binding ToolPath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10" />
+                                        <Button Content="{loc:Text TFC5AAF880C81}" Click="OpenDfuSetupClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <Button x:Name="PrepareFirmwareButton" Content="{loc:Text TE9A2DD8C54EE}" Click="PrepareFirmwareClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <TextBlock Text="{loc:Translate Value={Binding PlanInfo}}" TextWrapping="Wrap" FontSize="11" Foreground="#95A9C1" Margin="0,0,0,8" />
+                                        <Button x:Name="FlashFirmwareButton" Content="{loc:Text T75405FB703C1}" Click="FlashFirmwareClick" IsEnabled="{Binding CanFlash}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <TextBlock Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Foreground="#FFCE83" FontSize="11" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite" />
+                                        <Button Content="{loc:Text T50BC8F2FB5A7}" Click="CheckUpdatedFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <Button Content="{loc:Text TE9D15BC7FA6D}" Click="RetryFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <Button Content="{loc:Text T49986325ECB4}" Click="AcceptUpdatedFirmwareClick" IsEnabled="{Binding CanAcceptCurrent}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                        <Button Content="{loc:Text T53BA2744F512}" Click="OpenFirmwareLogClick" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                </Expander>
                                 <Expander Header="{loc:Text T91D6882FB172}">
                                     <StackPanel>
                                         <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" HorizontalAlignment="Stretch" Margin="0,8,0,8" />

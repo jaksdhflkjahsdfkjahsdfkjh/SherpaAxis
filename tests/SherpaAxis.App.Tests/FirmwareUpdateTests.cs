@@ -302,5 +302,42 @@ public sealed class FirmwareUpdateTests
 [Collection("WPF UI")]
 public sealed class FirmwareUpdateUiTests
 {
-
+    [Fact]
+    public Task FirmwareControlsUseThePreparedPlanAndStartupPendingUpdateBlocksLiveInput() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware();
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using (var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater }))
+        {
+            await main.RequestPanelModeAsync(SidePanelMode.Settings);
+            var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+            model.Firmware.ImagePath = fake.ImagePath; model.Firmware.ToolPath = fake.ToolPath;
+            await main.PrepareFirmwareAsync();
+            Assert.NotNull(model.Firmware.Plan);
+            Assert.Equal(0, fake.Commands);
+            var content = Assert.IsAssignableFrom<FrameworkElement>(main.Content);
+            content.Measure(new(1340, 900)); content.Arrange(new(0, 0, 1340, 900)); content.UpdateLayout();
+            Assert.True(Assert.IsType<Button>(main.FindName("FlashFirmwareButton")).IsEnabled);
+            await main.RunFirmwareProgrammingAsync(model.Firmware.Plan, false);
+            Assert.True(model.Firmware.Blocked);
+            Assert.Null(model.Firmware.Plan);
+        }
+        var inputStarts = 0;
+        await using (var restarted = new MainWindow(new(), desktopServices: desktop.Services with
+        {
+            Firmware = fake.Updater,
+            Runtime = new(token => { inputStarts++; throw new InvalidOperationException("Input must stay blocked"); }, () => throw new InvalidOperationException("Output must stay blocked"))
+        }))
+        {
+            await restarted.InitializeForLaunchAsync();
+            var model = Assert.IsType<DashboardViewModel>(restarted.DataContext);
+            Assert.True(model.Firmware.Blocked && model.IsSettingsMode);
+            Assert.False(restarted.ShouldStartHidden);
+            Assert.Equal(0, inputStarts);
+            model.Firmware.Running = true;
+            restarted.Close();
+            Assert.False(restarted.IsDisposed);
+            model.Firmware.Running = false;
+        }
+    });
 }
