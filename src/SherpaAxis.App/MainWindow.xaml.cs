@@ -208,9 +208,11 @@ public partial class MainWindow : Window, IAsyncDisposable
     {
         if (libraryInitialization is { } loadingLibrary) { await loadingLibrary; }
         // Refuse a lossy exit before stopping input or changing the window's lifecycle state.
+        await FlushDraftsAsync(requireBackup: true);
         closing = true;
         viewModel.CanEdit = false;
         refresh.Stop();
+        draftTimer.Stop();
         StopHold();
         engine.SuspendOutput("window closing");
         runtime?.StopPublishing();
@@ -230,6 +232,7 @@ public partial class MainWindow : Window, IAsyncDisposable
                 catch (Exception exception) when (IsExpected(exception)) { }
             }
             if (modeOperation is { } pendingMode) { await pendingMode; }
+            await FlushDraftsAsync();
 
             // These own separate resources. Start all cleanup before waiting for slow storage or HID restoration.
             var stopInput = source.DisposeAsync().AsTask();
@@ -262,6 +265,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             }
             if (hardwareSession is null) { SetPanelMode(false); viewModel.HardwareDisplay = null; }
             refresh.Start();
+            if (draftsInitialized) { draftTimer.Start(); }
             throw;
         }
     }

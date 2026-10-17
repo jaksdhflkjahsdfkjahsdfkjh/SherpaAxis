@@ -1,13 +1,21 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:controls="clr-namespace:SherpaAxis.App.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SherpaAxis.App.MainWindow" Title="{loc:Text T10B0E18366A1}" Icon="Assets/SherpaAxis.ico" Width="1340" Height="940" MinWidth="1100" MinHeight="760" WindowState="Maximized" WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8" FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated" xmlns:loc="clr-namespace:SherpaAxis.App.Localization" xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels">
+<Window x:Class="SherpaAxis.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:SherpaAxis.App.Localization"
+        xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
+        xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels"
+        Title="{loc:Text T10B0E18366A1}" Icon="Assets/SherpaAxis.ico" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
+        WindowState="Maximized" WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated">
     <Window.Resources>
         <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
-            <ResourceDictionary Source="Themes/ToolTips.xaml" />
+            <ResourceDictionary Source="Themes/ToolTips.xaml"/>
         </ResourceDictionary.MergedDictionaries>
         <SolidColorBrush x:Key="Muted" Color="#95A9C1" />
         <SolidColorBrush x:Key="EditorSurface" Color="#111D2E" />
         <Style TargetType="Button">
-            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}"/>
             <Setter Property="Background" Value="#22334C" />
             <Setter Property="Foreground" Value="#E8EFF8" />
             <Setter Property="BorderBrush" Value="#354862" />
@@ -19,7 +27,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Surface" CornerRadius="6" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Surface" CornerRadius="6" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -33,12 +42,12 @@
             </Setter>
         </Style>
         <Style x:Key="DeviceToolButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Height" Value="36" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Padding" Value="10,8" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
         </Style>
         <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="#45D6BB" /><Setter Property="Foreground" Value="#092A29" /><Setter Property="BorderBrush" Value="#45D6BB" />
@@ -48,269 +57,284 @@
             <Setter Property="BorderBrush" Value="#34465F" /><Setter Property="CaretBrush" Value="#45D6BB" />
             <Setter Property="Padding" Value="9,7" /><Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="SelectionBrush" Value="#365975" />
-            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}" />
-            <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#78E3C6" /></Trigger></Style.Triggers>
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusRing}"/>
+            <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#78E3C6"/></Trigger></Style.Triggers>
         </Style>
         <Style TargetType="ComboBoxItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="Padding" Value="10,7" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
                 <Border x:Name="Item" Background="#18273C" Padding="{TemplateBinding Padding}"><ContentPresenter /></Border>
-                <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Item" Property="Background" Value="#365975" /></Trigger><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#304B69" /></Trigger></ControlTemplate.Triggers>
+                <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Item" Property="Background" Value="#365975"/></Trigger><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#304B69" /></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="FocusRing" TargetType="Control">
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border BorderBrush="#78E3C6" BorderThickness="2" CornerRadius="6" Margin="-2" /></ControlTemplate></Setter.Value></Setter>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border BorderBrush="#78E3C6" BorderThickness="2" CornerRadius="6" Margin="-2"/></ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="MinHeight" Value="36" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
-            <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
-            <Setter Property="MaxDropDownHeight" Value="300" />
+            <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="MinHeight" Value="36"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+            <Setter Property="KeyboardNavigation.TabNavigation" Value="Once"/>
+            <Setter Property="MaxDropDownHeight" Value="300"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
                 <Grid>
-                    <Border x:Name="ComboSurface" Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" />
+                    <Border x:Name="ComboSurface" Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5"/>
                     <ToggleButton x:Name="DropDownToggle" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False" ClickMode="Press">
-                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" /></ControlTemplate></ToggleButton.Template>
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent"/></ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
-                    <ContentPresenter x:Name="Selection" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="10,7,27,7" IsHitTestVisible="False" />
-                    <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Padding="6,3" Margin="2,1,26,1" IsReadOnly="{TemplateBinding IsReadOnly}" ToolTip="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}" />
-                    <TextBlock Text="⌄" Foreground="#95A9C1" HorizontalAlignment="Right" Margin="0,4,10,0" IsHitTestVisible="False" />
+                    <ContentPresenter x:Name="Selection" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="10,7,27,7" IsHitTestVisible="False"/>
+                    <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Padding="6,3" Margin="2,1,26,1" IsReadOnly="{TemplateBinding IsReadOnly}" ToolTip="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}"/>
+                    <TextBlock Text="⌄" Foreground="#95A9C1" HorizontalAlignment="Right" Margin="0,4,10,0" IsHitTestVisible="False"/>
                     <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" AllowsTransparency="True" Focusable="False">
                         <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" BorderBrush="#536C8B" BorderThickness="1" Background="#18273C">
                             <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}" CanContentScroll="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <ScrollViewer.Template><ControlTemplate TargetType="ScrollViewer">
-                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" CanContentScroll="{TemplateBinding CanContentScroll}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
-                                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" CanContentScroll="{TemplateBinding CanContentScroll}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
                                     </Grid>
                                 </ControlTemplate></ScrollViewer.Template>
-                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                             </ScrollViewer>
                         </Border>
                     </Popup>
                 </Grid>
                 <ControlTemplate.Triggers>
-                    <Trigger Property="IsEditable" Value="True"><Setter TargetName="Selection" Property="Visibility" Value="Collapsed" /><Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" /></Trigger>
-                    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ComboSurface" Property="BorderBrush" Value="#78E3C6" /><Setter TargetName="ComboSurface" Property="BorderThickness" Value="2" /></Trigger>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ComboSurface" Property="Background" Value="#223750" /></Trigger>
+                    <Trigger Property="IsEditable" Value="True"><Setter TargetName="Selection" Property="Visibility" Value="Collapsed"/><Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/></Trigger>
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ComboSurface" Property="BorderBrush" Value="#78E3C6"/><Setter TargetName="ComboSurface" Property="BorderThickness" Value="2"/></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ComboSurface" Property="Background" Value="#223750"/></Trigger>
 
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style TargetType="controls:StableComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="ItemTemplate"><Setter.Value><DataTemplate><TextBlock Text="{loc:Translate Value={Binding}}" /></DataTemplate></Setter.Value></Setter>
+            <Setter Property="ItemTemplate"><Setter.Value><DataTemplate><TextBlock Text="{loc:Translate Value={Binding}}"/></DataTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="ScrollPage" TargetType="RepeatButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="IsTabStop" Value="False" />
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent" /></ControlTemplate></Setter.Value></Setter>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style TargetType="ScrollBar">
-            <Setter Property="Width" Value="12" /><Setter Property="Height" Value="Auto" />
-            <Setter Property="Background" Value="#101C2D" />
-            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Width" Value="12"/><Setter Property="Height" Value="Auto"/>
+            <Setter Property="Background" Value="#101C2D"/>
+            <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
                 <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                    <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" ViewportSize="{TemplateBinding ViewportSize}" Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                        <Track.DecreaseRepeatButton><RepeatButton x:Name="PageDecrease" Command="{x:Static ScrollBar.PageUpCommand}" Style="{StaticResource ScrollPage}" /></Track.DecreaseRepeatButton>
+                    <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True"
+                           Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" ViewportSize="{TemplateBinding ViewportSize}"
+                           Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <Track.DecreaseRepeatButton><RepeatButton x:Name="PageDecrease" Command="{x:Static ScrollBar.PageUpCommand}" Style="{StaticResource ScrollPage}"/></Track.DecreaseRepeatButton>
                         <Track.Thumb><Thumb x:Name="ScrollThumb" MinHeight="24" MinWidth="8" Cursor="Hand">
                             <Thumb.Template><ControlTemplate TargetType="Thumb">
-                                <Border x:Name="Grip" Background="#48637E" CornerRadius="4" Margin="2" />
+                                <Border x:Name="Grip" Background="#48637E" CornerRadius="4" Margin="2"/>
                                 <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="#679AAB" /></Trigger>
-                                    <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="#45D6BB" /></Trigger>
-                                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Grip" Property="Background" Value="#293D57" /></Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="#679AAB"/></Trigger>
+                                    <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="#45D6BB"/></Trigger>
+                                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Grip" Property="Background" Value="#293D57"/></Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate></Thumb.Template>
                         </Thumb></Track.Thumb>
-                        <Track.IncreaseRepeatButton><RepeatButton x:Name="PageIncrease" Command="{x:Static ScrollBar.PageDownCommand}" Style="{StaticResource ScrollPage}" /></Track.IncreaseRepeatButton>
+                        <Track.IncreaseRepeatButton><RepeatButton x:Name="PageIncrease" Command="{x:Static ScrollBar.PageDownCommand}" Style="{StaticResource ScrollPage}"/></Track.IncreaseRepeatButton>
                     </Track>
                 </Border>
                 <ControlTemplate.Triggers>
                     <Trigger Property="Orientation" Value="Horizontal">
-                        <Setter Property="Height" Value="12" /><Setter Property="Width" Value="Auto" />
-                        <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                        <Setter TargetName="ScrollThumb" Property="MinWidth" Value="24" /><Setter TargetName="ScrollThumb" Property="MinHeight" Value="8" />
-                        <Setter TargetName="PageDecrease" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}" />
-                        <Setter TargetName="PageIncrease" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}" />
+                        <Setter Property="Height" Value="12"/><Setter Property="Width" Value="Auto"/>
+                        <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/>
+                        <Setter TargetName="ScrollThumb" Property="MinWidth" Value="24"/><Setter TargetName="ScrollThumb" Property="MinHeight" Value="8"/>
+                        <Setter TargetName="PageDecrease" Property="Command" Value="{x:Static ScrollBar.PageLeftCommand}"/>
+                        <Setter TargetName="PageIncrease" Property="Command" Value="{x:Static ScrollBar.PageRightCommand}"/>
                     </Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style TargetType="Expander">
-            <Setter Property="Foreground" Value="#E8EFF8" /><Setter Property="Margin" Value="0,14,0,0" />
+            <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="Margin" Value="0,14,0,0"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
                 <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}"><StackPanel>
                     <ToggleButton Foreground="{TemplateBinding Foreground}" x:Name="HeaderToggle" AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Stretch" Cursor="Hand" FocusVisualStyle="{StaticResource FocusRing}">
                         <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="HeaderSurface" Background="#18273C" BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="10,8">
-                                <DockPanel><TextBlock Text="⌄" DockPanel.Dock="Right" Foreground="#95A9C1" /><ContentPresenter /></DockPanel>
+                                <DockPanel><TextBlock Text="⌄" DockPanel.Dock="Right" Foreground="#95A9C1"/><ContentPresenter/></DockPanel>
                             </Border>
-                            <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderSurface" Property="BorderBrush" Value="#78E3C6" /></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="#223750" /></Trigger></ControlTemplate.Triggers>
+                            <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderSurface" Property="BorderBrush" Value="#78E3C6"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="#223750"/></Trigger></ControlTemplate.Triggers>
                         </ControlTemplate></ToggleButton.Template>
-                        <ContentPresenter ContentSource="Header" />
+                        <ContentPresenter ContentSource="Header"/>
                     </ToggleButton>
-                    <ContentPresenter x:Name="ExpandedContent" ContentSource="Content" Visibility="Collapsed" Margin="0,10,0,0" />
+                    <ContentPresenter x:Name="ExpandedContent" ContentSource="Content" Visibility="Collapsed" Margin="0,10,0,0"/>
                 </StackPanel></Border>
-                <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandedContent" Property="Visibility" Value="Visible" /></Trigger></ControlTemplate.Triggers>
+                <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandedContent" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Muted}" /><Setter Property="FontSize" Value="12" /><Setter Property="Margin" Value="0,0,0,5" /></Style>
         <Style x:Key="Section" TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="15" /><Setter Property="Margin" Value="0,22,0,12" /></Style>
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#D4E1EF" /><Setter Property="Margin" Value="0,10,0,0" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Foreground" Value="#D4E1EF"/><Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
                 <DockPanel Background="Transparent">
                     <Border x:Name="CheckSurface" Width="16" Height="16" BorderBrush="#536C8B" BorderThickness="1" Background="#0D1728" CornerRadius="3" Margin="0,0,7,0" VerticalAlignment="Center">
-                        <Path x:Name="CheckMark" Data="M 2,7 L 5,10 L 11,3" Stroke="#78E3C6" StrokeThickness="2" Visibility="Collapsed" />
+                        <Path x:Name="CheckMark" Data="M 2,7 L 5,10 L 11,3" Stroke="#78E3C6" StrokeThickness="2" Visibility="Collapsed"/>
                     </Border>
-                    <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
                 </DockPanel>
-                <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible" /></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="CheckSurface" Property="BorderBrush" Value="#78E3C6" /></Trigger></ControlTemplate.Triggers>
+                <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="CheckSurface" Property="BorderBrush" Value="#78E3C6"/></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         </ResourceDictionary>
     </Window.Resources>
     <Grid Margin="22,16,22,14">
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" MinHeight="34" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto" MinHeight="34"/></Grid.RowDefinitions>
         <DockPanel Height="70" Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Right" Width="500" HorizontalAlignment="Right">
-                <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#78E3C6" FontSize="14" HorizontalAlignment="Right" />
-                <TextBlock Text="{loc:Translate Value={Binding SourceName}}" TextTrimming="CharacterEllipsis" Foreground="#95A9C1" FontSize="11" HorizontalAlignment="Right" />
-                <TextBlock Text="{loc:Translate Value={Binding OutputInfo}}" ToolTip="{loc:Translate Value={Binding OutputInfo}}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#78E3C6" FontSize="14" HorizontalAlignment="Right"/>
+                <TextBlock Text="{loc:Translate Value={Binding SourceName}}" TextTrimming="CharacterEllipsis" Foreground="#95A9C1" FontSize="11" HorizontalAlignment="Right"/>
+                <TextBlock Text="{loc:Translate Value={Binding OutputInfo}}" ToolTip="{loc:Translate Value={Binding OutputInfo}}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-            <StackPanel><TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold" /><TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1" /></StackPanel>
+            <StackPanel><TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1"/></StackPanel>
         </DockPanel>
         <Grid Grid.Row="1" TextElement.Foreground="#E8EFF8">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <Border x:Name="StartupRecoveryPanel" DataContext="{Binding Recovery}" Background="#202334" BorderBrush="#B18445" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,12">
-                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsBlocked}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsBlocked}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
                 <StackPanel>
-                    <TextBlock Text="{loc:Translate Value={Binding Status}}" FontWeight="SemiBold" Foreground="#FFCE83" TextWrapping="Wrap" />
+                    <TextBlock Text="{loc:Translate Value={Binding Status}}" FontWeight="SemiBold" Foreground="#FFCE83" TextWrapping="Wrap"/>
                     <controls:StableComboBox x:Name="RecoveryRecordSelector" ItemsSource="{Binding Records}" SelectedItem="{Binding Selected}" DisplayMemberPath="Label" ItemTemplate="{x:Null}" IsEnabled="{Binding CanCheck}" Margin="0,8,0,0" AutomationProperties.Name="{loc:Text T224FC5C90846}" ToolTip="{loc:Text TD298BD946E57}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}">
-                        <controls:StableComboBox.Style><Style TargetType="controls:StableComboBox" BasedOn="{StaticResource {x:Type controls:StableComboBox}}"><Style.Triggers><DataTrigger Binding="{Binding Records.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></controls:StableComboBox.Style>
+                        <controls:StableComboBox.Style><Style TargetType="controls:StableComboBox" BasedOn="{StaticResource {x:Type controls:StableComboBox}}"><Style.Triggers><DataTrigger Binding="{Binding Records.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></controls:StableComboBox.Style>
                     </controls:StableComboBox>
-                    <TextBlock Text="{loc:Translate Value={Binding Detail}}" Foreground="#E8EFF8" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    <TextBlock Text="{Binding FilePath}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    <TextBlock Text="{loc:Translate Value={Binding Detail}}" Foreground="#E8EFF8" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding FilePath}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0"/>
                     <WrapPanel Margin="0,8,0,0">
-                        <Button x:Name="CheckRecoveryButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckRecoveryClick" IsEnabled="{Binding CanCheck}" FontSize="12" Padding="10,7" />
-                        <Button x:Name="RestoreRecoveryButton" Content="{loc:Text T96D536EB0D3A}" Click="RestoreRecoveryClick" IsEnabled="{Binding CanRestore}" FontSize="12" Padding="10,7" />
+                        <Button x:Name="CheckRecoveryButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckRecoveryClick" IsEnabled="{Binding CanCheck}" FontSize="12" Padding="10,7"/>
+                        <Button x:Name="RestoreRecoveryButton" Content="{loc:Text T96D536EB0D3A}" Click="RestoreRecoveryClick" IsEnabled="{Binding CanRestore}" FontSize="12" Padding="10,7"/>
                         <Button x:Name="SaveRecoveryButton" Content="{loc:Text T303F8DAA65FC}" Click="SaveRecoveryClick" IsEnabled="{Binding CanSave}" FontSize="12" Padding="10,7">
-                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ShowSave}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding ShowSave}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
                         </Button>
-                        <Button Content="{loc:Text TAC0BAAF69161}" Click="OpenRecoveryFolderClick" IsEnabled="{Binding CanCheck}" FontSize="12" Padding="10,7" />
+                        <Button Content="{loc:Text TAC0BAAF69161}" Click="OpenRecoveryFolderClick" IsEnabled="{Binding CanCheck}" FontSize="12" Padding="10,7"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>
             <StackPanel Grid.Row="1">
-                <Border x:Name="ProfileBar" Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="7" Padding="10,8" Margin="0,0,0,12">
+                <Border x:Name="DraftRecoveryPanel" Background="#202334" BorderBrush="#B18445" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,12">
+                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasRecoverableDrafts}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" IsEnabled="{Binding CanTune}">
+                            <Button Content="{loc:Text TF8B6B337B812}" Click="RestoreDraftsClick" Padding="10,7" FontSize="12"/>
+                            <Button x:Name="DiscardDraftsButton" Content="{loc:Text T145545F4C7A6}" Click="DiscardDraftsClick" Padding="10,7" FontSize="12"/>
+                        </StackPanel>
+                        <TextBlock Text="{loc:Text T473D97AC62C6}" TextWrapping="Wrap" Foreground="#FFCE83" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Border>
+            <Border x:Name="ProfileBar" Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="7" Padding="10,8" Margin="0,0,0,12">
                 <DockPanel LastChildFill="True" IsEnabled="{Binding CanTune}">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,12,0">
-                        <TextBlock Text="{loc:Text T5CD5FC61B633}" VerticalAlignment="Center" Foreground="#B4C4D8" Background="Transparent" FontSize="12" Margin="0,0,8,0" ToolTip="{loc:Translate Value={Binding ToolTip, ElementName=AutoLoadProfileCheckBox}}" ToolTipService.InitialShowDelay="300" />
-                        <CheckBox x:Name="AutoLoadProfileCheckBox" IsChecked="{Binding SelectedAutoLoad, Mode=OneWay}" Click="AutoLoadProfileClick" VerticalAlignment="Center" Margin="0" AutomationProperties.Name="{loc:Text T92BBC9769282}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TDB88E6801A7A}" />
+                        <TextBlock Text="{loc:Text T5CD5FC61B633}" VerticalAlignment="Center" Foreground="#B4C4D8" Background="Transparent" FontSize="12" Margin="0,0,8,0" ToolTip="{loc:Translate Value={Binding ToolTip, ElementName=AutoLoadProfileCheckBox}}" ToolTipService.InitialShowDelay="300"/>
+                        <CheckBox x:Name="AutoLoadProfileCheckBox" IsChecked="{Binding SelectedAutoLoad, Mode=OneWay}" Click="AutoLoadProfileClick" VerticalAlignment="Center" Margin="0" AutomationProperties.Name="{loc:Text T92BBC9769282}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TDB88E6801A7A}"/>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0">
-                        <Button Content="" FontFamily="Segoe MDL2 Assets" Click="SaveLibraryClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text T0C8209E72EC8}" ToolTip="{loc:Text T48F3E3EAEAE7}" />
-                        <Button x:Name="NewProfileButton" Content="" FontFamily="Segoe MDL2 Assets" Click="NewProfileClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text TFCF4F3F4D5F7}" ToolTip="{loc:Text T5A0E301AD8CC}" />
+                        <Button Content="&#xE74E;" FontFamily="Segoe MDL2 Assets" Click="SaveLibraryClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text T0C8209E72EC8}" ToolTip="{loc:Text T48F3E3EAEAE7}"/>
+                        <Button x:Name="NewProfileButton" Content="&#xE710;" FontFamily="Segoe MDL2 Assets" Click="NewProfileClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text TFCF4F3F4D5F7}" ToolTip="{loc:Text T5A0E301AD8CC}"/>
                         <Button x:Name="ProfileMoreButton" Content="···" Click="ProfileMenuClick" Width="34" Padding="7" Margin="0" AutomationProperties.Name="{loc:Text TD8C8A6B2F159}" ToolTip="{loc:Text TA19589F9A857}">
                             <Button.ContextMenu><ContextMenu Background="#17273B" Foreground="#E8EFF8" FontFamily="Segoe UI" FontSize="12" BorderBrush="#354862" BorderThickness="1" Padding="4">
                                 <ContextMenu.Template><ControlTemplate TargetType="ContextMenu">
                                     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" CornerRadius="6">
-                                        <ItemsPresenter />
+                                        <ItemsPresenter/>
                                     </Border>
                                 </ControlTemplate></ContextMenu.Template>
                                 <ContextMenu.Resources>
                                     <Style TargetType="MenuItem">
-                                        <Setter Property="Foreground" Value="#E8EFF8" />
-                                        <Setter Property="Padding" Value="10,5" />
+                                        <Setter Property="Foreground" Value="#E8EFF8"/>
+                                        <Setter Property="Padding" Value="10,5"/>
                                         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem">
                                             <Border x:Name="ItemSurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"/>
                                             </Border>
                                             <ControlTemplate.Triggers>
-                                                <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="#304B69" /></Trigger>
-                                                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ItemSurface" Property="BorderBrush" Value="#78E3C6" /></Trigger>
-                                                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ItemSurface" Property="Opacity" Value="0.45" /></Trigger>
+                                                <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="#304B69"/></Trigger>
+                                                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ItemSurface" Property="BorderBrush" Value="#78E3C6"/></Trigger>
+                                                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ItemSurface" Property="Opacity" Value="0.45"/></Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate></Setter.Value></Setter>
                                     </Style>
                                     <Style x:Key="ProfileMenuSeparator" TargetType="Separator">
-                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Margin" Value="0"/>
                                         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Separator">
-                                            <Border Height="1" Margin="4,4" Background="#354862" />
+                                            <Border Height="1" Margin="4,4" Background="#354862"/>
                                         </ControlTemplate></Setter.Value></Setter>
                                     </Style>
                                 </ContextMenu.Resources>
-                                <MenuItem Header="{loc:Text TFCF4F3F4D5F7}" Click="NewProfileClick" />
-                                <MenuItem Header="{loc:Text TDDA90D446623}" Click="OpenProfileClick" />
-                                <MenuItem Header="{loc:Text T6EF6A470EC18}" Click="DuplicateProfileClick" />
-                                <MenuItem Header="{loc:Text TD7754C2A4510}" Click="RenameProfileClick" />
-                                <Separator Style="{StaticResource ProfileMenuSeparator}" />
-                                <MenuItem Header="{loc:Text T9088EE671F7A}" Click="SaveProfileClick" />
-                                <Separator Style="{StaticResource ProfileMenuSeparator}" />
-                                <MenuItem Header="{loc:Text T47311AF432A7}" Click="DeleteProfileClick" Foreground="#FF9A9A" ToolTip="{loc:Text TA301450B6392}" />
+                                <MenuItem Header="{loc:Text TFCF4F3F4D5F7}" Click="NewProfileClick"/>
+                                <MenuItem Header="{loc:Text TDDA90D446623}" Click="OpenProfileClick"/>
+                                <MenuItem Header="{loc:Text T6EF6A470EC18}" Click="DuplicateProfileClick"/>
+                                <MenuItem Header="{loc:Text TD7754C2A4510}" Click="RenameProfileClick"/>
+                                <Separator Style="{StaticResource ProfileMenuSeparator}"/>
+                                <MenuItem Header="{loc:Text T9088EE671F7A}" Click="SaveProfileClick"/>
+                                <Separator Style="{StaticResource ProfileMenuSeparator}"/>
+                                <MenuItem Header="{loc:Text TBFF260A6B20D}" Click="UndoDeleteProfileClick" IsEnabled="{Binding PlacementTarget.DataContext.CanUndoDelete, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                <MenuItem Header="{loc:Text T47311AF432A7}" Click="DeleteProfileClick" Foreground="#FF9A9A" ToolTip="{loc:Text TA301450B6392}"/>
                             </ContextMenu></Button.ContextMenu>
                         </Button>
                     </StackPanel>
-                    <controls:StableComboBox x:Name="ProfileSelector" ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}" IsSynchronizedWithCurrentItem="False" DisplayMemberPath="DisplayName" ItemTemplate="{x:Null}" SelectionChanged="ProfileSelectionChanged" MinWidth="160" HorizontalAlignment="Stretch" AutomationProperties.Name="{loc:Text T75192487A033}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TADDF90F3C1C2}" />
+                    <controls:StableComboBox x:Name="ProfileSelector" ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}"
+                        IsSynchronizedWithCurrentItem="False" DisplayMemberPath="DisplayName" ItemTemplate="{x:Null}" SelectionChanged="ProfileSelectionChanged" MinWidth="160" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:Text T75192487A033}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TADDF90F3C1C2}"/>
                 </DockPanel>
             </Border>
             </StackPanel>
             <Grid Grid.Row="2" x:Name="WorkbenchContent">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="350" /></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="350"/></Grid.ColumnDefinitions>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid Height="{Binding ActualHeight, ElementName=WorkbenchContent}">
-                        <Grid.Style><Style TargetType="Grid"><Setter Property="MinHeight" Value="520" /><Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=CurvesSection}" Value="True"><Setter Property="MinHeight" Value="800" /></DataTrigger></Style.Triggers></Style></Grid.Style>
-                        <Grid.RowDefinitions><RowDefinition Height="104" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid.Style><Style TargetType="Grid"><Setter Property="MinHeight" Value="520"/><Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=CurvesSection}" Value="True"><Setter Property="MinHeight" Value="800"/></DataTrigger></Style.Triggers></Style></Grid.Style>
+                        <Grid.RowDefinitions><RowDefinition Height="104"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-10,12">
-                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate><DataTemplate>
                                 <Button Tag="{Binding Axis}" AutomationProperties.Name="{loc:Translate Value={Binding Name}}" Click="SelectAxisClick" Padding="12,8" Margin="0,0,10,0" Background="#142136" BorderBrush="#293D57" HorizontalContentAlignment="Stretch" ToolTip="{loc:Text T0F5381374AE5}">
-                                    <StackPanel><DockPanel><TextBlock Text="{loc:Translate Value={Binding Name}}" FontSize="11" Foreground="#95A9C1" /><TextBlock Text="{loc:Translate Value={Binding OutputText}}" FontSize="23" Foreground="#78E3C6" HorizontalAlignment="Right" /></DockPanel>
-                                    <ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,7,0,7" Background="#25364F" Foreground="#45D6BB" BorderThickness="0" />
-                                    <TextBlock Foreground="#95A9C1" FontSize="10"><Run Text="{loc:Translate Value={Binding InputLabel, Mode=OneWay}}" /><Run Text="{loc:Translate Value={Binding Input, Mode=OneWay}}" /></TextBlock></StackPanel>
+                                    <StackPanel><DockPanel><TextBlock Text="{loc:Translate Value={Binding Name}}" FontSize="11" Foreground="#95A9C1"/><TextBlock Text="{loc:Translate Value={Binding OutputText}}" FontSize="23" Foreground="#78E3C6" HorizontalAlignment="Right"/></DockPanel>
+                                    <ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,7,0,7" Background="#25364F" Foreground="#45D6BB" BorderThickness="0"/>
+                                    <TextBlock Foreground="#95A9C1" FontSize="10"><Run Text="{loc:Translate Value={Binding InputLabel, Mode=OneWay}}"/><Run Text="{loc:Translate Value={Binding Input, Mode=OneWay}}"/></TextBlock></StackPanel>
                                 </Button>
                             </DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8" Padding="14,12">
-                            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <DockPanel LastChildFill="True">
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,0,0,6">
-                                        <Button x:Name="GraphPauseButton" Content="{loc:Translate Value={Binding GraphPauseText}}" Click="ToggleGraphPauseClick" FontSize="11" Padding="9,7" MinHeight="36" ToolTip="{loc:Text T09BF1337C6BF}" />
-                                        <Button x:Name="GraphResetButton" Content="{loc:Text T91A661B24F1B}" Click="ResetGraphZoomClick" FontSize="11" Padding="9,7" MinHeight="36" Margin="0" ToolTip="{loc:Text T0BAED7BD5CFE}" />
+                                        <Button x:Name="GraphPauseButton" Content="{loc:Translate Value={Binding GraphPauseText}}" Click="ToggleGraphPauseClick" FontSize="11" Padding="9,7" MinHeight="36" ToolTip="{loc:Text T09BF1337C6BF}"/>
+                                        <Button x:Name="GraphResetButton" Content="{loc:Text T91A661B24F1B}" Click="ResetGraphZoomClick" FontSize="11" Padding="9,7" MinHeight="36" Margin="0" ToolTip="{loc:Text T0BAED7BD5CFE}"/>
                                     </StackPanel>
                                 <WrapPanel>
-                                    <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphPedals}" SelectedItem="{Binding GraphPedal}" Width="125" Margin="0,0,8,6" AutomationProperties.Name="{loc:Text T61BFF8A7B6D7}" ToolTip="{loc:Text T6D6A713E1AF1}" AutomationProperties.HelpText="{loc:Text T6D6A713E1AF1}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                    <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphModes}" SelectedItem="{Binding DisplayGraphMode, Mode=OneWay}" SelectionChanged="GraphModeChanged" IsEnabled="{Binding CanTune}" Width="155" Margin="0,0,8,6" AutomationProperties.Name="{loc:Text TFEBFEB2C6279}" ToolTip="{loc:Text TFEA2531F23F6}" AutomationProperties.HelpText="{loc:Text TFEA2531F23F6}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
+                                    <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphPedals}" SelectedItem="{Binding GraphPedal}" Width="125" Margin="0,0,8,6" AutomationProperties.Name="{loc:Text T61BFF8A7B6D7}" ToolTip="{loc:Text T6D6A713E1AF1}" AutomationProperties.HelpText="{loc:Text T6D6A713E1AF1}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                    <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.GraphModes}" SelectedItem="{Binding DisplayGraphMode, Mode=OneWay}" SelectionChanged="GraphModeChanged" IsEnabled="{Binding CanTune}" Width="155" Margin="0,0,8,6" AutomationProperties.Name="{loc:Text TFEBFEB2C6279}" ToolTip="{loc:Text TFEA2531F23F6}" AutomationProperties.HelpText="{loc:Text TFEA2531F23F6}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
-                                        <TextBox x:Name="GraphWindowInput" Text="{Binding GraphWindow, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, ConverterCulture=en-US}" KeyDown="GraphWindowKeyDown" Width="62" MinHeight="36" AutomationProperties.Name="{loc:Text TA526D0B80ACF}" ToolTip="{loc:Text T633824776866}" AutomationProperties.HelpText="{loc:Text T633824776866}" />
-                                        <TextBlock Text="{loc:Text T043A718774C5}" Foreground="#95A9C1" Margin="4,0,0,0" VerticalAlignment="Center" />
+                                        <TextBox x:Name="GraphWindowInput" Text="{Binding GraphWindow, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, ConverterCulture=en-US}" KeyDown="GraphWindowKeyDown" Width="62" MinHeight="36" AutomationProperties.Name="{loc:Text TA526D0B80ACF}" ToolTip="{loc:Text T633824776866}" AutomationProperties.HelpText="{loc:Text T633824776866}"/>
+                                        <TextBlock Text="{loc:Text T043A718774C5}" Foreground="#95A9C1" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    <CheckBox Content="{loc:Text TE61764D595BF}" IsChecked="{Binding GraphZoom}" Margin="3,8,0,6" AutomationProperties.Name="{loc:Text T9FFA4BFA7F39}" ToolTip="{loc:Text T9334EABB9EAE}" AutomationProperties.HelpText="{loc:Text T9334EABB9EAE}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
+                                    <CheckBox Content="{loc:Text TE61764D595BF}" IsChecked="{Binding GraphZoom}" Margin="3,8,0,6" AutomationProperties.Name="{loc:Text T9FFA4BFA7F39}" ToolTip="{loc:Text T9334EABB9EAE}" AutomationProperties.HelpText="{loc:Text T9334EABB9EAE}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                 </WrapPanel>
                                 </DockPanel>
                                 <StackPanel Grid.Row="1">
-                                    <TextBlock Text="{loc:Translate Value={Binding DisplayGraphLegend}}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" />
-                                    <TextBlock Text="{loc:Text TBD83047E6775}" Foreground="#78B5AD" FontSize="10" Margin="0,4,0,8" TextWrapping="Wrap" />
+                                    <TextBlock Text="{loc:Translate Value={Binding DisplayGraphLegend}}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{loc:Text TBD83047E6775}" Foreground="#78B5AD" FontSize="10" Margin="0,4,0,8" TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <controls:SignalPlot x:Name="MainSignalPlot" Grid.Row="2" Paused="{Binding GraphPaused}" InspectionStarted="GraphInspectionStarted" ToolTip="{loc:Text TC13636746EAE}" Series="{Binding DisplayHistories}" Pedal="{Binding GraphPedal}" Mode="{Binding DisplayGraphMode}" Zoom="{Binding GraphZoom}" WindowSeconds="{Binding GraphWindow}" MinHeight="250" AutomationProperties.Name="{loc:Text TCE35C3A8DE5F}" />
-                                <TextBlock Grid.Row="3" Text="{loc:Translate Value={Binding DisplaySampleInfo}}" FontSize="10" Foreground="#95A9C1" Margin="0,6,0,0" />
+                                <controls:SignalPlot x:Name="MainSignalPlot" Grid.Row="2" Paused="{Binding GraphPaused}" InspectionStarted="GraphInspectionStarted" ToolTip="{loc:Text TC13636746EAE}" Series="{Binding DisplayHistories}" Pedal="{Binding GraphPedal}" Mode="{Binding DisplayGraphMode}" Zoom="{Binding GraphZoom}" WindowSeconds="{Binding GraphWindow}" MinHeight="250" AutomationProperties.Name="{loc:Text TCE35C3A8DE5F}"/>
+                                <TextBlock Grid.Row="3" Text="{loc:Translate Value={Binding DisplaySampleInfo}}" FontSize="10" Foreground="#95A9C1" Margin="0,6,0,0"/>
                             </Grid>
                         </Border>
                         <Expander Grid.Row="2" x:Name="CurvesSection" Header="{loc:Text T31FF831B9097}" IsExpanded="True">
-                            <StackPanel><TextBlock Text="{loc:Text T87777DB69638}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap" />
+                            <StackPanel><TextBlock Text="{loc:Text T87777DB69638}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
                         <ItemsControl ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanTune}" Height="240">
-                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate><DataTemplate>
                                 <Border BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="8" Margin="4,0">
-                                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                        <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6" />
-                                        <controls:StableComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{loc:Translate Value={Binding Title}}" ToolTip="{loc:Text TE1C88387AE08}" AutomationProperties.HelpText="{loc:Text TE1C88387AE08}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                        <controls:CurveEditor Grid.Row="2" Points="{Binding Points, Mode=OneWay}" Preview="{Binding Preview}" Applied="{Binding Applied}" Edited="CurveEdited" MinHeight="115" Margin="0,8,0,6" AutomationProperties.Name="{loc:Translate Value={Binding Title}}" />
-                                        <Button Grid.Row="3" Content="{loc:Text TBF37CDFBB7E6}" Click="ClearCurveClick" FontSize="11" Padding="7,5" Margin="0" ToolTip="{loc:Text T707055171B8C}" />
+                                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+                                        <controls:StableComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{loc:Translate Value={Binding Title}}" ToolTip="{loc:Text TE1C88387AE08}" AutomationProperties.HelpText="{loc:Text TE1C88387AE08}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <controls:CurveEditor Grid.Row="2" Points="{Binding Points, Mode=OneWay}" Preview="{Binding Preview}" Applied="{Binding Applied}" Edited="CurveEdited" MinHeight="115" Margin="0,8,0,6" AutomationProperties.Name="{loc:Translate Value={Binding Title}}"/>
+                                        <Button Grid.Row="3" Content="{loc:Text TBF37CDFBB7E6}" Click="ClearCurveClick" FontSize="11" Padding="7,5" Margin="0" ToolTip="{loc:Text T707055171B8C}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate></ItemsControl.ItemTemplate>
@@ -323,155 +347,156 @@
                     <DockPanel>
                         <WrapPanel DockPanel.Dock="Top" Margin="14,12,14,0">
                             <Button x:Name="TuningModeButton" Content="{loc:Text T2ABEEFBA61DF}" Click="TuningModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TABF5D860F9C3}">
-                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsTuningMode}" Value="True"><Setter Property="Background" Value="#45D6BB" /><Setter Property="Foreground" Value="#092A29" /><Setter Property="BorderBrush" Value="#45D6BB" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsTuningMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
                             <Button x:Name="CalibrationModeButton" Content="{loc:Text T252526ECD431}" Click="CalibrationModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T65E82C65BA0C}">
-                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsCalibrationMode}" Value="True"><Setter Property="Background" Value="#45D6BB" /><Setter Property="Foreground" Value="#092A29" /><Setter Property="BorderBrush" Value="#45D6BB" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsCalibrationMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
                             <Button x:Name="SettingsModeButton" Content="{loc:Text T74A883A037BC}" Click="SettingsModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TD67536EC8677}">
-                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsSettingsMode}" Value="True"><Setter Property="Background" Value="#45D6BB" /><Setter Property="Foreground" Value="#092A29" /><Setter Property="BorderBrush" Value="#45D6BB" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsSettingsMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
                             <TextBlock Text="{loc:Text TB7B9FBF8DF28}" Width="290" TextAlignment="Right" Foreground="#95A9C1" FontSize="10" VerticalAlignment="Center" Margin="0,0,0,0">
-                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Hidden" /><Style.Triggers><DataTrigger Binding="{Binding IsSwitchingMode}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Hidden"/><Style.Triggers><DataTrigger Binding="{Binding IsSwitchingMode}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                             </TextBlock>
                         </WrapPanel>
                         <Grid>
                     <DockPanel x:Name="TuningSidePanel" IsEnabled="{Binding CanTune}">
                         <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
-                            <DockPanel><Button DockPanel.Dock="Right" Content="{loc:Text TE3DA1EDB7BCD}" Style="{StaticResource Primary}" Click="ApplyClick" Padding="10,9" FontSize="12" Margin="10,0,0,0" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T3C3F72BD8A8C}" /><controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="{loc:Text T6BA9651225F6}" ToolTip="{loc:Text T15E4C75CF19D}" AutomationProperties.HelpText="{loc:Text T15E4C75CF19D}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" /></DockPanel>
-                            <TextBlock Text="{loc:Translate Value={Binding ActiveProfileInfo}}" Foreground="#95A9C1" FontSize="10" Margin="0,8,0,4" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
+                            <DockPanel><Button DockPanel.Dock="Right" Content="{loc:Text TE3DA1EDB7BCD}" Style="{StaticResource Primary}" Click="ApplyClick" Padding="10,9" FontSize="12" Margin="10,0,0,0" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T3C3F72BD8A8C}"/><controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="{loc:Text T6BA9651225F6}" ToolTip="{loc:Text T15E4C75CF19D}" AutomationProperties.HelpText="{loc:Text T15E4C75CF19D}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></DockPanel>
+                            <TextBlock Text="{loc:Translate Value={Binding ActiveProfileInfo}}" Foreground="#95A9C1" FontSize="10" Margin="0,8,0,4" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="DraftStatusLabel" Text="{loc:Translate Value={Binding DraftStatus}}" Foreground="#DFBC7A" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap" ToolTip="{loc:Text T9BF6F634F355}"/>
+                        </StackPanel>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
-                                <TextBlock Text="{loc:Text T053ABD4F397E}" Style="{StaticResource Section}" />
+                                <TextBlock Text="{loc:Text T053ABD4F397E}" Style="{StaticResource Section}"/>
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <StackPanel><TextBlock Text="{loc:Text T7E1D32220136}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T076D94538A83}" ToolTip="{loc:Text T5DBB8FF5CFEC}" AutomationProperties.HelpText="{loc:Text T5DBB8FF5CFEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" /></StackPanel>
-                                    <StackPanel Grid.Column="2"><TextBlock Text="{loc:Text T2ABFCEFD864D}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T37E78D59E192}" ToolTip="{loc:Text TCDF54B789B5A}" AutomationProperties.HelpText="{loc:Text TCDF54B789B5A}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" /></StackPanel>
+                                    <StackPanel><TextBlock Text="{loc:Text T7E1D32220136}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T076D94538A83}"  ToolTip="{loc:Text T5DBB8FF5CFEC}" AutomationProperties.HelpText="{loc:Text T5DBB8FF5CFEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="{loc:Text T2ABFCEFD864D}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.UpperDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T37E78D59E192}"  ToolTip="{loc:Text TCDF54B789B5A}" AutomationProperties.HelpText="{loc:Text TCDF54B789B5A}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
                                 </Grid>
                                 <Expander x:Name="AdvancedInputMapping" Header="{loc:Text T9208AD65665B}"><StackPanel>
-                            <TextBlock Text="{loc:Text TE945FE8E2CA2}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <TextBlock Text="{loc:Text TE945FE8E2CA2}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="{loc:Text T948A6F3E7DB3}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T868363F0527B}" ToolTip="{loc:Text TA76B4692EEEC}" AutomationProperties.HelpText="{loc:Text TA76B4692EEEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" /></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="{loc:Text T66C9AB177708}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TC3D113259402}" ToolTip="{loc:Text T53A2BD681D4F}" AutomationProperties.HelpText="{loc:Text T53A2BD681D4F}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" /></StackPanel>
+                                <StackPanel><TextBlock Text="{loc:Text T948A6F3E7DB3}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T868363F0527B}"  ToolTip="{loc:Text TA76B4692EEEC}" AutomationProperties.HelpText="{loc:Text TA76B4692EEEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="{loc:Text T66C9AB177708}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TC3D113259402}"  ToolTip="{loc:Text T53A2BD681D4F}" AutomationProperties.HelpText="{loc:Text T53A2BD681D4F}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
                             </Grid>
-                            <CheckBox Content="{loc:Text T239208CFC826}" IsChecked="{Binding Editor.Inverted}" ToolTip="{loc:Text T6B225B2B0307}" AutomationProperties.HelpText="{loc:Text T6B225B2B0307}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                            <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text T4B6749DC0077}" />
+                            <CheckBox Content="{loc:Text T239208CFC826}" IsChecked="{Binding Editor.Inverted}"  ToolTip="{loc:Text T6B225B2B0307}" AutomationProperties.HelpText="{loc:Text T6B225B2B0307}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                            <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text T4B6749DC0077}"/>
 
                                 </StackPanel></Expander>
                                 <StackPanel Margin="0,22,0,0">
                                 <DockPanel Margin="0,0,0,12">
-                                    <Button Content="ⓘ" Click="FilterHelpClick" DockPanel.Dock="Right" Width="28" Height="26" Padding="0" Margin="8,0,0,0" AutomationProperties.Name="{loc:Text T3B6A22C38EF9}" ToolTip="{loc:Text T11B0F1B3B6A6}" />
-                                    <TextBlock Text="{loc:Text TDA12AB901FF9}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+                                    <Button Content="ⓘ" Click="FilterHelpClick" DockPanel.Dock="Right" Width="28" Height="26" Padding="0" Margin="8,0,0,0" AutomationProperties.Name="{loc:Text T3B6A22C38EF9}" ToolTip="{loc:Text T11B0F1B3B6A6}"/>
+                                    <TextBlock Text="{loc:Text TDA12AB901FF9}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
                                 </DockPanel>
-<TextBlock Text="{loc:Text T7252E7CE0085}" Style="{StaticResource Label}" />
-                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterPresetNames}" SelectedItem="{Binding FilterPreset, Mode=OneWay}" SelectionChanged="FilterPresetChanged" AutomationProperties.Name="{loc:Text T03200E71BF42}" ToolTip="{loc:Text T9220E4A4A2D4}" AutomationProperties.HelpText="{loc:Text T9220E4A4A2D4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                <TextBlock Text="{loc:Text TD704D8AF25BE}" Style="{StaticResource Label}" Margin="0,10,0,5" />
-                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding SelectedFilterKind, Mode=OneWay}" SelectedValuePath="Kind" SelectionChanged="FilterKindChanged" AutomationProperties.Name="{loc:Text T0EB445C2D077}" ToolTip="{loc:Text T35442DE78199}" AutomationProperties.HelpText="{loc:Text T35442DE78199}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                <TextBlock Text="{loc:Translate Value={Binding FilterInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+<TextBlock Text="{loc:Text T7252E7CE0085}" Style="{StaticResource Label}"/>
+                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterPresetNames}" SelectedItem="{Binding FilterPreset, Mode=OneWay}" SelectionChanged="FilterPresetChanged" AutomationProperties.Name="{loc:Text T03200E71BF42}" ToolTip="{loc:Text T9220E4A4A2D4}" AutomationProperties.HelpText="{loc:Text T9220E4A4A2D4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <TextBlock Text="{loc:Text TD704D8AF25BE}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding SelectedFilterKind, Mode=OneWay}" SelectedValuePath="Kind" SelectionChanged="FilterKindChanged" AutomationProperties.Name="{loc:Text T0EB445C2D077}" ToolTip="{loc:Text T35442DE78199}" AutomationProperties.HelpText="{loc:Text T35442DE78199}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <TextBlock Text="{loc:Translate Value={Binding FilterInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 <TextBlock Text="{loc:Translate Value={Binding FilterApplyInfo}}" FontSize="10" Margin="0,8,0,0">
-                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#78B5AD" /><Style.Triggers><DataTrigger Binding="{Binding HasFilterDraft}" Value="True"><Setter Property="Foreground" Value="#DFBC7A" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#78B5AD"/><Style.Triggers><DataTrigger Binding="{Binding HasFilterDraft}" Value="True"><Setter Property="Foreground" Value="#DFBC7A"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                                 <Expander Header="{loc:Text T9F088DBEBD6C}" Background="Transparent" BorderThickness="0" ToolTip="{loc:Text TC3B699D8F91C}">
                                     <StackPanel>
-                                        <TextBlock Text="{loc:Text TE8DAE57204F5}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10" />
-                                        <TextBlock Text="{loc:Text T7CD69A466046}" Style="{StaticResource Label}" />
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterTimes}" IsEditable="True" Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesTimeFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T8C1C35D31637}" ToolTip="{loc:Text TBFAA1F0FF1A4}" AutomationProperties.HelpText="{loc:Text TBFAA1F0FF1A4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                        <TextBlock Text="{loc:Text TFAE9677F899E}" Style="{StaticResource Label}" Margin="0,10,0,5" />
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterWindows}" IsEditable="True" Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesWindowFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text TAF313ED69026}" ToolTip="{loc:Text T4238064D0997}" AutomationProperties.HelpText="{loc:Text T4238064D0997}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                        <TextBlock Text="{loc:Text T8EF60384F041}" Style="{StaticResource Label}" Margin="0,10,0,5" />
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.ResetGaps}" IsEditable="True" Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T2D69910E0832}" ToolTip="{loc:Text TFB755B129F06}" AutomationProperties.HelpText="{loc:Text TFB755B129F06}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
+                                        <TextBlock Text="{loc:Text TE8DAE57204F5}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        <TextBlock Text="{loc:Text T7CD69A466046}" Style="{StaticResource Label}"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterTimes}" IsEditable="True" Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesTimeFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T8C1C35D31637}" ToolTip="{loc:Text TBFAA1F0FF1A4}" AutomationProperties.HelpText="{loc:Text TBFAA1F0FF1A4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <TextBlock Text="{loc:Text TFAE9677F899E}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterWindows}" IsEditable="True" Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesWindowFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text TAF313ED69026}" ToolTip="{loc:Text T4238064D0997}" AutomationProperties.HelpText="{loc:Text T4238064D0997}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <TextBlock Text="{loc:Text T8EF60384F041}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.ResetGaps}" IsEditable="True" Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T2D69910E0832}" ToolTip="{loc:Text TFB755B129F06}" AutomationProperties.HelpText="{loc:Text TFB755B129F06}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                     </StackPanel>
                                 </Expander>
                                 </StackPanel>
-                                <TextBlock Text="{loc:Text T39135ED7D3C5}" Style="{StaticResource Section}" />
-                                <controls:StableComboBox x:Name="BaselineModeSelector" ItemsSource="{x:Static vm:DashboardViewModel.CorrectionModes}" SelectedItem="{Binding SelectedCorrectionMode, Mode=OneWay}" SelectionChanged="CorrectionModeChanged" AutomationProperties.Name="{loc:Text T39135ED7D3C5}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text T9E0C2CBD2343}" />
-                                <TextBlock Text="{loc:Translate Value={Binding CorrectionModeHint}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="{loc:Text T39135ED7D3C5}" Style="{StaticResource Section}"/>
+                                <controls:StableComboBox x:Name="BaselineModeSelector" ItemsSource="{x:Static vm:DashboardViewModel.CorrectionModes}" SelectedItem="{Binding SelectedCorrectionMode, Mode=OneWay}" SelectionChanged="CorrectionModeChanged" AutomationProperties.Name="{loc:Text T39135ED7D3C5}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text T9E0C2CBD2343}"/>
+                                <TextBlock Text="{loc:Translate Value={Binding CorrectionModeHint}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 <StackPanel Margin="0,10,0,0">
-                                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsButtonCorrection}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                                    <Button x:Name="BindCorrectionButton" Content="{loc:Text T320D34EBEC65}" Click="BindCorrectionClick" HorizontalAlignment="Left" FontSize="12" Padding="10,8" ToolTip="{loc:Text T0C0874F7D497}" />
-                                    <TextBlock Text="{loc:Translate Value={Binding CorrectionBindingLabel}}" Foreground="#78E3C6" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsButtonCorrection}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                    <Button x:Name="BindCorrectionButton" Content="{loc:Text T320D34EBEC65}" Click="BindCorrectionClick" HorizontalAlignment="Left" FontSize="12" Padding="10,8" ToolTip="{loc:Text T0C0874F7D497}"/>
+                                    <TextBlock Text="{loc:Translate Value={Binding CorrectionBindingLabel}}" Foreground="#78E3C6" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <TextBlock Text="{loc:Translate Value={Binding CorrectionInfo}}" FontSize="11" Foreground="#95A9C1" Margin="0,10,0,0" />
+                                <TextBlock Text="{loc:Translate Value={Binding CorrectionInfo}}" FontSize="11" Foreground="#95A9C1" Margin="0,10,0,0"/>
                             </StackPanel>
                         </ScrollViewer>
                     </DockPanel>
                     <Grid x:Name="CalibrationSidePanel" Visibility="Hidden" Margin="14,12,14,14">
                         <Grid x:Name="CalibrationWelcome">
                             <StackPanel>
-                                <TextBlock Text="{loc:Text TD55AEE61CA64}" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock x:Name="CalibrationConnectionInfo" Text="{loc:Text T5F0C0262CA19}" TextWrapping="Wrap" Foreground="#B4C4D8" Margin="0,10,0,12" />
-                                <Button Content="{loc:Text T82F64E48A7AF}" Click="HardwareControlClick" HorizontalAlignment="Left" Style="{StaticResource Primary}" />
+                                <TextBlock Text="{loc:Text TD55AEE61CA64}" FontSize="20" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="CalibrationConnectionInfo" Text="{loc:Text T5F0C0262CA19}" TextWrapping="Wrap" Foreground="#B4C4D8" Margin="0,10,0,12"/>
+                                <Button Content="{loc:Text T82F64E48A7AF}" Click="HardwareControlClick" HorizontalAlignment="Left" Style="{StaticResource Primary}"/>
                                 <Expander Header="{loc:Text T657C06283294}">
                                     <StackPanel>
-                                        <Button Content="{loc:Text TC93E0C467C96}" Click="BackupHardwareClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text T2F81DDBB441A}" />
-                                        <Button Content="{loc:Text T7159B158EA68}" Click="RestoreHardwareBackupClick" Style="{StaticResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text TF75BFCF35ECA}" />
+                                        <Button Content="{loc:Text TC93E0C467C96}" Click="BackupHardwareClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text T2F81DDBB441A}"/>
+                                        <Button Content="{loc:Text T7159B158EA68}" Click="RestoreHardwareBackupClick" Style="{StaticResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text TF75BFCF35ECA}"/>
                                     </StackPanel>
                                 </Expander>
-                                <TextBlock Text="{loc:Translate Value={Binding HardwareInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
+                                <TextBlock Text="{loc:Translate Value={Binding HardwareInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/>
                             </StackPanel>
                         </Grid>
-                        <ContentControl x:Name="CalibrationHost" Visibility="Hidden" IsEnabled="{Binding CanEdit}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                        <ContentControl x:Name="CalibrationHost" Visibility="Hidden" IsEnabled="{Binding CanEdit}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
                     </Grid>
                     <ScrollViewer x:Name="SettingsSidePanel" Visibility="Hidden" Margin="14,12,14,14" IsEnabled="{Binding CanEdit}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel DataContext="{Binding Preferences}">
-                            <TextBlock Text="{loc:Text TD43FB8A961FF}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <TextBlock Text="{loc:Text TD43FB8A961FF}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <StackPanel DataContext="{Binding DataContext.Diagnostics, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,14">
-                                <TextBlock Text="{loc:Text T81786B995CCB}" Style="{StaticResource Section}" />
+                                <TextBlock Text="{loc:Text T81786B995CCB}" Style="{StaticResource Section}"/>
                                 <ItemsControl ItemsSource="{Binding Checks}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <StackPanel Margin="0,0,0,12">
-                                            <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                             <TextBlock Text="{loc:Translate Value={Binding Detail}}" TextWrapping="Wrap" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}" FontSize="11" Margin="0,4,0,0">
-                                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#95A9C1" /><Style.Triggers><DataTrigger Binding="{Binding NeedsAttention}" Value="True"><Setter Property="Foreground" Value="#FFCE83" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#95A9C1"/><Style.Triggers><DataTrigger Binding="{Binding NeedsAttention}" Value="True"><Setter Property="Foreground" Value="#FFCE83"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                             </TextBlock>
                                         </StackPanel>
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                <Button x:Name="CheckDeviceStatusButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckDiagnosticsClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                <Button x:Name="AutomaticVJoySetupButton" Content="{loc:Text TDB3B202B2FF5}" Click="AutomaticSetupClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <Button x:Name="CheckDeviceStatusButton" Content="{loc:Text TFB7099AD8E81}" Click="CheckDiagnosticsClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                <Button x:Name="AutomaticVJoySetupButton" Content="{loc:Text TDB3B202B2FF5}" Click="AutomaticSetupClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
                                 <Expander x:Name="FirmwareUpdateSection" Header="{loc:Text TB13011C3CB2E}" Margin="0,8,0,12" IsExpanded="{Binding DataContext.Firmware.Blocked, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
                                     <StackPanel DataContext="{Binding DataContext.Firmware, RelativeSource={RelativeSource AncestorType=Window}}">
-                                        <TextBlock Text="{loc:Text T3187C45AB973}" FontSize="11" Foreground="#95A9C1" TextWrapping="Wrap" Margin="0,10,0,10" />
-                                        <Button Content="{loc:Text TA0F5ECBD91DB}" Click="SelectFirmwareImageClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-                                        <TextBlock Text="{Binding ImagePath}" ToolTip="{Binding ImagePath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10" />
-                                        <Button Content="{loc:Text TC12C8D8857AB}" Click="SelectDfuToolClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-                                        <TextBlock Text="{Binding ToolPath}" ToolTip="{Binding ToolPath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10" />
-                                        <Button Content="{loc:Text TFC5AAF880C81}" Click="OpenDfuSetupClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <Button x:Name="PrepareFirmwareButton" Content="{loc:Text TE9A2DD8C54EE}" Click="PrepareFirmwareClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <TextBlock Text="{loc:Translate Value={Binding PlanInfo}}" TextWrapping="Wrap" FontSize="11" Foreground="#95A9C1" Margin="0,0,0,8" />
-                                        <Button x:Name="FlashFirmwareButton" Content="{loc:Text T75405FB703C1}" Click="FlashFirmwareClick" IsEnabled="{Binding CanFlash}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <TextBlock Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Foreground="#FFCE83" FontSize="11" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite" />
-                                        <Button Content="{loc:Text T50BC8F2FB5A7}" Click="CheckUpdatedFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <Button Content="{loc:Text TE9D15BC7FA6D}" Click="RetryFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <Button Content="{loc:Text T49986325ECB4}" Click="AcceptUpdatedFirmwareClick" IsEnabled="{Binding CanAcceptCurrent}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <Button Content="{loc:Text T53BA2744F512}" Click="OpenFirmwareLogClick" HorizontalAlignment="Stretch" />
+                                        <TextBlock Text="{loc:Text T3187C45AB973}" FontSize="11" Foreground="#95A9C1" TextWrapping="Wrap" Margin="0,10,0,10"/>
+                                        <Button Content="{loc:Text TA0F5ECBD91DB}" Click="SelectFirmwareImageClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{Binding ImagePath}" ToolTip="{Binding ImagePath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10"/>
+                                        <Button Content="{loc:Text TC12C8D8857AB}" Click="SelectDfuToolClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{Binding ToolPath}" ToolTip="{Binding ToolPath}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="#95A9C1" Margin="0,0,0,10"/>
+                                        <Button Content="{loc:Text TFC5AAF880C81}" Click="OpenDfuSetupClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <Button x:Name="PrepareFirmwareButton" Content="{loc:Text TE9A2DD8C54EE}" Click="PrepareFirmwareClick" IsEnabled="{Binding CanPrepare}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <TextBlock Text="{loc:Translate Value={Binding PlanInfo}}" TextWrapping="Wrap" FontSize="11" Foreground="#95A9C1" Margin="0,0,0,8"/>
+                                        <Button x:Name="FlashFirmwareButton" Content="{loc:Text T75405FB703C1}" Click="FlashFirmwareClick" IsEnabled="{Binding CanFlash}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <TextBlock Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Foreground="#FFCE83" FontSize="11" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite"/>
+                                        <Button Content="{loc:Text T50BC8F2FB5A7}" Click="CheckUpdatedFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <Button Content="{loc:Text TE9D15BC7FA6D}" Click="RetryFirmwareClick" IsEnabled="{Binding CanReview}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <Button Content="{loc:Text T49986325ECB4}" Click="AcceptUpdatedFirmwareClick" IsEnabled="{Binding CanAcceptCurrent}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <Button Content="{loc:Text T53BA2744F512}" Click="OpenFirmwareLogClick" HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </Expander>
                                 <Expander Header="{loc:Text T91D6882FB172}">
                                     <StackPanel>
-                                        <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" HorizontalAlignment="Stretch" Margin="0,8,0,8" />
-                                        <Button Content="{loc:Text T9BAC4ED3CD46}" Click="ControllerTestClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
-                                        <Button Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" HorizontalAlignment="Stretch" />
+                                        <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" HorizontalAlignment="Stretch" Margin="0,8,0,8"/>
+                                        <Button Content="{loc:Text T9BAC4ED3CD46}" Click="ControllerTestClick" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                        <Button Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
-                            <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text T2140CBD331E9}" />
-                            <TextBlock Text="{loc:Text TA4FE65264EF7}" Style="{StaticResource Section}" />
-                            <controls:StableComboBox x:Name="LanguageSelector" ItemsSource="{x:Static vm:PreferencesViewModel.Languages}" SelectedValuePath="Code" DisplayMemberPath="Name" ItemTemplate="{x:Null}" SelectedValue="{Binding Language, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="LanguageChanged" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" AutomationProperties.Name="{loc:Text TA4FE65264EF7}" ToolTip="{loc:Text TB697FD987325}" />
-                            <TextBlock Text="{loc:Text T52D53AF6440E}" Style="{StaticResource Section}" />
-                            <CheckBox x:Name="MinimizeOnCloseSetting" Content="{loc:Text TEB92D55C00AE}" IsChecked="{Binding MinimizeOnClose}" Click="PreferenceChanged" ToolTip="{loc:Text T9DD5E0447EDF}" />
-                            <TextBlock Text="{loc:Text T3A2947EDC3BD}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                            <CheckBox Content="{loc:Text TAB8C3AF14FB6}" IsChecked="{Binding MinimizeToTray}" Click="PreferenceChanged" ToolTip="{loc:Text T8AC1D68812C2}" />
-                            <TextBlock Text="{loc:Text T1A70E5BA6283}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                            <CheckBox Content="{loc:Text T831A2BF28544}" IsChecked="{Binding PauseGraphWhenHidden}" Click="PreferenceChanged" ToolTip="{loc:Text TB1A301C33EA0}" />
-                            <TextBlock Text="{loc:Text TBD4627BB120A}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                            <TextBlock Text="{loc:Text T65D48235A91E}" Style="{StaticResource Section}" />
-                            <CheckBox x:Name="WindowsStartupSetting" Content="{loc:Text T0BFCD9317D0D}" IsChecked="{Binding StartWithWindows}" Click="PreferenceChanged" ToolTip="{loc:Text T09CF9218E4DF}" />
-                            <TextBlock Text="{loc:Text T53A83AC14715}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                            <CheckBox Content="{loc:Text TFCCA3CE55CE7}" IsChecked="{Binding StartInTray}" Click="PreferenceChanged" ToolTip="{loc:Text T6F4D8DB65A49}" />
-                            <TextBlock Text="{loc:Text T6ABDFBF9EE84}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                            <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#78E3C6" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0" />
+                            <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text T2140CBD331E9}"/>
+                            <TextBlock Text="{loc:Text TA4FE65264EF7}" Style="{StaticResource Section}"/>
+                            <controls:StableComboBox x:Name="LanguageSelector" ItemsSource="{x:Static vm:PreferencesViewModel.Languages}" SelectedValuePath="Code" DisplayMemberPath="Name" ItemTemplate="{x:Null}" SelectedValue="{Binding Language, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="LanguageChanged" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" AutomationProperties.Name="{loc:Text TA4FE65264EF7}" ToolTip="{loc:Text TB697FD987325}"/>
+                            <TextBlock Text="{loc:Text T52D53AF6440E}" Style="{StaticResource Section}"/>
+                            <CheckBox x:Name="MinimizeOnCloseSetting" Content="{loc:Text TEB92D55C00AE}" IsChecked="{Binding MinimizeOnClose}" Click="PreferenceChanged" ToolTip="{loc:Text T9DD5E0447EDF}"/>
+                            <TextBlock Text="{loc:Text T3A2947EDC3BD}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
+                            <CheckBox Content="{loc:Text TAB8C3AF14FB6}" IsChecked="{Binding MinimizeToTray}" Click="PreferenceChanged" ToolTip="{loc:Text T8AC1D68812C2}"/>
+                            <TextBlock Text="{loc:Text T1A70E5BA6283}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
+                            <CheckBox Content="{loc:Text T831A2BF28544}" IsChecked="{Binding PauseGraphWhenHidden}" Click="PreferenceChanged" ToolTip="{loc:Text TB1A301C33EA0}"/>
+                            <TextBlock Text="{loc:Text TBD4627BB120A}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
+                            <TextBlock Text="{loc:Text T65D48235A91E}" Style="{StaticResource Section}"/>
+                            <CheckBox x:Name="WindowsStartupSetting" Content="{loc:Text T0BFCD9317D0D}" IsChecked="{Binding StartWithWindows}" Click="PreferenceChanged" ToolTip="{loc:Text T09CF9218E4DF}"/>
+                            <TextBlock Text="{loc:Text T53A83AC14715}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
+                            <CheckBox Content="{loc:Text TFCCA3CE55CE7}" IsChecked="{Binding StartInTray}" Click="PreferenceChanged" ToolTip="{loc:Text T6F4D8DB65A49}"/>
+                            <TextBlock Text="{loc:Text T6ABDFBF9EE84}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
+                            <TextBlock Text="{loc:Translate Value={Binding Status}}" Foreground="#78E3C6" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
                         </Grid>
@@ -483,7 +508,10 @@
 
         <Border Grid.Row="2" Padding="0,3" Margin="0,10,0,0">
             <DockPanel>
-                <TextBlock Text="{loc:Translate Value={Binding Message}}" ToolTip="{loc:Translate Value={Binding Message}}" Foreground="#95A9C1" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" AutomationProperties.Name="{loc:Text TCCDE872DAA06}" AutomationProperties.LiveSetting="Polite" />
+                <Button x:Name="UndoDeleteProfileButton" DockPanel.Dock="Right" Content="{loc:Text TBFF260A6B20D}" Click="UndoDeleteProfileClick" Padding="10,3" FontSize="11" IsEnabled="{Binding CanTune}">
+                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding CanUndoDelete}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                </Button>
+            <TextBlock Text="{loc:Translate Value={Binding Message}}" ToolTip="{loc:Translate Value={Binding Message}}" Foreground="#95A9C1" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" AutomationProperties.Name="{loc:Text TCCDE872DAA06}" AutomationProperties.LiveSetting="Polite"/>
             </DockPanel>
         </Border>
     </Grid>

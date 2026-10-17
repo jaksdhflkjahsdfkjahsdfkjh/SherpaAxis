@@ -34,6 +34,7 @@ public partial class MainWindow
             desktop.Log?.Write("profile-load", string.Join("; ", library.LoadErrors));
             viewModel.ShowMessage("Some profiles could not be loaded: " + string.Join("; ", library.LoadErrors));
         }
+        await InitializeDraftsAsync();
     });
     private async void AutoLoadProfileClick(object sender, RoutedEventArgs e)
     {
@@ -91,17 +92,41 @@ public partial class MainWindow
         return dialog.ShowDialog() == true ? dialog.ProfileName : null;
     }
     private async void DeleteProfileClick(object sender, RoutedEventArgs e) => await DeleteSelectedProfileAsync();
+    private (ProfileTab Tab, int Index, ProfileLibrary.DeletedFile? File, bool AutoLoad, int Revision)? deletedProfile;
     internal Task DeleteSelectedProfileAsync() => RunAsync(async () =>
     {
         var selected = viewModel.SelectedProfile;
         if (selected is null || viewModel.IsCalibrationMode) { return; }
-        if (selected.FilePath is { } path) { await library.DeleteAsync(path, lifetime.Token); }
+        var file = selected.FilePath is { } path ? await library.DeleteForUndoAsync(path, lifetime.Token) : null;
+        var wasAutoLoad = selected.AutoLoad;
+        var index = viewModel.ProfileTabs.IndexOf(selected);
         StopHold();
         viewModel.DetachSelectedProfile();
+        deletedProfile = (selected, index, file, wasAutoLoad, autoLoadRevision);
+        viewModel.CanUndoDelete = true;
         if (selected.FilePath is not null && string.Equals(selected.FilePath, autoLoadProfilePath, StringComparison.OrdinalIgnoreCase))
         { autoLoadProfilePath = null; }
         viewModel.SetAutoLoadPath(autoLoadProfilePath);
         viewModel.ShowMessage($"Deleted profile: {selected.Name}.");
+        await FlushDraftsAsync();
+    });
+    private async void UndoDeleteProfileClick(object sender, RoutedEventArgs e) => await UndoDeleteProfileAsync();
+    internal Task UndoDeleteProfileAsync() => RunAsync(async () =>
+    {
+        if (deletedProfile is not { } deleted) { return; }
+        if (deleted.File is not null)
+        {
+            await library.RestoreDeletedAsync(deleted.File, lifetime.Token);
+            deletedProfile = (deleted.Tab, deleted.Index, null, deleted.AutoLoad, deleted.Revision);
+        }
+        // A newer auto-load selection takes precedence over the deleted profile's old selection.
+        if (deleted.AutoLoad && deleted.Revision == autoLoadRevision && await library.AutoLoadPathAsync(lifetime.Token) is null && deleted.Tab.FilePath is { } path)
+        { await library.SetAutoLoadAsync(path, lifetime.Token); autoLoadProfilePath = path; }
+        StopHold(); viewModel.RestoreDeletedProfile(deleted.Tab, deleted.Index);
+        viewModel.SetAutoLoadPath(autoLoadProfilePath);
+        deletedProfile = null; viewModel.CanUndoDelete = false;
+        viewModel.ShowMessage("Profile restored. Review it and Apply settings to activate it.");
+        await FlushDraftsAsync();
     });
     private async void OpenProfileClick(object sender, RoutedEventArgs e)
     {
