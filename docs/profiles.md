@@ -59,3 +59,7 @@ are not trusted as filesystem paths.
 Auto-load designates one saved startup profile. Selecting another removes
 the previous designation. Creating or editing a profile does not apply it
 automatically on a future startup without that selection.
+
+Unfinished editor text is kept in a separate bounded draft file, not saved as
+a valid processing profile. Recovered/undeleted drafts require Apply. The last
+deleted profile can be restored during the session without overwriting a file.
