@@ -113,12 +113,32 @@ public sealed partial class DashboardViewModel
     {
         StoreDraft();
         foreach (var tab in ProfileTabs) { tab.RefreshUnsavedState(); }
-        var pending = true;
-        try { pending = !ProfileJson.Serialize(ValidateEditors().Profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied)); }
-        catch (ArgumentException) { }
+        var pending = HasUnappliedEdits();
         DraftStatus = pending ? "Unapplied edits · Apply settings to activate"
             : selectedProfile?.HasUnsavedChanges == true ? "Unsaved profile · Save to keep these settings"
             : selectedProfile?.FilePath is null ? "Default settings · Save to create a profile" : "Profile saved · Settings applied";
+    }
+
+    private readonly Dictionary<PedalAxis, AxisEditor> assessedEditors = [];
+    private PedalProfile? assessedApplied;
+    private string? assessedName;
+    private bool assessedPending;
+
+    private bool HasUnappliedEdits()
+    {
+        if (ReferenceEquals(assessedApplied, applied) && assessedName == ProfileName
+            && editors.Count == assessedEditors.Count
+            && editors.All(pair => assessedEditors.TryGetValue(pair.Key, out var editor) && pair.Value == editor))
+        { return assessedPending; }
+
+        assessedPending = true;
+        try { assessedPending = !ProfileJson.Serialize(ValidateEditors().Profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied)); }
+        catch (ArgumentException) { }
+        assessedApplied = applied;
+        assessedName = ProfileName;
+        assessedEditors.Clear();
+        foreach (var (axis, editor) in editors) { assessedEditors[axis] = editor with { }; }
+        return assessedPending;
     }
 
     public void MarkSelectedSaved()

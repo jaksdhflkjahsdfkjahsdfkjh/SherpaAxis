@@ -33,7 +33,6 @@ public sealed partial class DashboardViewModel
         }
     }
     public string FilterApplyInfo => HasFilterDraft ? "Filter draft · Apply settings to update" : "Filter settings applied";
-    public IReadOnlyList<PedalHistory> PedalHistories { get; private set; } = [];
     public string FilterPreset => FilterPresets.Identify(Editor);
     public string SelectedFilterKind => Editor.FilterEnabled ? Editor.FilterKind : "Off";
     public bool UsesWindowFilter => Editor.FilterKind is "MovingAverage" or "Median" or "WeightedMovingAverage" or "MedianExponential";
