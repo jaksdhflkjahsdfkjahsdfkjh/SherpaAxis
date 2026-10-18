@@ -32,6 +32,14 @@ public sealed record AxisEditor
     public BaselineCorrectionMode CorrectionMode { get; set; }
     public CorrectionButton? CorrectionButton { get; set; }
 
+    [JsonIgnore]
+    internal bool HasRecoverableText => new[]
+    {
+        Minimum, Maximum, LowerDeadzone, UpperDeadzone, CurveKind, Exponent, Points,
+        FilterMilliseconds, FilterGapMilliseconds, FilterKind, FilterWindowSamples, MaximumCorrection,
+        CorrectionRate, CorrectionOutputRate, SessionGapMilliseconds
+    }.All(value => value is not null && value.Length <= 128 * 1024);
+
     public AxisProfile BuildProfile()
     {
         var filter = Number(FilterMilliseconds, "Filter time constant");

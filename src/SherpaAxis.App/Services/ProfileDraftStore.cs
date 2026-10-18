@@ -5,9 +5,6 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Services;
 
-public sealed record ProfileDraft(Guid Id, string Name, string? SavedFileName, Dictionary<PedalAxis, AxisEditor> Editors);
-public sealed record ProfileDraftSession(int Schema, IReadOnlyList<ProfileDraft> Profiles);
-
 /// <summary>Stores unfinished editor text separately from valid, saved or applied profiles.</summary>
 public sealed class ProfileDraftStore(string path)
 {
@@ -37,7 +34,7 @@ public sealed class ProfileDraftStore(string path)
             if (profile is null || profile.Id == Guid.Empty || string.IsNullOrWhiteSpace(profile.Name) || profile.Name.Length > 200
                 || profile.SavedFileName is { } name && (name != Path.GetFileName(name) || !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 || profile.Editors is null || profile.Editors.Count != 3 || Enum.GetValues<PedalAxis>().Any(axis => !profile.Editors.TryGetValue(axis, out var editor) || editor is null)
-                || profile.Editors.Values.Any(editor => typeof(AxisEditor).GetProperties().Where(property => property.PropertyType == typeof(string)).Any(property => property.GetValue(editor) is not string text || text.Length > 128 * 1024)))
+                || profile.Editors.Values.Any(editor => !editor.HasRecoverableText))
             { throw new InvalidDataException("The draft recovery file contains invalid editor data."); }
         }
     }
