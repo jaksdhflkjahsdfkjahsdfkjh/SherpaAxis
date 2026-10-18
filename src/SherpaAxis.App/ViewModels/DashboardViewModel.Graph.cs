@@ -9,6 +9,8 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed partial class DashboardViewModel
 {
+    public IReadOnlyList<PedalHistory> PedalHistories { get; private set; } = [];
+
     public static IReadOnlyList<string> GraphPedals { get; } = ["All pedals", "Throttle", "Brake", "Clutch"];
     public static IReadOnlyList<string> GraphModes { get; } = ["Input vs filtered", "Filtered vs curved", "Output", "Input", "Filtered", "Filter difference", "Device counts"];
     private string graphPedal = "All pedals";
