@@ -57,7 +57,7 @@ public sealed class DashboardViewModel : ObservableObject
         var defaults = DashboardEngine.DefaultProfile();
         foreach (var axis in AxisNames) { tab.Editors[axis] = AxisEditor.FromProfile(profile.Axes.TryGetValue(axis, out var settings) ? settings : defaults.Axes[axis]); }
         ProfileTabs.Add(tab);
-        MarkSaved(tab);
+        tab.MarkSaved();
         return tab;
     }
     public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
@@ -508,13 +508,7 @@ public sealed class DashboardViewModel : ObservableObject
     public void RefreshUnsavedState()
     {
         StoreDraft();
-        foreach (var tab in ProfileTabs)
-        {
-            var changed = tab.Name != tab.SavedName || tab.Editors.Count != tab.SavedEditors.Count
-                || tab.Editors.Any(pair => !tab.SavedEditors.TryGetValue(pair.Key, out var saved) || pair.Value != saved);
-            tab.HasUnsavedChanges = changed || tab.FilePath is null && tab.Recoverable;
-            if (changed) { tab.Recoverable = true; }
-        }
+        foreach (var tab in ProfileTabs) { tab.RefreshUnsavedState(); }
         var pending = true;
         try { pending = !ProfileJson.Serialize(ValidateEditors().Profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied)); }
         catch (ArgumentException) { }
@@ -526,15 +520,8 @@ public sealed class DashboardViewModel : ObservableObject
     public void MarkSelectedSaved()
     {
         StoreDraft();
-        if (selectedProfile is not null) { MarkSaved(selectedProfile); }
+        if (selectedProfile is not null) { selectedProfile.MarkSaved(); }
         RefreshUnsavedState();
-    }
-    private static void MarkSaved(ProfileTab tab)
-    {
-        tab.SavedName = tab.Name;
-        tab.SavedEditors.Clear();
-        foreach (var (axis, editor) in tab.Editors) { tab.SavedEditors[axis] = editor with { }; }
-        tab.HasUnsavedChanges = false;
     }
     public ProfileDraftSession CaptureDrafts()
     {
@@ -557,8 +544,7 @@ public sealed class DashboardViewModel : ObservableObject
                 var saved = ProfileTabs.FirstOrDefault(candidate => string.Equals(candidate.FilePath, path, StringComparison.OrdinalIgnoreCase));
                 if (saved is not null && !saved.HasUnsavedChanges)
                 {
-                    tab.FilePath = saved.FilePath; tab.SavedName = saved.SavedName;
-                    foreach (var (axis, editor) in saved.SavedEditors) { tab.SavedEditors[axis] = editor with { }; }
+                    tab.CopySavedStateFrom(saved);
                     ProfileTabs.Remove(saved);
                 }
             }
