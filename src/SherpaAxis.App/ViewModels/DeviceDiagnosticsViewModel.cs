@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Diagnostics;
 
 namespace SherpaAxis.App.ViewModels;
 

@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Diagnostics;
 
 namespace SherpaAxis.App.Tests;
 

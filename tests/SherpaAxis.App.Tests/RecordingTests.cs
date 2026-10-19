@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Recording;
 using SherpaAxis.Core;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;

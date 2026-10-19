@@ -1,10 +1,11 @@
-using SherpaAxis.App.Models;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Diagnostics;
 
 namespace SherpaAxis.App;
 
