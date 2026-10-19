@@ -1,5 +1,13 @@
 using System.Windows.Interop;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Services.Desktop;
+using SherpaAxis.App.Services.Diagnostics;
+using SherpaAxis.App.Services.Firmware;
+using SherpaAxis.App.Services.Hardware;
+using SherpaAxis.App.Services.Input;
+using SherpaAxis.App.Services.Output;
+using SherpaAxis.App.Services.Persistence;
+using SherpaAxis.App.Services.Runtime;
 
 namespace SherpaAxis.App.Services;
 

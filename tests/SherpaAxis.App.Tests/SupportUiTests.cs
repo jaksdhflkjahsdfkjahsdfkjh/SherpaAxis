@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using SherpaAxis.App.Localization;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.ViewModels;
 
 namespace SherpaAxis.App.Tests;

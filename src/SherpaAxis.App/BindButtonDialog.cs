@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Desktop;
+using SherpaAxis.App.Services.Input;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App;

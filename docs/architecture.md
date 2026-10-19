@@ -37,6 +37,10 @@ mode and profile handlers as the window. A named mutex prevents duplicate instan
 `AtomicFile` writes a temporary file beside its destination, flushes it and promotes
 it by replacement. Recovery transactions determine when a durable write is required.
 
+Desktop services are grouped by responsibility under Desktop, Diagnostics,
+Firmware, Hardware, Input, Output, Persistence, Recording and Runtime. Dashboard
+view-model and window workflow partials keep editing, graphs and device operations separate.
+
 Diagnostic support ZIPs contain bounded, redacted logs and status. They exclude
 continuous input, profile contents, hardware backups and firmware payloads.
 

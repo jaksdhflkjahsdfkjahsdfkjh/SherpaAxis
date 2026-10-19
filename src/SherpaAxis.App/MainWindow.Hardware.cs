@@ -3,6 +3,8 @@ using System.Windows;
 using Microsoft.Win32;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services;
+using SherpaAxis.App.Services.Diagnostics;
+using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.App.ViewModels;
 using SherpaAxis.Devices;
 using SherpaAxis.FeelVR;
