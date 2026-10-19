@@ -1,6 +1,4 @@
 using System.IO;
-using System.IO.Compression;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -8,12 +6,19 @@ using System.Text.RegularExpressions;
 namespace SherpaAxis.App.Services;
 
 /// <summary>Bounded, best-effort support logging. Never receives pedal reports or profile documents.</summary>
-public sealed class DiagnosticLog(string directory, int maximumBytes = 256 * 1024)
+public sealed class DiagnosticLog
 {
-    private static readonly JsonSerializerOptions ReportOptions = new() { WriteIndented = true };
     private readonly object sync = new();
     private readonly Dictionary<string, long> recent = [];
-    public string DirectoryPath { get; } = Path.GetFullPath(directory);
+    private readonly int maximumBytes;
+    public string DirectoryPath { get; }
+    public DiagnosticLog(string directory, int maximumBytes = 256 * 1024)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        if (maximumBytes is < 1024 or > 4 * 1024 * 1024) { throw new ArgumentOutOfRangeException(nameof(maximumBytes)); }
+        DirectoryPath = Path.GetFullPath(directory);
+        this.maximumBytes = maximumBytes;
+    }
     public static DiagnosticLog Default { get; } = new(AppDataPaths.Logs);
     public string? Failure { get; private set; }
 
@@ -37,6 +42,12 @@ public sealed class DiagnosticLog(string directory, int maximumBytes = 256 * 102
                 Directory.CreateDirectory(DirectoryPath);
                 var path = Path.Combine(DirectoryPath, "app.jsonl");
                 var line = JsonSerializer.Serialize(new { utc = DateTimeOffset.UtcNow, category, detail }) + "\n";
+                while (Encoding.UTF8.GetByteCount(line) + Encoding.UTF8.Preamble.Length > maximumBytes)
+                {
+                    detail = detail[..(detail.Length / 2)];
+                    category = category[..Math.Min(32, category.Length)];
+                    line = JsonSerializer.Serialize(new { utc = DateTimeOffset.UtcNow, category, detail }) + "\n";
+                }
                 if (File.Exists(path) && new FileInfo(path).Length + Encoding.UTF8.GetByteCount(line) > maximumBytes)
                 {
                     var previous = Path.Combine(DirectoryPath, "app.1.jsonl");
@@ -51,45 +62,22 @@ public sealed class DiagnosticLog(string directory, int maximumBytes = 256 * 102
         { Failure = "Local diagnostic log could not be written."; }
     }
 
-    public void Export(string path, IReadOnlyDictionary<string, string> status)
+    internal IReadOnlyDictionary<string, string> ReadRecent()
     {
-        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
+        var snapshot = new Dictionary<string, string>();
+        lock (sync)
         {
-            using (var archive = ZipFile.Open(temporary, ZipArchiveMode.Create))
+            foreach (var name in new[] { "app.jsonl", "app.1.jsonl", "app.2.jsonl" })
             {
-                var info = new
-                {
-                    schema = 1,
-                    utc = DateTimeOffset.UtcNow,
-                    appVersion = typeof(DiagnosticLog).Assembly.GetName().Version?.ToString(),
-                    os = RuntimeInformation.OSDescription,
-                    architecture = RuntimeInformation.ProcessArchitecture.ToString(),
-                    runtime = RuntimeInformation.FrameworkDescription,
-                    logging = Failure ?? "Available",
-                    status = status.ToDictionary(pair => pair.Key, pair => Sanitize(pair.Value)),
-                    privacy = "No profile contents, recordings, firmware images, calibration backups, controller serials or user paths are intentionally included. Review before sharing."
-                };
-                using (var writer = new StreamWriter(archive.CreateEntry("report.json").Open()))
-                { writer.Write(JsonSerializer.Serialize(info, ReportOptions)); }
-                lock (sync)
-                {
-                    foreach (var name in new[] { "app.jsonl", "app.1.jsonl", "app.2.jsonl" })
-                    {
-                        var source = Path.Combine(DirectoryPath, name);
-                        if (!File.Exists(source)) { continue; }
-                        // Bound reads as well: another process or an old version may have left a large file.
-                        using var reader = new StreamReader(new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
-                        var buffer = new char[maximumBytes];
-                        var count = reader.ReadBlock(buffer, 0, buffer.Length);
-                        using var writer = new StreamWriter(archive.CreateEntry("logs/" + name).Open());
-                        writer.Write(Sanitize(new string(buffer, 0, count)));
-                    }
-                }
+                var path = Path.Combine(DirectoryPath, name);
+                if (!File.Exists(path)) { continue; }
+                using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                var buffer = new char[maximumBytes];
+                var count = reader.ReadBlock(buffer, 0, buffer.Length);
+                snapshot[name] = new string(buffer, 0, count);
             }
-            File.Move(temporary, path, true);
         }
-        finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
+        return snapshot;
     }
 
     internal static string Sanitize(string text)

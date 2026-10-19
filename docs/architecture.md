@@ -37,6 +37,9 @@ mode and profile handlers as the window. A named mutex prevents duplicate instan
 `AtomicFile` writes a temporary file beside its destination, flushes it and promotes
 it by replacement. Recovery transactions determine when a durable write is required.
 
+Diagnostic support ZIPs contain bounded, redacted logs and status. They exclude
+continuous input, profile contents, hardware backups and firmware payloads.
+
 ## Input and native configuration
 
 FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is

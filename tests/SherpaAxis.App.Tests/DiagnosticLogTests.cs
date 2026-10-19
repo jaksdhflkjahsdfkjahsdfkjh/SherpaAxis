@@ -7,6 +7,29 @@ namespace SherpaAxis.App.Tests;
 
 public sealed class DiagnosticLogTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(1023)]
+    [InlineData(4194305)]
+    public void InvalidLogLimitsFailAtConstruction(int maximumBytes) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DiagnosticLog(Path.GetTempPath(), maximumBytes));
+
+    [Fact]
+    public void EscapedUnicodeMessagesRespectTheByteLimitAndRemainValidJson()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "SherpaAxis-unicode-log-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var log = new DiagnosticLog(folder, 1024);
+            log.Write(new string('漢', 64), new string('漢', 1000));
+            var path = Assert.Single(Directory.GetFiles(folder));
+            Assert.InRange(new FileInfo(path).Length, 1, 1024);
+            using var json = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.True(json.RootElement.GetProperty("detail").GetString()!.Length > 0);
+        }
+        finally { if (Directory.Exists(folder)) { Directory.Delete(folder, true); } }
+    }
     [Fact]
     public void LogsRotateStayBoundedAndSuppressRepeatedErrors()
     {
@@ -40,7 +63,7 @@ public sealed class DiagnosticLogTests
             File.WriteAllText(Path.Combine(log.DirectoryPath, "secret-profile.json"), "private settings");
             File.WriteAllText(Path.Combine(log.DirectoryPath, "recording.csv"), "pedal recording");
             var report = Path.Combine(folder, "support.zip");
-            log.Export(report, new Dictionary<string, string> { ["input"] = @"PE0017003200485656510A20383938 C:\Users\Private Name\device", ["output"] = "vJoy 2 ready" });
+            new DiagnosticReportExporter(log).Export(report, new Dictionary<string, string> { ["input"] = @"PE0017003200485656510A20383938 C:\Users\Private Name\device", ["output"] = "vJoy 2 ready" });
             using var zip = ZipFile.OpenRead(report);
             Assert.Equal(["logs/app.jsonl", "report.json"], zip.Entries.Select(entry => entry.FullName).Order().ToArray());
             foreach (var entry in zip.Entries)
@@ -72,7 +95,7 @@ public sealed class DiagnosticLogTests
             log.Write("test", "failure"); Assert.NotNull(log.Failure);
             var report = Path.Combine(folder, "existing.zip"); File.WriteAllText(report, "original");
             using (var locked = new FileStream(report, FileMode.Open, FileAccess.Read, FileShare.None))
-            { Assert.True(Record.Exception(() => log.Export(report, new Dictionary<string, string>())) is IOException or UnauthorizedAccessException); }
+            { Assert.True(Record.Exception(() => new DiagnosticReportExporter(log).Export(report, new Dictionary<string, string>())) is IOException or UnauthorizedAccessException); }
             Assert.Equal("original", File.ReadAllText(report));
             Assert.Empty(Directory.GetFiles(folder, "*.tmp"));
         }
