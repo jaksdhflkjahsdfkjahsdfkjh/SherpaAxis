@@ -68,7 +68,7 @@ public partial class MainWindow
                             await ConnectCalibrationAsync(connection.Token);
                         }
                         catch (OperationCanceledException) when (connection.IsCancellationRequested) { }
-                        catch (Exception failure) when (IsExpected(failure))
+                        catch (Exception failure) when (OperationErrors.IsExpected(failure))
                         {
                             desktop.Log?.Write("hardware", "An operation needs attention.", failure);
                             if (!WantsCalibration || closing) { continue; }
@@ -107,7 +107,7 @@ public partial class MainWindow
                 }
             }
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         {
             desktop.Log?.Write("hardware", "An operation needs attention.", failure);
             if (hardwareSession is not null) { requestedPanel = SidePanelMode.Calibration; SetPanelMode(true); }

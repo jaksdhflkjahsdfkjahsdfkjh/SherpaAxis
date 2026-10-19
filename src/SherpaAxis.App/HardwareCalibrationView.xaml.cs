@@ -89,7 +89,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
                 if (!token.IsCancellationRequested) { throw new IOException("Hardware input ended unexpectedly."); }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-            catch (Exception failure) when (Expected(failure))
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
             {
                 Log?.Write("calibration-input", "Calibration input failed.", failure);
                 Volatile.Write(ref inputFailure, failure.Message);
@@ -174,7 +174,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         operationFinished = finished;
         model.Busy = true;
         try { await action(); }
-        catch (Exception failure) when (Expected(failure)) { Log?.Write("calibration", "A hardware operation failed.", failure); model.Status = failure.Message; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { Log?.Write("calibration", "A hardware operation failed.", failure); model.Status = failure.Message; }
         finally { model.Busy = false; model.Refresh(); operationFinished = null; finished.SetResult(); }
     }
 
@@ -203,7 +203,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
             refresh.Stop();
             return true;
         }
-        catch (Exception failure) when (Expected(failure)) { Log?.Write("calibration-restore", "Could not restore controller settings.", failure); refresh.Start(); model.Status = failure.Message; return false; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { Log?.Write("calibration-restore", "Could not restore controller settings.", failure); refresh.Start(); model.Status = failure.Message; return false; }
         finally { model.Busy = false; model.Refresh(); }
     }
 
@@ -226,6 +226,4 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static bool Expected(Exception failure) => failure is IOException or UnauthorizedAccessException
-        or ArgumentException or InvalidOperationException or TimeoutException or OperationCanceledException;
 }

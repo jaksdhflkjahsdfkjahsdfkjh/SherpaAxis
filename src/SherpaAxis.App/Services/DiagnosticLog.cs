@@ -14,7 +14,7 @@ public sealed class DiagnosticLog(string directory, int maximumBytes = 256 * 102
     private readonly object sync = new();
     private readonly Dictionary<string, long> recent = [];
     public string DirectoryPath { get; } = Path.GetFullPath(directory);
-    public static DiagnosticLog Default { get; } = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "Logs"));
+    public static DiagnosticLog Default { get; } = new(AppDataPaths.Logs);
     public string? Failure { get; private set; }
 
     public void Write(string category, string message, Exception? exception = null)

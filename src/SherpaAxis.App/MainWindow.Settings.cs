@@ -51,7 +51,7 @@ public partial class MainWindow
             preferences = await desktop.Preferences.LoadAsync(lifetime.Token);
             preferences = preferences with { StartWithWindows = desktop.Startup.IsEnabled };
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("settings", "An operation needs attention.", failure); if (!closing) { viewModel.Preferences.Status = $"Some settings could not be read: {failure.Message}"; } }
         if (closing) { return; }
         viewModel.Preferences.Load(preferences);
@@ -74,7 +74,7 @@ public partial class MainWindow
             }
             if (Application.Current is { } application) { application.SessionEnding += SessionEnding; }
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         {
             desktop.Log?.Write("settings", "An operation needs attention.", failure);
             tray?.Dispose(); tray = null;
@@ -129,7 +129,7 @@ public partial class MainWindow
             viewModel.Preferences.Status = "Settings saved.";
             UpdateRefreshPolicy();
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         {
             desktop.Log?.Write("settings", "An operation needs attention.", failure);
             savePreferencesAgain = false;

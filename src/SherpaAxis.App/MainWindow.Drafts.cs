@@ -29,7 +29,7 @@ public partial class MainWindow
             draftTimer.Tick += DraftTick;
             draftTimer.Start();
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         {
             // Preserve an unreadable recovery file instead of replacing it with an empty session.
             desktop.Log?.Write("draft-recovery", "Could not read unfinished edits.", failure);
@@ -54,7 +54,7 @@ public partial class MainWindow
     {
         if (desktop.Drafts is null) { return true; }
         try { await desktop.Drafts.SaveAsync(snapshot); draftWritten = text; return true; }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         {
             desktop.Log?.Write("draft-save", "Could not preserve unfinished edits.", failure);
             viewModel.ShowMessage($"Unsaved edits could not be backed up: {failure.Message}");
