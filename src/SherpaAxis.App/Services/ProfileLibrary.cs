@@ -30,7 +30,7 @@ public sealed class ProfileLibrary(string directory)
         finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
     }
     private static readonly string[] SelectionMarkers = ["active-profile", "autoload-profile"];
-    public static string DefaultDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "Profiles");
+    public static string DefaultDirectory => AppDataPaths.Profiles;
     public string DirectoryPath { get; } = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
     public IReadOnlyList<string> LoadErrors { get; private set; } = [];
 

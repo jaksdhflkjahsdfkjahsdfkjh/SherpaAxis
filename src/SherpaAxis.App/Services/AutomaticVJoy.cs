@@ -10,7 +10,7 @@ public sealed class AutomaticVJoy(string path, Func<IReadOnlyList<VJoyDeviceInfo
     private uint? selected;
     private bool loaded;
     public uint? SelectedId { get { lock (sync) { Load(); return selected; } } }
-    public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "virtual-device.txt");
+    public static string DefaultPath => AppDataPaths.VirtualDevice;
     public static AutomaticVJoy Default() => new(DefaultPath, () => VJoyController.Inspect(VJoyController.DefaultLibraryPath),
         id => new VJoyController(VJoyController.DefaultLibraryPath, id));
 

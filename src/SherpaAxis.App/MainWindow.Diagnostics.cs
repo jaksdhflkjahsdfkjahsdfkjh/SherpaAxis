@@ -41,7 +41,7 @@ public partial class MainWindow
             }
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("diagnostics", "An operation needs attention.", failure); if (!closing) { viewModel.Diagnostics.Status = $"Device checks failed: {failure.Message}"; } }
         finally { viewModel.Diagnostics.Busy = false; }
     }

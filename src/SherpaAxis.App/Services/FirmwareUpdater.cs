@@ -32,7 +32,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     public string DirectoryPath { get; } = Path.GetFullPath(directory);
     public string JournalPath => Path.Combine(DirectoryPath, "update.json");
-    public static string DefaultDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "FirmwareUpdates");
+    public static string DefaultDirectory => AppDataPaths.FirmwareUpdates;
     public static FirmwareUpdater Default() => new(DefaultDirectory, WindowsFirmwareServices.Create());
 
     public async Task<FirmwarePlan> PrepareAsync(string imagePath, string toolPath, CancellationToken token)

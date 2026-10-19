@@ -1,3 +1,4 @@
+using SherpaAxis.App.Services;
 using System.Diagnostics;
 using System.Windows;
 
@@ -16,7 +17,7 @@ public partial class MainWindow
             if (runtime is not null) { await runtime.PauseAsync(); }
             viewModel.Recovery.Apply(await desktop.Recovery.CheckAsync(lifetime.Token));
         }
-        catch (Exception failure) when (IsExpected(failure)) { desktop.Log?.Write("recovery", "An operation needs attention.", failure); viewModel.Recovery.Fail(failure.Message); }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { desktop.Log?.Write("recovery", "An operation needs attention.", failure); viewModel.Recovery.Fail(failure.Message); }
     }
 
     private async Task ResumeLiveAfterRecoveryAsync()
@@ -45,7 +46,7 @@ public partial class MainWindow
             if (restore && selected is not null) { await desktop.Recovery.RestoreAsync(selected.Path, lifetime.Token); }
             if (save && selected is not null) { await desktop.Recovery.SaveRestoredAsync(selected.Path, lifetime.Token); }
         }
-        catch (Exception failure) when (IsExpected(failure)) { desktop.Log?.Write("recovery", "An operation needs attention.", failure); error = failure.Message; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { desktop.Log?.Write("recovery", "An operation needs attention.", failure); error = failure.Message; }
         await CheckStartupRecoveryAsync();
         if (error is not null) { viewModel.Recovery.Status = $"Recovery action failed: {error}"; }
         if (!closing && !viewModel.Recovery.IsBlocked)

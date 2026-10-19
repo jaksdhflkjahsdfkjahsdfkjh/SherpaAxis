@@ -123,7 +123,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         try { action(); }
-        catch (Exception exception) when (IsExpected(exception)) { desktop.Log?.Write("ui-action", "An action could not finish.", exception); viewModel.ShowMessage(exception.Message); }
+        catch (Exception exception) when (OperationErrors.IsExpected(exception)) { desktop.Log?.Write("ui-action", "An action could not finish.", exception); viewModel.ShowMessage(exception.Message); }
     }
 
     private async Task RunAsync(Func<Task> action)
@@ -143,7 +143,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.CanEdit = false;
         viewModel.Refresh();
         try { activeOperation = action(); await activeOperation; }
-        catch (Exception exception) when (IsExpected(exception)) { desktop.Log?.Write("ui-action", "An operation could not finish.", exception); if (!closing) { viewModel.ShowMessage(exception.Message); } }
+        catch (Exception exception) when (OperationErrors.IsExpected(exception)) { desktop.Log?.Write("ui-action", "An operation could not finish.", exception); if (!closing) { viewModel.ShowMessage(exception.Message); } }
         finally
         {
             activeOperation = null;
@@ -153,9 +153,6 @@ public partial class MainWindow : Window, IAsyncDisposable
             if (!closing && IsActive && !userMovedFocus && priorFocus is FrameworkElement { IsEnabled: true, IsVisible: true } element) { element.Focus(); }
         }
     }
-
-    private static bool IsExpected(Exception exception) => exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException
-        or InvalidOperationException or TimeoutException or OperationCanceledException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException or System.Security.SecurityException;
 
     private async void WindowClosing(object? sender, CancelEventArgs e)
     {
@@ -182,7 +179,7 @@ public partial class MainWindow : Window, IAsyncDisposable
                 if (!exitRequested) { return; }
             }
             try { await DisposeAsync(); }
-            catch (Exception failure) when (IsExpected(failure))
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
             {
                 desktop.Log?.Write("shutdown", "Could not finish closing.", failure);
                 exitRequested = false;
@@ -229,7 +226,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             if (activeOperation is { } pending)
             {
                 try { await pending; }
-                catch (Exception exception) when (IsExpected(exception)) { }
+                catch (Exception exception) when (OperationErrors.IsExpected(exception)) { }
             }
             if (modeOperation is { } pendingMode) { await pendingMode; }
             await FlushDraftsAsync();

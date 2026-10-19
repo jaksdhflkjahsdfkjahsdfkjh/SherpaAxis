@@ -18,7 +18,7 @@ public partial class MainWindow
             viewModel.Firmware.Blocked = pending is not null;
             if (pending is not null) { viewModel.Firmware.Status = "A firmware update needs review. Output remains paused. Reconnect the pedals and check the updated controller, or retry programming at the recorded USB port."; }
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Blocked = true; viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
     }
     private void SelectFirmwareImageClick(object sender, RoutedEventArgs e)
@@ -38,7 +38,7 @@ public partial class MainWindow
     {
         if (desktop.Firmware is null) { return; }
         try { Directory.CreateDirectory(desktop.Firmware.DirectoryPath); OpenDiagnosticTool(desktop.Firmware.DirectoryPath); }
-        catch (Exception failure) when (IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
     }
     private async void PrepareFirmwareClick(object sender, RoutedEventArgs e) => await PrepareFirmwareAsync();
     internal Task PrepareFirmwareAsync() => RunAsync(async () =>
@@ -57,7 +57,7 @@ public partial class MainWindow
             viewModel.Firmware.Plan = await Task.Run(() => desktop.Firmware.PrepareAsync(viewModel.Firmware.ImagePath, viewModel.Firmware.ToolPath, lifetime.Token));
             viewModel.Firmware.Status = "Ready to flash the prepared controller. Close FEEL-VR Control and games. Keep the USB cable connected during programming.";
         }
-        catch (Exception failure) when (IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
         finally { viewModel.Firmware.Running = false; await ResumeLiveAfterRecoveryAsync(); }
     });
     private async void FlashFirmwareClick(object sender, RoutedEventArgs e)
@@ -86,7 +86,7 @@ public partial class MainWindow
             else { await desktop.Firmware.FlashAsync(plan ?? throw new InvalidOperationException("Prepare the firmware first."), progress, lifetime.Token); }
             viewModel.Firmware.Status = "Programming verified. Unplug and reconnect the pedals, then click Check updated controller.";
         }
-        catch (Exception failure) when (IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
         finally
         {
             viewModel.Firmware.Plan = null;
@@ -113,7 +113,7 @@ public partial class MainWindow
             viewModel.Firmware.Status = result.Detail;
             if (result.Complete) { await CheckStartupRecoveryAsync(); await ResumeLiveAfterRecoveryAsync(); await CheckDeviceDiagnosticsAsync(); }
         }
-        catch (Exception failure) when (IsExpected(failure))
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.CanAccept = false; viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
     });
 }

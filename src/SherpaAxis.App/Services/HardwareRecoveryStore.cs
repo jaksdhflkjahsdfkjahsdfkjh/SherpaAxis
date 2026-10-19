@@ -7,7 +7,7 @@ namespace SherpaAxis.App.Services;
 public sealed class HardwareRecoveryStore(string filePath) : IHardwareRecoveryStore
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    public static string DefaultDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "HardwareBackups");
+    public static string DefaultDirectory => AppDataPaths.HardwareBackups;
     public string FilePath { get; } = Path.GetFullPath(filePath);
 
     public async Task WriteAsync(HardwareRecoverySnapshot snapshot, CancellationToken cancellationToken)

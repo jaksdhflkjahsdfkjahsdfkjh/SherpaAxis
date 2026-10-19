@@ -12,7 +12,7 @@ public interface IApplicationPreferencesStore
 
 public sealed class ApplicationPreferencesStore(string path) : IApplicationPreferencesStore
 {
-    public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SherpaAxis", "settings.json");
+    public static string DefaultPath => AppDataPaths.Settings;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     public async Task<ApplicationPreferences> LoadAsync(CancellationToken cancellationToken)
     {
