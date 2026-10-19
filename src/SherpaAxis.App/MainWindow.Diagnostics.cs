@@ -124,7 +124,7 @@ public partial class MainWindow
         async Task ExportCoreAsync()
         {
             if (desktop.Log is null) { throw new InvalidOperationException("Local diagnostic logging is unavailable."); }
-            await Task.Run(() => desktop.Log.Export(path, status));
+            await Task.Run(() => new DiagnosticReportExporter(desktop.Log).Export(path, status));
             viewModel.ShowMessage("Diagnostic report exported. Review the ZIP before sharing it.");
         }
     }
