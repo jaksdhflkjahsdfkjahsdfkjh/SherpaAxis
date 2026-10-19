@@ -107,11 +107,16 @@ public sealed class PedalRuntime(DashboardEngine engine, DashboardSource source,
         if (disposed) { return; }
         disposed = true;
         engine.SuspendOutput("app closing");
-        await stop.CancelAsync();
-        if (worker is not null) { await worker; }
-        await source.StopAsync();
-        if (output is not null) { await output.DisposeAsync(); output = null; }
-        stop.Dispose(); gate.Dispose();
-        GC.SuppressFinalize(this);
+        Exception? failure = null;
+        try { await stop.CancelAsync(); }
+        catch (Exception error) { failure = error; }
+        try { if (worker is not null) { await worker; } }
+        catch (Exception error) { failure ??= error; }
+        try { await source.StopAsync(); }
+        catch (Exception error) { failure ??= error; }
+        try { if (output is not null) { await output.DisposeAsync(); output = null; } }
+        catch (Exception error) { failure ??= error; }
+        finally { stop.Dispose(); gate.Dispose(); GC.SuppressFinalize(this); }
+        if (failure is not null) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw(); }
     }
 }
