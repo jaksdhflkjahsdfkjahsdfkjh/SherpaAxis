@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
-using SherpaAxis.Cli;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.Cli.Tests;

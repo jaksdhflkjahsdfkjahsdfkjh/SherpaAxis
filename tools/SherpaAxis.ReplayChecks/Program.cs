@@ -3,7 +3,6 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Persistence;
 using SherpaAxis.App.Services.Recording;
 using SherpaAxis.App.ViewModels;

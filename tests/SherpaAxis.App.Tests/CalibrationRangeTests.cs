@@ -1,7 +1,6 @@
 using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
 using SherpaAxis.Bridge;
-using SherpaAxis.Core;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
 

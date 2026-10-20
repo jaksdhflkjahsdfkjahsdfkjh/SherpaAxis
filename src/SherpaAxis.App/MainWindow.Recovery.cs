@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Windows;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Diagnostics;
 
 namespace SherpaAxis.App;

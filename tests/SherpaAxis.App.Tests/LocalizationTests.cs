@@ -8,7 +8,6 @@ using System.Windows.Threading;
 using SherpaAxis.App.Controls;
 using SherpaAxis.App.Localization;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Persistence;
 using SherpaAxis.App.ViewModels;

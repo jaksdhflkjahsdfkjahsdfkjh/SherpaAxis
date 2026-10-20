@@ -1,5 +1,4 @@
 using System.Windows;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Output;

@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Firmware;
 using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.App.ViewModels;
