@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Desktop;
 
 namespace SherpaAxis.App;

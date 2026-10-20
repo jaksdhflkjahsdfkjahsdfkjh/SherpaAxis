@@ -1,5 +1,3 @@
-using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Firmware;
 
 namespace SherpaAxis.App.ViewModels;

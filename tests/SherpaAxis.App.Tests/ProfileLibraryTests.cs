@@ -1,6 +1,5 @@
 using System.IO;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Persistence;
 
 namespace SherpaAxis.App.Tests;

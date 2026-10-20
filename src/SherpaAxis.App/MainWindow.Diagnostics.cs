@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Microsoft.Win32;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Output;

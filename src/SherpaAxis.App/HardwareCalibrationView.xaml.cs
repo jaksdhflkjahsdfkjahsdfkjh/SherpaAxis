@@ -2,7 +2,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.ViewModels;
 using SherpaAxis.Devices;

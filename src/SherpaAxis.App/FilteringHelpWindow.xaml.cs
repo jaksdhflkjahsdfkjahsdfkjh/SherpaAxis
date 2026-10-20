@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using SherpaAxis.App.Controls;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Desktop;
 
 namespace SherpaAxis.App;

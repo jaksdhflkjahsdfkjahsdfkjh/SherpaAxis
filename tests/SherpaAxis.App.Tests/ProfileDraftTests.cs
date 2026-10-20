@@ -2,7 +2,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Persistence;
 using SherpaAxis.App.ViewModels;
 using SherpaAxis.Profiles;

@@ -7,7 +7,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.App.Services.Input;
 using SherpaAxis.App.Services.Persistence;

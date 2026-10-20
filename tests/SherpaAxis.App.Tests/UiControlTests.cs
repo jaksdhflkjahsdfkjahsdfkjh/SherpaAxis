@@ -3,13 +3,11 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
-using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Tests;

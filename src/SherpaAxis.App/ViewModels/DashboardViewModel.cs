@@ -1,8 +1,4 @@
-using System.Collections.ObjectModel;
-using System.Globalization;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
-using SherpaAxis.Core;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.ViewModels;

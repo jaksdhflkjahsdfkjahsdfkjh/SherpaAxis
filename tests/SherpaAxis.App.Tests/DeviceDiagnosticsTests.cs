@@ -1,11 +1,9 @@
 using System.IO;
-using SherpaAxis.App.Services;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Output;
 using SherpaAxis.App.ViewModels;
 using SherpaAxis.Bridge;
 using SherpaAxis.Devices;
-using SherpaAxis.FeelVR;
 
 namespace SherpaAxis.App.Tests;
 

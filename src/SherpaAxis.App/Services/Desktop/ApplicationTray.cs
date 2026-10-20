@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Drawing;
 using SherpaAxis.App.Models;
-using SherpaAxis.App.Services;
 using Forms = System.Windows.Forms;
 
 namespace SherpaAxis.App.Services.Desktop;
