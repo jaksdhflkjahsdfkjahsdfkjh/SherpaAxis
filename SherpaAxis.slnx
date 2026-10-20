@@ -1,0 +1,25 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/SherpaAxis.App/SherpaAxis.App.csproj" />
+    <Project Path="src/SherpaAxis.Bridge/SherpaAxis.Bridge.csproj" />
+    <Project Path="src/SherpaAxis.Cli/SherpaAxis.Cli.csproj" />
+    <Project Path="src/SherpaAxis.Core/SherpaAxis.Core.csproj" />
+    <Project Path="src/SherpaAxis.Devices/SherpaAxis.Devices.csproj" />
+    <Project Path="src/SherpaAxis.FeelVR/SherpaAxis.FeelVR.csproj" />
+    <Project Path="src/SherpaAxis.Profiles/SherpaAxis.Profiles.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SherpaAxis.App.Tests/SherpaAxis.App.Tests.csproj" />
+    <Project Path="tests/SherpaAxis.Cli.Tests/SherpaAxis.Cli.Tests.csproj" />
+    <Project Path="tests/SherpaAxis.Tests/SherpaAxis.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/SherpaAxis.FilterExamples/SherpaAxis.FilterExamples.csproj" />
+    <Project Path="tools/SherpaAxis.ReplayChecks/SherpaAxis.ReplayChecks.csproj" />
+  </Folder>
+</Solution>

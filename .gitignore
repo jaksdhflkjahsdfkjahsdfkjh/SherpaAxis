@@ -15,3 +15,7 @@ publish/
 *.dll
 *.exe
 *.pdb
+*.tmp
+*.log
+*.trx
+*.binlog

@@ -10,14 +10,12 @@ permissions:
 jobs:
   verify:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
-      - run: dotnet restore --locked-mode
-      - run: dotnet build -c Release --no-restore
-      - run: dotnet test -c Release --no-build
-      - run: dotnet format --verify-no-changes --no-restore
+      - run: ./tools/Verify.ps1
       - run: dotnet publish src/SherpaAxis.Cli -c Release --no-restore --no-build -o publish
       - run: dotnet publish src/SherpaAxis.App -c Release --no-restore --no-build -o publish/app
