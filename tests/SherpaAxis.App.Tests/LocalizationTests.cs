@@ -121,6 +121,32 @@ public sealed class LocalizationTests
     });
 
     [Fact]
+    public async Task LanguageChangesIgnoreGraphsWhoseUiThreadHasStopped()
+    {
+        Window? previous = null;
+        await HardwarePedalUiTests.OnUiAsync(async () =>
+        {
+            var panel = new StackPanel();
+            panel.Children.Add(new SignalPlot());
+            panel.Children.Add(new CurveEditor());
+            previous = new Window { Content = panel, ShowInTaskbar = false, Opacity = 0 };
+            previous.Show();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            previous.Close();
+        });
+        Assert.NotNull(previous);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!previous.Dispatcher.HasShutdownFinished) { await Task.Delay(10, timeout.Token); }
+        await HardwarePedalUiTests.OnUiAsync(() =>
+        {
+            try { Localizer.Instance.Language = "uk"; }
+            finally { Localizer.Instance.Language = "en"; }
+            return Task.CompletedTask;
+        });
+        GC.KeepAlive(previous);
+    }
+
+    [Fact]
     public async Task OlderSettingsDefaultToEnglishAndLanguageRoundTrips()
     {
         var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-language-" + Guid.NewGuid().ToString("N"));
