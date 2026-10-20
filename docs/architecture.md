@@ -67,9 +67,7 @@ See [setup](setup.md) for device selection and installation.
 
 ## Build and validation
 
-Run `dotnet restore --locked-mode` and `dotnet build -c Release --no-restore`.
-
-Run `dotnet test -c Release --no-build` for the available automated tests.
+Run `./tools/Verify.ps1` for locked restore, Release build, tests and formatting.
 
 Native vJoy output tests are opt-in and require an available physical driver/device.
 Ordinary automated tests use fake transports and do not establish physical acceptance.
