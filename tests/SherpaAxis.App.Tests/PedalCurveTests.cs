@@ -34,7 +34,7 @@ public sealed class PedalCurveTests
     [InlineData(PedalAxis.Throttle)]
     [InlineData(PedalAxis.Brake)]
     [InlineData(PedalAxis.Clutch)]
-    public void EditPresetAndClearTargetOnlyTheirPedalAndRequireApply(PedalAxis target)
+    public void EditPresetAndClearApplyImmediatelyOnlyToTheirPedal(PedalAxis target)
     {
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine);
@@ -44,7 +44,7 @@ public sealed class PedalCurveTests
         model.EditCurve(target, [new(0, 0), new(.5, .8), new(1, 1)]);
         Assert.Equal("Custom", model.PedalCurves.Single(p => p.Axis == target).CurveKind);
         Sample(engine, 0);
-        Assert.All(engine.Snapshot(target).Axes, a => Assert.Equal(.25, a.Result!.Value.Processing.Output));
+        Assert.All(engine.Snapshot(target).Axes, a => Assert.Equal(a.Axis == target ? .8 : .25, a.Result!.Value.Processing.Output));
         model.Apply();
         Sample(engine, .01);
         foreach (var a in engine.Snapshot(target).Axes)
@@ -63,11 +63,13 @@ public sealed class PedalCurveTests
         Assert.Equal("2", model.Editor.LowerDeadzone);
         var (draft, _) = model.ValidateEditors();
         Assert.All(draft.Axes.Where(p => p.Key != target), p => Assert.Equal(2, p.Value.Curve.Exponent));
-        Assert.Equal(.8, engine.Snapshot(target).Axes.Single(a => a.Axis == target).Result!.Value.Processing.Output);
+        Sample(engine, .02);
+        Assert.Equal(draft.Axes[target].CreateProcessor().Process(DashboardEngine.DeviceMaximum(target) / 2, .02).Output,
+            engine.Snapshot(target).Axes.Single(a => a.Axis == target).Result!.Value.Processing.Output, 12);
         var panel = model.PedalCurves.Single(p => p.Axis == target);
         Assert.Equal(.5, panel.Preview[100].Output);
         Assert.Equal(2, panel.Points.Count);
-        Assert.Equal(.8, panel.Applied[100].Output);
+        Assert.Equal(24d / 49, panel.Applied[100].Output, 12);
     }
 
     [Fact]

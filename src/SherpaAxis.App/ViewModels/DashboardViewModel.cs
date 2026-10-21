@@ -1,4 +1,5 @@
 using SherpaAxis.App.Models;
+using SherpaAxis.Core;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.ViewModels;
@@ -98,7 +99,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     public string CorrectionInfo { get => correctionInfo; private set => Set(ref correctionInfo, value); }
     private string resetInfo = "No session";
     public string ResetInfo { get => resetInfo; private set => Set(ref resetInfo, value); }
-    public string Message { get; private set; } = "Device-axis units · hardware calibration is separate · edits take effect with Apply";
+    public string Message { get; private set; } = "Tuning changes apply automatically. Save the profile to keep them after restart.";
     private string hardwareInfo = "Not read. Use Read hardware calibration to inspect the stored bounds.";
     public string HardwareInfo { get => hardwareInfo; set => Set(ref hardwareInfo, value); }
     public IReadOnlyList<PlotSample> History { get; private set; } = [];
@@ -157,15 +158,20 @@ public sealed partial class DashboardViewModel : ObservableObject
     public void Apply()
     {
         var (profile, limits) = ValidateEditors();
+        ApplyConfiguration(profile, limits);
+        ValidationMessage = "";
+        RefreshUnsavedState();
+    }
+
+    private void ApplyConfiguration(PedalProfile profile, IReadOnlyDictionary<PedalAxis, AxisSessionSettings> limits)
+    {
+        if (!IsCalibrating && ProfileJson.Serialize(profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied))) { return; }
         engine.Configure(profile, limits);
         applied = profile;
-        if (selectedProfile is not null) { selectedProfile.RequiresApply = false; }
         UpdateCurve();
         RefreshDraftCurve();
         Changed(nameof(ActiveProfileInfo));
         NotifyFilterSettings();
-        RefreshUnsavedState();
-        ShowMessage("Settings applied. Correction and filter histories reset; vJoy resumes with fresh pedal input.");
     }
 
     public void ShowMessage(string message)

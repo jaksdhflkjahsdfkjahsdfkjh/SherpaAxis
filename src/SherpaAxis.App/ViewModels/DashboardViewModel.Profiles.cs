@@ -88,10 +88,9 @@ public sealed partial class DashboardViewModel
         ProfileName = tab.Name;
         try
         {
-            if (!tab.RequiresApply) { Apply(); }
-            else { ShowMessage("Recovered draft selected. Review it and Apply settings to activate it."); }
+            Apply();
         }
-        catch (ArgumentException exception) { ShowMessage($"Draft restored; previous processing remains active until Apply: {exception.Message}"); }
+        catch (ArgumentException exception) { ShowMessage($"Invalid settings; previous processing remains active: {exception.Message}"); }
         RefreshDraftCurve();
         Changed(nameof(SelectedProfile));
         Changed(nameof(Editor));
@@ -106,37 +105,40 @@ public sealed partial class DashboardViewModel
     public bool CanUndoDelete { get => canUndoDelete; set => Set(ref canUndoDelete, value); }
     private string draftStatus = "";
     public string DraftStatus { get => draftStatus; private set => Set(ref draftStatus, value); }
+    public bool IsProfileSaved => selectedProfile?.FilePath is not null && !selectedProfile.HasUnsavedChanges;
+    private string validationMessage = "";
+    public string ValidationMessage { get => validationMessage; private set => Set(ref validationMessage, value); }
 
     public void RefreshUnsavedState()
     {
+        if (CanTune && !IsCalibrating) { ApplyEditedSettings(); }
         StoreDraft();
         foreach (var tab in ProfileTabs) { tab.RefreshUnsavedState(); }
-        var pending = HasUnappliedEdits();
-        DraftStatus = pending ? "Unapplied edits · Apply settings to activate"
-            : selectedProfile?.HasUnsavedChanges == true ? "Unsaved profile · Save to keep these settings"
-            : selectedProfile?.FilePath is null ? "Default settings · Save to create a profile" : "Profile saved · Settings applied";
+        DraftStatus = IsProfileSaved ? "Profile saved" : "Unsaved profile · Save to keep these settings";
+        Changed(nameof(IsProfileSaved));
     }
 
     private readonly Dictionary<PedalAxis, AxisEditor> assessedEditors = [];
     private PedalProfile? assessedApplied;
     private string? assessedName;
-    private bool assessedPending;
-
-    private bool HasUnappliedEdits()
+    private void ApplyEditedSettings()
     {
         if (ReferenceEquals(assessedApplied, applied) && assessedName == ProfileName
             && editors.Count == assessedEditors.Count
             && editors.All(pair => assessedEditors.TryGetValue(pair.Key, out var editor) && pair.Value == editor))
-        { return assessedPending; }
+        { return; }
 
-        assessedPending = true;
-        try { assessedPending = !ProfileJson.Serialize(ValidateEditors().Profile).AsSpan().SequenceEqual(ProfileJson.Serialize(applied)); }
-        catch (ArgumentException) { }
+        try
+        {
+            var (profile, limits) = ValidateEditors();
+            ApplyConfiguration(profile, limits);
+            ValidationMessage = "";
+        }
+        catch (ArgumentException exception) { ValidationMessage = "Settings not changed: " + exception.Message; }
         assessedApplied = applied;
         assessedName = ProfileName;
         assessedEditors.Clear();
         foreach (var (axis, editor) in editors) { assessedEditors[axis] = editor with { }; }
-        return assessedPending;
     }
 
     public void MarkSelectedSaved()
@@ -157,8 +159,7 @@ public sealed partial class DashboardViewModel
         var restored = new List<ProfileTab>();
         foreach (var draft in session.Profiles)
         {
-            // Keep the saved version intact; restored editors always require explicit Apply.
-            var tab = new ProfileTab { DraftId = draft.Id, Name = draft.Name, RequiresApply = true };
+            var tab = new ProfileTab { DraftId = draft.Id, Name = draft.Name };
             foreach (var (axis, editor) in draft.Editors) { tab.Editors[axis] = editor with { }; }
             if (draft.SavedFileName is { } name)
             {
@@ -175,7 +176,7 @@ public sealed partial class DashboardViewModel
         if (restored.Count > 0) { SwitchProfile(restored[0]); }
         HasRecoverableDrafts = false;
         RefreshUnsavedState();
-        ShowMessage("Unsaved drafts recovered. Review them and Apply settings to activate; Save keeps them as profiles.");
+        ShowMessage("Unsaved drafts recovered. Valid settings apply automatically; Save keeps them as profiles.");
     }
 
     public ProfileTab DetachSelectedProfile()
@@ -187,7 +188,6 @@ public sealed partial class DashboardViewModel
     }
     public void RestoreDeletedProfile(ProfileTab tab, int index)
     {
-        tab.RequiresApply = true;
         ProfileTabs.Insert(Math.Clamp(index, 0, ProfileTabs.Count), tab);
         SwitchProfile(tab);
     }

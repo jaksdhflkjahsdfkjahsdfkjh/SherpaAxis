@@ -27,7 +27,7 @@ public sealed class ProfileDraftTests
         Assert.Equal("7", saved.Editors[PedalAxis.Brake].LowerDeadzone);
         Assert.Equal("12", model.Editor.LowerDeadzone);
         Assert.Null(model.SelectedProfile!.FilePath);
-        Assert.True(model.SelectedProfile.RequiresApply);
+        Assert.Empty(model.ValidationMessage);
     }
     [Fact]
     public Task DraftBackupRunsWhileHiddenAndExitFlushesTheLatestKeystroke() => HardwarePedalUiTests.OnUiAsync(async () =>
@@ -92,7 +92,7 @@ public sealed class ProfileDraftTests
     }
 
     [Fact]
-    public Task RestartOffersRecoveryAndNeverAutomaticallyAppliesRecoveredCurves() => HardwarePedalUiTests.OnUiAsync(async () =>
+    public Task RestartOffersRecoveryAndAppliesRecoveredSettingsOnlyWhenRequested() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var folder = TempFolder();
         var library = new ProfileLibrary(Path.Combine(folder, "Profiles"));
@@ -113,7 +113,7 @@ public sealed class ProfileDraftTests
                 model.RefreshUnsavedState();
                 Assert.True(model.SelectedProfile!.HasUnsavedChanges);
                 Assert.Equal("Race *", model.SelectedProfile.DisplayName);
-                Assert.Contains("Unapplied", model.DraftStatus, StringComparison.Ordinal);
+                Assert.Contains("Unsaved", model.DraftStatus, StringComparison.Ordinal);
                 await main.FlushDraftsAsync();
                 Assert.Equal(0, (await ProfileStore.LoadAsync(saved)).Axes[PedalAxis.Brake].Deadzone.Lower);
             }
@@ -127,10 +127,10 @@ public sealed class ProfileDraftTests
             await restarted.RestoreDraftsAsync();
             Assert.False(restored.HasRecoverableDrafts);
             Assert.Equal("12", restored.Editor.LowerDeadzone);
-            Assert.True(restored.HasFilterDraft);
+            Assert.False(restored.HasFilterDraft);
             Assert.True(restored.SelectedAutoLoad);
             Assert.Single(restored.ProfileTabs, tab => tab.FilePath == saved);
-            Assert.Contains("Unapplied", restored.DraftStatus, StringComparison.Ordinal);
+            Assert.Contains("Unsaved", restored.DraftStatus, StringComparison.Ordinal);
             restored.Apply();
             Assert.False(restored.HasFilterDraft);
             Assert.True(restored.SelectedProfile!.HasUnsavedChanges);

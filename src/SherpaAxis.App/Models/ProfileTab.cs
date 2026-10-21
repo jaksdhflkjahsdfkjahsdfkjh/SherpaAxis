@@ -7,10 +7,12 @@ public sealed class ProfileTab : ViewModels.ObservableObject
     private string name = "New profile";
     public string Name { get => name; set { if (Set(ref name, value)) { Changed(nameof(DisplayName)); } } }
     public Guid DraftId { get; init; } = Guid.NewGuid();
-    private string? savedName;
-    private readonly Dictionary<PedalAxis, AxisEditor> savedEditors = [];
+    private byte[]? savedProfile;
+    private byte[]? assessedSavedProfile;
+    private string? assessedName;
+    private readonly Dictionary<PedalAxis, AxisEditor> assessedEditors = [];
+    private bool matchesSaved;
     internal bool Recoverable { get; set; } = true;
-    internal bool RequiresApply { get; set; }
     private bool hasUnsavedChanges;
     public bool HasUnsavedChanges { get => hasUnsavedChanges; internal set { if (Set(ref hasUnsavedChanges, value)) { Changed(nameof(DisplayName)); } } }
     public string DisplayName => Name + (HasUnsavedChanges ? " *" : "");
@@ -20,26 +22,35 @@ public sealed class ProfileTab : ViewModels.ObservableObject
     public Dictionary<PedalAxis, AxisEditor> Editors { get; } = [];
     internal void MarkSaved()
     {
-        savedName = Name;
-        savedEditors.Clear();
-        foreach (var (axis, editor) in Editors) { savedEditors[axis] = editor with { }; }
-        HasUnsavedChanges = false;
+        savedProfile = SerializeEditors();
+        RefreshUnsavedState();
     }
 
     internal void RefreshUnsavedState()
     {
-        var changed = Name != savedName || Editors.Count != savedEditors.Count
-            || Editors.Any(pair => !savedEditors.TryGetValue(pair.Key, out var saved) || pair.Value != saved);
-        HasUnsavedChanges = changed || FilePath is null && Recoverable;
-        if (changed) { Recoverable = true; }
+        if (!ReferenceEquals(assessedSavedProfile, savedProfile) || assessedName != Name || Editors.Count != assessedEditors.Count
+            || Editors.Any(pair => !assessedEditors.TryGetValue(pair.Key, out var previous) || pair.Value != previous))
+        {
+            matchesSaved = false;
+            try { matchesSaved = savedProfile is not null && SerializeEditors().AsSpan().SequenceEqual(savedProfile); }
+            catch (ArgumentException) { }
+            assessedSavedProfile = savedProfile;
+            assessedName = Name;
+            assessedEditors.Clear();
+            foreach (var (axis, editor) in Editors) { assessedEditors[axis] = editor with { }; }
+        }
+        HasUnsavedChanges = !matchesSaved || FilePath is null && Recoverable;
+        if (!matchesSaved) { Recoverable = true; }
     }
 
     internal void CopySavedStateFrom(ProfileTab saved)
     {
         FilePath = saved.FilePath;
-        savedName = saved.savedName;
-        foreach (var (axis, editor) in saved.savedEditors) { savedEditors[axis] = editor with { }; }
+        savedProfile = saved.savedProfile;
     }
+
+    private byte[] SerializeEditors() => ProfileJson.Serialize(new(Name,
+        Editors.ToDictionary(pair => pair.Key, pair => pair.Value.BuildProfile())));
 
     public override string ToString() => Name;
 }

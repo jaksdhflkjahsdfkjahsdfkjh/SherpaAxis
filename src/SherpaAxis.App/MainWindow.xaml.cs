@@ -98,7 +98,6 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
     }
 
-    private void ApplyClick(object sender, RoutedEventArgs e) => Run(() => { StopHold(); viewModel.Apply(); });
     private void NewProfileClick(object sender, RoutedEventArgs e) => Run(() =>
     {
         StopHold();
