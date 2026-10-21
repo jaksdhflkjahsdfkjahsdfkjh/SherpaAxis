@@ -20,6 +20,7 @@ public partial class MainWindow
     private Task? runtimeInitialization;
     private Task? desktopInitialization;
     private Task? settingsOperation;
+    private Task? visibilityOperation;
     private bool savePreferencesAgain;
     private bool preferencesLoaded;
     private bool exitRequested;
@@ -37,6 +38,7 @@ public partial class MainWindow
         await CheckStartupRecoveryAsync();
         await CheckFirmwareStartupAsync();
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
+        await UpdateInputVisibilityAsync();
         await ResumeLiveAfterRecoveryAsync();
         _ = CheckDeviceDiagnosticsAsync();
     }
@@ -129,6 +131,7 @@ public partial class MainWindow
                 }
                 preferences = next;
                 Localization.Localizer.Instance.Language = preferences.Language;
+                await UpdateInputVisibilityAsync();
             } while (savePreferencesAgain);
             viewModel.Preferences.Status = "Settings saved.";
             UpdateRefreshPolicy();
@@ -141,6 +144,26 @@ public partial class MainWindow
             if (!closing) { viewModel.Preferences.Status = $"Settings were not changed: {failure.Message}"; }
         }
         finally { viewModel.Preferences.Saving = false; }
+    }
+
+    private Task UpdateInputVisibilityAsync()
+    {
+        if (closing || !preferencesLoaded || desktop.InputVisibility is null) { return Task.CompletedTask; }
+        return visibilityOperation = UpdateInputVisibilityCoreAsync();
+    }
+    private async Task UpdateInputVisibilityCoreAsync()
+    {
+        try
+        {
+            var result = await desktop.InputVisibility!.ConfigureAsync(preferences.HidePhysicalPedals, lifetime.Token);
+            viewModel.Preferences.InputVisibilityStatus = result.Detail;
+            desktop.Log?.Write("input-visibility", result.Detail);
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        {
+            desktop.Log?.Write("input-visibility", "Could not update physical pedal visibility.", failure);
+            if (!closing) { viewModel.Preferences.InputVisibilityStatus = $"Physical pedal visibility needs attention: {failure.Message}"; }
+        }
     }
 
     private async void TrayCommandRequested(TrayCommand command)

@@ -23,7 +23,7 @@ public sealed record DesktopServices(IApplicationPreferencesStore Preferences, I
     Func<Func<TrayMenuState>, IApplicationTray> CreateTray, Func<HwndSource, IButtonStateSource>? Buttons = null,
     PedalRuntimeServices? Runtime = null, StartupHardwareRecovery? Recovery = null, DeviceDiagnostics? Diagnostics = null, FirmwareUpdater? Firmware = null,
     DiagnosticLog? Log = null, ProfileDraftStore? Drafts = null,
-    Func<CorrectedCalibration, CancellationToken, Task>? SaveCorrectedCalibration = null)
+    Func<CorrectedCalibration, CancellationToken, Task>? SaveCorrectedCalibration = null, HidHideVisibility? InputVisibility = null)
 {
     public static DesktopServices Default()
     {
@@ -31,6 +31,6 @@ public sealed record DesktopServices(IApplicationPreferencesStore Preferences, I
         return new(new ApplicationPreferencesStore(ApplicationPreferencesStore.DefaultPath),
         new WindowsStartupRegistration(System.IO.Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe")), state => new ApplicationTray(state),
             source => new WindowsButtonInput(source), PedalRuntimeServices.Default(vjoy), StartupHardwareRecovery.Default(), DeviceDiagnostics.Default(vjoy), FirmwareUpdater.Default(), DiagnosticLog.Default, ProfileDraftStore.Default(),
-            new CorrectedCalibrationWriter(PedalControllerConnection.OpenAsync, HardwareRecoveryStore.DefaultDirectory).SaveAsync);
+            new CorrectedCalibrationWriter(PedalControllerConnection.OpenAsync, HardwareRecoveryStore.DefaultDirectory).SaveAsync, WindowsHidHide.Default(vjoy));
     }
 }

@@ -44,6 +44,18 @@ if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notl
     throw 'Invalid vJoy installer signature.'
 }
 
+$hidHideDestination = Join-Path $prerequisiteDirectory 'HidHide_1.5.230_x64.exe'
+if (-not (Test-Path -LiteralPath $hidHideDestination)) {
+    Invoke-WebRequest -Uri 'https://github.com/nefarius/HidHide/releases/download/v1.5.230.0/HidHide_1.5.230_x64.exe' -OutFile $hidHideDestination
+}
+if ((Get-FileHash -LiteralPath $hidHideDestination -Algorithm SHA256).Hash -ne 'F4BBBCB82E6258641B887C74BC81C4C5F66E4AA811808DFC304347687B7605F6') {
+    throw 'Unexpected HidHide installer hash.'
+}
+$hidHideSignature = Get-AuthenticodeSignature -LiteralPath $hidHideDestination
+if ($hidHideSignature.Status -ne 'Valid' -or $hidHideSignature.SignerCertificate.Subject -notlike '*Nefarius Software Solutions e.U.*') {
+    throw 'Invalid HidHide installer signature.'
+}
+
 if (-not $CompilerPath) {
     $compilerDirectory = Join-Path $repositoryDirectory 'research/tools/innosetup-6.7.3/portable'
     $CompilerPath = Join-Path $compilerDirectory 'tools/ISCC.exe'
@@ -64,6 +76,6 @@ if ($compilerSignature.Status -ne 'Valid' -or $compilerSignature.SignerCertifica
 
 dotnet publish (Join-Path $repositoryDirectory 'src/SherpaAxis.App') -c Release -r win-x64 --self-contained true "-p:Version=$Version" -p:NuGetLockFilePath=obj/packages.setup.lock.json -o $appDirectory
 if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
-& $CompilerPath "/DAppVersion=$Version" "/DAppSource=$appDirectory" "/DVJoyInstaller=$driverDestination" "/DSetupOutput=$(Join-Path $repositoryDirectory 'publish')" (Join-Path $repositoryDirectory 'installer/Setup.iss')
+& $CompilerPath "/DAppVersion=$Version" "/DAppSource=$appDirectory" "/DVJoyInstaller=$driverDestination" "/DHidHideInstaller=$hidHideDestination" "/DSetupOutput=$(Join-Path $repositoryDirectory 'publish')" (Join-Path $repositoryDirectory 'installer/Setup.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Setup compilation failed.' }
 Write-Output (Join-Path $repositoryDirectory 'publish/Setup.exe')

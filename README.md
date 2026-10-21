@@ -21,7 +21,7 @@ Requirements: Windows 10 22H2 or Windows 11 (64-bit Intel/AMD) and FEEL-VR
 Pedals One. Native hardware calibration supports the PE0 controller with firmware 017.
 
 Installation uses a single offline `Setup.exe`. It includes the .NET runtime and
-the vJoy driver, ST DfuSe firmware tool and USB driver, and runtime libraries; you do not need to install developer tools
+the vJoy driver, HidHide, ST DfuSe firmware tool and USB driver, and runtime libraries; you do not need to install developer tools
 or run scripts.
 
 1. Close FEEL-VR CONTROL, including its tray instance, games and other vJoy feeders.
@@ -39,6 +39,26 @@ In your game's controls, bind the selected vJoy device's **X** axis to throttle,
 **Y** to brake and **Z** to clutch. Remove duplicate bindings to the physical
 pedals. SherpaAxis remembers the virtual device so these bindings stay consistent.
 
+**SherpaAxis must stay running to send processed pedal input to your game.**
+Minimizing it or keeping it in the system tray continues output. Choosing **Exit**
+stops output; the virtual controller may still be listed in Windows.
+
+When SherpaAxis uses the only configured vJoy device, Windows Game Controllers
+shows **FEEL-VR Pedals One (SherpaAxis)**. If other vJoy slots are configured,
+the shared name remains unchanged to preserve their names. Some games use the
+driver's product string and may still show **vJoy**. Reopen the controller list
+after starting SherpaAxis to refresh the displayed name.
+
+**Hide physical pedals from games** is enabled by default in Settings. HidHide
+hides only the FEEL-VR pedal joystick while SherpaAxis retains access to input
+and calibration. The physical Windows HID driver stays installed and must not
+be removed or disabled. Existing HidHide entries for other devices are preserved.
+SherpaAxis restores its visibility changes on exit or when this setting is turned
+off. For existing shared HidHide configurations, follow any status shown
+in Settings; an inverted application list or disabled shared configuration needs
+manual review. Close games before setup; reconnect the pedals if a game still
+sees both devices. Keep FEEL-VR Control closed while using SherpaAxis.
+
 If virtual output is unavailable, open **Settings** and run **Automatic vJoy
 setup**. Close other vJoy feeders first. An incompatible existing vJoy driver
 requires repair; Setup preserves it rather than replacing it silently.
@@ -50,7 +70,7 @@ shows whether they are stored in your profile. Save your profile to keep them
 after restart; enable **Auto-load** if you want
 it applied the next time the app starts.
 
-For sensor drift, close FEEL-VR CONTROL and choose a baseline correction mode in
+For sensor drift, close FEEL-VR CONTROL and choose a **Pedal drift correction** mode in
 Tuning. First calibrate each affected pedal once in SherpaAxis so it can retain
 the original raw range separately from the hardware deadzone margins; correction
 is blocked if that reference is missing. **Auto** waits for five consistent press/release cycles and only corrects
@@ -70,6 +90,9 @@ if you want the app to launch when you sign in.
 To uninstall, open Windows **Settings → Apps**, select **SherpaAxis** and choose
 **Uninstall**. Your profiles and settings are retained. The shared vJoy driver
 stays installed for other applications that use it.
+HidHide also stays installed. SherpaAxis releases its own visibility entries and
+restores the previous controller display name during uninstall. After an abnormal
+termination, reopen SherpaAxis and exit normally to complete visibility cleanup.
 
 For pedal firmware updates, open **Settings → Firmware update → Update firmware**,
 select a bundled firmware and choose **Flash**. Setup includes firmware 017 in

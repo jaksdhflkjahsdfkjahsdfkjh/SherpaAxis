@@ -16,6 +16,15 @@
 #ifndef SetupOutput
   #define SetupOutput "..\publish"
 #endif
+#ifndef HidHideInstaller
+  #define HidHideInstaller "..\publish\setup-package\prerequisites\HidHide_1.5.230_x64.exe"
+#endif
+#ifndef HidHideHash
+  #define HidHideHash "F4BBBCB82E6258641B887C74BC81C4C5F66E4AA811808DFC304347687B7605F6"
+#endif
+#ifndef HidHideCli
+  #define HidHideCli "{commonpf64}\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe"
+#endif
 
 [Setup]
 #ifdef InstallerTest
@@ -70,8 +79,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 [Files]
 Source: "{#AppSource}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#VJoyInstaller}"; DestDir: "{tmp}"; DestName: "vJoySetup.exe"; Flags: dontcopy
+Source: "{#HidHideInstaller}"; DestDir: "{tmp}"; DestName: "HidHideSetup.exe"; Flags: dontcopy
 Source: "Complete-VJoySetup.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "vJoy-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "HidHide-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: ConfigureDevice
 
 [Icons]
@@ -84,6 +95,9 @@ Name: "{autodesktop}\SherpaAxis"; Filename: "{app}\SherpaAxis.App.exe"; Tasks: d
 
 [Run]
 Filename: "{app}\SherpaAxis.App.exe"; Description: "{cm:LaunchProgram,SherpaAxis}"; Flags: postinstall nowait skipifsilent runasoriginaluser; Check: CanLaunchApplication
+
+[UninstallRun]
+Filename: "{app}\SherpaAxis.App.exe"; Parameters: "--release-input-configuration"; Flags: runhidden; RunOnceId: "ReleaseSherpaAxisInputConfiguration"
 
 [Code]
 const
@@ -154,6 +168,47 @@ begin
 end;
 #endif
 
+function HidHideAvailable: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{#HidHideCli}'));
+#ifndef InstallerTest
+  Result := Result or FileExists(ExpandConstant('{commonpf64}\Nefarius Software Solutions\HidHide\HidHideCLI.exe')) or
+    FileExists(ExpandConstant('{commonpf64}\Nefarius Software Solutions e.U.\HidHide\x64\HidHideCLI.exe')) or
+    FileExists(ExpandConstant('{commonpf64}\Nefarius Software Solutions e.U.\HidHide\HidHideCLI.exe'));
+#endif
+end;
+
+function PrepareHidHide: String;
+var
+  InstallerPath: String;
+  ExitCode: Integer;
+begin
+  Result := '';
+  if HidHideAvailable then Exit;
+  WizardForm.PreparingLabel.Caption := 'Installing HidHide duplicate-input protection...';
+  ExtractTemporaryFile('HidHideSetup.exe');
+  InstallerPath := ExpandConstant('{tmp}\HidHideSetup.exe');
+  if CompareText(GetSHA256OfFile(InstallerPath), '{#HidHideHash}') <> 0 then
+  begin
+    Result := 'The bundled HidHide installer could not be verified. Download SherpaAxis Setup again.';
+    Exit;
+  end;
+  if not Exec(InstallerPath, '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    Result := 'Could not start HidHide installation: ' + SysErrorMessage(ExitCode);
+    Exit;
+  end;
+  Log(Format('HidHide installation returned %d', [ExitCode]));
+  if (ExitCode <> 0) and (ExitCode <> 3010) then
+  begin
+    Result := Format('HidHide installation failed (code %d). Restart Windows and run Setup again.', [ExitCode]);
+    Exit;
+  end;
+  RestartRequired := RestartRequired or (ExitCode = 3010);
+  if (ExitCode = 0) and not HidHideAvailable then
+    Result := 'HidHide installation did not provide its configuration tool. Restart Windows and run Setup again.';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ExitCode: Integer;
@@ -168,8 +223,8 @@ begin
     Exit;
   end;
 #endif
-  if DriverInstalled or FileExists(ExpandConstant('{#VJoyLibrary}')) then
-    Exit;
+  if not (DriverInstalled or FileExists(ExpandConstant('{#VJoyLibrary}'))) then
+  begin
   WizardForm.PreparingLabel.Caption := 'Installing the vJoy driver and runtime...';
   ExtractTemporaryFile('vJoySetup.exe');
   InstallerPath := ExpandConstant('{tmp}\vJoySetup.exe');
@@ -191,13 +246,15 @@ begin
     Result := Format('vJoy installation failed (code %d). Restart Windows and run Setup again.', [ExitCode]);
     Exit;
   end;
-  RestartRequired := ExitCode = 3010;
+  RestartRequired := RestartRequired or (ExitCode = 3010);
   if not RestartRequired and not FileExists(ExpandConstant('{#VJoyLibrary}')) then
   begin
     Result := 'vJoy installation did not provide its runtime. Restart Windows and run Setup again.';
     Exit;
   end;
   DriverInstalled := True;
+  end;
+  Result := PrepareHidHide;
 end;
 
 procedure ConfigureDfuDriver;

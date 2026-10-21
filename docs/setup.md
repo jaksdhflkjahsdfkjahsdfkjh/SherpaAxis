@@ -45,6 +45,28 @@ not download firmware through the vendor's old HTTP endpoint or downgrade newer
 firmware. See [firmware updates](firmware.md) for operation, recovery and the
 outstanding physical acceptance test. No firmware is flashed during startup/setup.
 
+## Controller identity and duplicate input
+
+The per-user Windows joystick OEM name is set to `FEEL-VR Pedals One (SherpaAxis)`
+only while the selected pedal descriptor is the sole configured vJoy slot. A
+previous name is retained for uninstall and restored when multiple slots are
+detected on acquisition. Driver product strings and device GUIDs are unchanged.
+
+Setup includes the signed HidHide 1.5.230 installer and its prerequisites. At
+startup and reconnect, SherpaAxis adds its executable to the allow-list and hides
+only present gaming nodes matching `HID\VID_0483&PID_A2EA&Col01\...`. It never hides
+the USB parent, vendor configuration collection, wheels or virtual controller.
+Hiding requires an available dedicated virtual device. Settings can disable it.
+
+Changes owned by SherpaAxis are journaled in
+`%LOCALAPPDATA%\SherpaAxis\physical-pedal-visibility.json` before driver writes.
+Normal exit removes those additions after restoring hardware calibration.
+Pre-existing entries and shared configuration are preserved; an inverted list
+or a disabled cloak with unrelated entries needs manual review. The released
+driver lacks the newer session API, so cleanup after a crash occurs when
+SherpaAxis next opens/exits, or through HidHide Configuration Client. Already-open
+game handles may require restarting the game or reconnecting the pedals.
+
 ## Build and test the installer
 
 ```powershell
@@ -52,7 +74,7 @@ outstanding physical acceptance test. No firmware is flashed during startup/setu
 ```
 
 The script publishes a self-contained Windows x64 application, validates the
-signed upstream vJoy installer and compiles `publish/Setup.exe` with Inno Setup
+signed upstream vJoy and HidHide installers and compiles `publish/Setup.exe` with Inno Setup
 6.7.3. Firmware and DfuSe payload hashes and the USB driver's publisher signatures
 are checked before publishing. The build-only compiler is extracted from a pinned NuGet archive and its
 publisher signature is checked; no compiler is installed on the user's PC.
