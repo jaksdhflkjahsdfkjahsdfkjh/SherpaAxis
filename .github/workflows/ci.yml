@@ -18,4 +18,12 @@ jobs:
           global-json-file: global.json
       - run: ./tools/Verify.ps1
       - run: dotnet publish src/SherpaAxis.Cli -c Release --no-restore --no-build -o publish
-      - run: dotnet publish src/SherpaAxis.App -c Release --no-restore --no-build -o publish/app
+      - name: Build Windows installer
+        run: ./tools/Build-SetupPackage.ps1
+      - name: Verify installer lifecycle
+        run: ./tools/Test-SetupPackage.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SherpaAxis-Windows-x64
+          path: publish/Setup.exe
+          if-no-files-found: error

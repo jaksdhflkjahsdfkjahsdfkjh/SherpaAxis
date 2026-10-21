@@ -1,0 +1,177 @@
+[CmdletBinding()]
+param([string]$CompilerPath)
+
+$ErrorActionPreference = 'Stop'
+$repositoryDirectory = Split-Path $PSScriptRoot -Parent
+if (-not $CompilerPath) {
+    $CompilerPath = Join-Path $repositoryDirectory 'research/tools/innosetup-6.7.3/portable/tools/ISCC.exe'
+}
+$testRoot = Join-Path $repositoryDirectory ('research/setup-validation-' + [Guid]::NewGuid().ToString('N'))
+$payload = Join-Path $testRoot 'payload'
+$installDirectory = Join-Path $testRoot 'installed'
+$library = Join-Path $testRoot 'driver.dll'
+$trace = Join-Path $testRoot 'calls.txt'
+$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SherpaAxis-Installer-Test_is1'
+$startupKey = 'HKCU:\Software\SherpaAxisInstallerTest\Startup'
+$startupName = 'SherpaAxis-Installer-Test'
+if (Test-Path -LiteralPath $uninstallKey) { throw 'Uninstall the previous SherpaAxis Installer Test before running this check.' }
+if (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue) { throw 'A previous test startup entry exists.' }
+New-Item -ItemType Directory -Path $payload -Force | Out-Null
+$stub = Join-Path $payload 'SherpaAxis.App.exe'
+$stubSource = Join-Path $testRoot 'Stub.cs'
+@'
+using System;
+using System.IO;
+class SetupStub {
+    static int Main(string[] args) {
+        bool configure = Array.IndexOf(args, "--configure-vjoy") >= 0;
+        File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), configure ? "configure\n" : "driver\n");
+        int result = int.Parse(Environment.GetEnvironmentVariable(configure ? "SHERPAAXIS_SETUP_TEST_CONFIGURE" : "SHERPAAXIS_SETUP_TEST_DRIVER"));
+        if (!configure && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY"), "installed");
+        return result;
+    }
+}
+'@ | Set-Content -LiteralPath $stubSource -Encoding utf8
+& (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:winexe /platform:x64 "/out:$stub" $stubSource
+if ($LASTEXITCODE -ne 0) { throw 'Installer test stub compilation failed.' }
+$stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
+$variables = @('SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
+$previousEnvironment = @{}
+foreach ($name in $variables) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+$env:SHERPAAXIS_SETUP_TEST_TRACE = $trace
+$env:SHERPAAXIS_SETUP_TEST_LIBRARY = $library
+
+function Assert-Setup {
+    param([bool]$Condition, [string]$Message)
+    if (-not $Condition) { throw $Message }
+}
+
+function Get-RealStartupSnapshot {
+    $snapshot = [ordered]@{}
+    foreach ($path in @('Software\Microsoft\Windows\CurrentVersion\Run', 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run')) {
+        $values = [ordered]@{}
+        $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($path)
+        try {
+            if ($key) {
+                foreach ($name in ($key.GetValueNames() | Sort-Object)) {
+                    $values[$name] = @($key.GetValueKind($name).ToString(), $key.GetValue($name, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames))
+                }
+            }
+        }
+        finally { if ($key) { $key.Dispose() } }
+        $snapshot[$path] = $values
+    }
+    return ConvertTo-Json -InputObject $snapshot -Depth 6 -Compress
+}
+
+function Build-Fixture {
+    param([string]$Name, [string]$Version = '0.1.0', [string]$Hash = $stubHash)
+    $output = Join-Path $testRoot $Name
+    $compileOutput = & $CompilerPath /Q /DInstallerTest=1 "/DAppSource=$payload" "/DVJoyInstaller=$stub" "/DVJoyHash=$Hash" "/DVJoyLibrary=$library" "/DSetupOutput=$output" "/DAppVersion=$Version" (Join-Path $repositoryDirectory 'installer/Setup.iss') 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Fixture compilation failed: $compileOutput" }
+    $executable = Join-Path $output 'Setup.exe'
+    $metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
+    Assert-Setup ($metadata.FileVersionRaw -eq [Version]"$Version.0") 'Setup file version does not match its registered version.'
+    return $executable
+}
+
+function Invoke-Fixture {
+    param([string]$Executable, [string]$Name, [int]$Expected)
+    $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LANG=english', '/RESTARTEXITCODE=3010', "/DIR=`"$installDirectory`"", "/LOG=`"$(Join-Path $testRoot ($Name + '.log'))`"")
+    $process = Start-Process -FilePath $Executable -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
+    Assert-Setup ($process.ExitCode -eq $Expected) "$Name returned $($process.ExitCode), expected $Expected."
+}
+
+function Reset-Fixture {
+    $env:SHERPAAXIS_SETUP_TEST_DRIVER = '0'
+    $env:SHERPAAXIS_SETUP_TEST_CONFIGURE = '0'
+    foreach ($file in @($trace, $library, "$library.deferred")) {
+        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
+    }
+}
+
+function Uninstall-Fixture {
+    $record = Get-ChildItem -LiteralPath $installDirectory -Filter 'unins*.dat' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+    if ($record) { Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'uninstall' 0 }
+    Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Test uninstall entry remains.'
+    Assert-Setup (-not (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe'))) 'Test app was not removed.'
+    Assert-Setup (-not (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue)) 'Test startup entry remains.'
+}
+
+$originalStartup = Get-RealStartupSnapshot
+try {
+    $setup = Build-Fixture 'setup'
+    $upgrade = Build-Fixture 'upgrade' '0.1.1'
+    $badHash = Build-Fixture 'bad-hash' '0.1.0' ('0' * 64)
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'fresh-install' 0
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nconfigure") 'Fresh setup did not install and configure in order.'
+    Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Uninstall registration is missing.'
+    Assert-Setup (-not (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue)) 'Setup enabled Windows startup without consent.'
+    $personalFile = Join-Path $installDirectory 'personal-settings.txt'
+    Set-Content -LiteralPath $personalFile -Value 'keep'
+    if (-not (Test-Path -LiteralPath $startupKey)) {
+        $testStartup = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Software\SherpaAxisInstallerTest\Startup')
+        $testStartup.Dispose()
+    }
+    New-ItemProperty -LiteralPath $startupKey -Name $startupName -Value '"C:\Previous Portable Build\SherpaAxis.App.exe" --startup' -PropertyType String -Force | Out-Null
+    Invoke-Fixture $upgrade 'upgrade' 0
+    Assert-Setup ((Get-ItemProperty -LiteralPath $uninstallKey).DisplayVersion -eq '0.1.1') 'Upgrade version was not registered.'
+    Assert-Setup ((Get-Content -LiteralPath $trace | Where-Object { $_ -eq 'driver' }).Count -eq 1) 'Upgrade reinstalled an existing driver.'
+    Assert-Setup ((Get-ItemPropertyValue -LiteralPath $startupKey -Name $startupName) -eq ('"' + (Join-Path $installDirectory 'SherpaAxis.App.exe') + '" --startup')) 'Upgrade did not migrate the existing startup entry.'
+    Uninstall-Fixture
+    Assert-Setup (Test-Path -LiteralPath $personalFile) 'Uninstall removed an unowned settings file.'
+    Write-Output 'PASS: fresh install, upgrade, uninstall, settings and startup migration'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    Invoke-Fixture $setup 'existing-driver' 0
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'configure') 'Existing driver was replaced.'
+    Uninstall-Fixture
+    Assert-Setup (Test-Path -LiteralPath $library) 'Uninstall removed the shared driver.'
+    Write-Output 'PASS: existing driver reuse and shared driver preservation'
+
+    Reset-Fixture
+    Invoke-Fixture $badHash 'invalid-hash' 7
+    Assert-Setup (-not (Test-Path -LiteralPath $trace)) 'An unverified prerequisite ran.'
+    Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Hash failure installed the app.'
+    Write-Output 'PASS: prerequisite integrity failure'
+
+    Reset-Fixture
+    $env:SHERPAAXIS_SETUP_TEST_DRIVER = '1603'
+    Invoke-Fixture $setup 'driver-failure' 7
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'driver') 'Configuration ran after failed driver installation.'
+    Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Driver failure installed the app.'
+    Write-Output 'PASS: prerequisite installation failure'
+
+    Reset-Fixture
+    $env:SHERPAAXIS_SETUP_TEST_DRIVER = '3010'
+    Invoke-Fixture $setup 'driver-restart' 3010
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'driver') 'Configuration ran before the required restart.'
+    Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'Restart did not schedule device setup.'
+    Uninstall-Fixture
+    Write-Output 'PASS: driver restart and deferred setup'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_CONFIGURE = '3010'
+    Invoke-Fixture $setup 'configuration-restart' 3010
+    Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'Configuration restart did not schedule a readiness check.'
+    Uninstall-Fixture
+    Write-Output 'PASS: configuration restart'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_CONFIGURE = '1'
+    Invoke-Fixture $setup 'configuration-failure' 1
+    Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Configuration failure left an app without an uninstaller.'
+    Uninstall-Fixture
+    Write-Output 'PASS: configuration failure and recovery through uninstall'
+}
+finally {
+    Uninstall-Fixture
+    foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process') }
+    Assert-Setup ((Get-RealStartupSnapshot) -ceq $originalStartup) 'Installer tests modified real Windows startup settings.'
+}
+Write-Output "Installer verification completed. Logs: $testRoot"
