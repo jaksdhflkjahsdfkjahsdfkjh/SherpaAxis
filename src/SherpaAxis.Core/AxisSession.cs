@@ -51,6 +51,14 @@ public sealed class AxisSession
 
     public void DisableCompensation() => TargetCorrection = 0;
 
+    public void RestoreBaselineCorrection(double correction)
+    {
+        if (!previousTime.HasValue) { throw new InvalidOperationException("Start the session before restoring its known correction."); }
+        if (!double.IsFinite(correction) || Math.Abs(correction) > MaximumBaselineCorrection)
+        { throw new ArgumentOutOfRangeException(nameof(correction)); }
+        BaselineCorrection = TargetCorrection = correction;
+    }
+
     public void Reset()
     {
         previousTime = null;

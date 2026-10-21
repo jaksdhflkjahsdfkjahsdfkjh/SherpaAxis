@@ -101,7 +101,7 @@ public partial class MainWindow
 
     internal Task SavePreferencesAsync()
     {
-        if (closing || !viewModel.CanEdit) { return settingsOperation ?? Task.CompletedTask; }
+        if (closing) { return settingsOperation ?? Task.CompletedTask; }
         savePreferencesAgain = true;
         if (settingsOperation is { IsCompleted: false }) { return settingsOperation; }
         return settingsOperation = SavePreferencesCoreAsync();

@@ -21,6 +21,37 @@ public sealed class WpfUiTestGroup;
 public sealed class HardwarePedalUiTests
 {
     [Fact]
+    public Task NewRawReferencesExcludeCenteredReportsAtInputStartup() => OnUiAsync(async () =>
+    {
+        await using var theme = new MainWindow(new SherpaAxis.App.Models.DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
+        var device = new Device();
+        using var configuration = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, Device.Original),
+            device, device, new Backup(), TimeSpan.FromSeconds(1), "PE001700");
+        await using var view = new HardwareCalibrationView(configuration, StartupInput, theme.Resources);
+        HardwareCalibrationRange? captured = null;
+        view.StoreSensorReference = (_, raw, _) => { captured = raw; return Task.CompletedTask; };
+        await view.ActivateAsync();
+        var model = Assert.IsType<HardwarePedalViewModel>(view.DataContext);
+        var button = Assert.IsType<Button>(view.FindName("CaptureButton"));
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await UntilAsync(() => !model.Busy && model.IsCapturing);
+        await UntilAsync(() => { model.Refresh(); return model.RangeInfo.Contains("100% = 4,800,000", StringComparison.Ordinal); });
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await UntilAsync(() => !model.Busy);
+        Assert.Equal(new(3300000, 4800000), captured);
+        Assert.Equal(new(3375000, 4725000), device.State.Brake);
+    });
+
+    private static async IAsyncEnumerable<PedalMonitorEvent> StartupInput([EnumeratorCancellation] CancellationToken token)
+    {
+        yield return Sample(8388608);
+        await Task.Delay(120, token);
+        yield return Sample(3300000);
+        yield return Sample(4800000);
+        while (true) { await Task.Delay(20, token); yield return Sample(3400000); }
+    }
+
+    [Fact]
     public async Task CalibrationViewButtonsCalibrateCancelAndSaveThroughTheRealViewModel()
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -38,6 +69,9 @@ public sealed class HardwarePedalUiTests
                     var backup = new Backup();
                     using var configuration = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, Device.Original), device, device, backup, TimeSpan.FromSeconds(1), "PE001700");
                     await using var window = new HardwareCalibrationView(configuration, EmptyInput, theme.Resources, new("Test", "Test pedals", "PE001700"));
+                    (PedalChannel Channel, HardwareCalibrationRange Raw, HardwareCalibrationRange Applied)? storedReference = null;
+                    window.StoreSensorReference = (channel, raw, applied) =>
+                    { storedReference = (channel, raw, applied); return Task.CompletedTask; };
                     var content = (FrameworkElement)window.Content;
                     content.Measure(new Size(720, 780));
                     content.Arrange(new Rect(0, 0, 720, 780));
@@ -67,6 +101,9 @@ public sealed class HardwarePedalUiTests
                     await UntilAsync(() => !model.Busy);
                     Assert.False(model.IsCapturing);
                     Assert.Equal(new(3_375_000, 4_725_000), device.State.Brake);
+                    Assert.Equal(PedalChannel.Brake, storedReference!.Value.Channel);
+                    Assert.Equal(new(3_300_000, 4_800_000), storedReference.Value.Raw);
+                    Assert.Equal(device.State.Brake, storedReference.Value.Applied);
                     Assert.True(configuration.IsDirty);
                     Assert.Equal("3375000", model.Minimum);
                     Assert.Equal("Controller output: —", model.RangeInfo);

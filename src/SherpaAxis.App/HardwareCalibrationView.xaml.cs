@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,6 +24,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
     private bool disposed = true;
     private TaskCompletionSource? operationFinished;
     public DiagnosticLog? Log { get; set; }
+    public Func<PedalChannel, HardwareCalibrationRange, HardwareCalibrationRange, Task>? StoreSensorReference { get; set; }
 
     public event EventHandler? Completed;
     public event RoutedEventHandler? RestoreBackupRequested;
@@ -85,7 +87,15 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         {
             try
             {
-                await foreach (var item in input(token).WithCancellation(token).ConfigureAwait(false)) { model.Accept(item); }
+                var connection = -1;
+                var connectedAt = Stopwatch.GetTimestamp();
+                await foreach (var item in input(token).WithCancellation(token).ConfigureAwait(false))
+                {
+                    if (item.State == PedalConnectionState.Connected && connection != item.ConnectionNumber)
+                    { connection = item.ConnectionNumber; connectedAt = Stopwatch.GetTimestamp(); }
+                    if (item.Axes is not null && Stopwatch.GetElapsedTime(connectedAt) < TimeSpan.FromMilliseconds(100)) { continue; }
+                    model.Accept(item);
+                }
                 if (!token.IsCancellationRequested) { throw new IOException("Hardware input ended unexpectedly."); }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -120,7 +130,13 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
             else
             {
                 var (lower, upper) = model.Margins();
+                var captured = calibration.Capture!;
                 await calibration.CompleteAsync(lower, upper);
+                if (StoreSensorReference is not null)
+                {
+                    await StoreSensorReference(captured.Channel, new(captured.Minimum!.Value, captured.Maximum!.Value),
+                        configuration.Current.Range(captured.Channel));
+                }
                 model.Status = "Hardware bounds applied and verified. Save to device to retain them, or Restore saved to undo.";
                 model.ReadBounds();
             }

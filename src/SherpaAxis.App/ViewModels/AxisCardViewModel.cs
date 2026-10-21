@@ -26,11 +26,11 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
         Notify();
     }
 
-    public void Update(AxisFrame frame)
+    public void Update(AxisFrame frame, bool sensorCounts = false)
     {
         ArgumentNullException.ThrowIfNull(frame);
         IsFresh = frame.IsFresh;
-        InputLabel = "Device input: ";
+        InputLabel = sensorCounts ? "Sensor input: " : "Device input: ";
         Input = frame.Result?.Processing.Input.ToString("N0", CultureInfo.InvariantCulture) ?? "—";
         OutputPercent = (frame.Result?.Processing.Output ?? 0) * 100;
         OutputText = frame.Result is null ? "—" : OutputPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";

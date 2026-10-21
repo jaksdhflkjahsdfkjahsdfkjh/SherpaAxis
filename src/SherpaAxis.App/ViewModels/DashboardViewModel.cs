@@ -108,9 +108,11 @@ public sealed partial class DashboardViewModel : ObservableObject
     public void Refresh(bool force = false)
     {
         if (IsSwitchingMode && !force) { return; }
+        RefreshDrift();
         var frame = engine.Snapshot(selectedAxis);
         InputConnection = frame.Connection;
         RefreshCalibration();
+        var sensorCounts = engine.DriftState(selectedAxis).RawAvailable;
         foreach (var card in Cards)
         {
             if (IsCalibrationMode)
@@ -120,7 +122,7 @@ public sealed partial class DashboardViewModel : ObservableObject
                 { PedalAxis.Throttle => input.Value.Throttle, PedalAxis.Brake => input.Value.Brake, _ => input.Value.Clutch } : (int?)null;
                 card.UpdateControllerInput(count, HardwareDisplay?.SensorChannel?.ToString() == card.Axis.ToString());
             }
-            else { card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis)); }
+            else { card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis), sensorCounts); }
         }
 
         var selected = frame.Axes.Single(axis => axis.Axis == selectedAxis);

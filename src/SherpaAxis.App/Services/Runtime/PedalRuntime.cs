@@ -9,11 +9,16 @@ using SherpaAxis.FeelVR;
 
 namespace SherpaAxis.App.Services.Runtime;
 
-public sealed record PedalRuntimeServices(Func<CancellationToken, IAsyncEnumerable<PedalMonitorEvent>> Input, Func<IVirtualController> Output)
+public sealed record PedalRuntimeServices(Func<CancellationToken, IAsyncEnumerable<PedalMonitorEvent>> Input, Func<IVirtualController> Output,
+    Func<DashboardEngine, CancellationToken, IAsyncEnumerable<PedalMonitorEvent>>? ManagedInput = null)
 {
     public static PedalRuntimeServices Default(AutomaticVJoy? vjoy = null) => new(token =>
         new PedalMonitor(new WindowsHidInputSource(), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)).WatchAsync(cancellationToken: token),
-        (vjoy ?? AutomaticVJoy.Default()).Connect);
+        (vjoy ?? AutomaticVJoy.Default()).Connect, (engine, token) => new NativePedalInput(engine,
+            inputToken => new PedalMonitor(new WindowsHidInputSource(), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)).WatchAsync(cancellationToken: inputToken),
+            Hardware.PedalControllerConnection.OpenAsync,
+            () => new Hardware.HardwareRecoveryStore(Path.Combine(Hardware.HardwareRecoveryStore.DefaultDirectory, $"raw-{Guid.NewGuid():N}.json")),
+            new Hardware.SensorReferenceStore(Hardware.SensorReferenceStore.DefaultDirectory)).WatchAsync(token));
 }
 
 public sealed class PedalRuntime(DashboardEngine engine, DashboardSource source, PedalRuntimeServices services, IButtonStateSource buttons, DiagnosticLog? log = null) : IAsyncDisposable
@@ -39,7 +44,7 @@ public sealed class PedalRuntime(DashboardEngine engine, DashboardSource source,
         try
         {
             if (disposed || !paused) { return; }
-            await source.StartAsync(services.Input, new("live-device-axis"), stop.Token);
+            await source.StartAsync(inputToken => services.ManagedInput?.Invoke(engine, inputToken) ?? services.Input(inputToken), new("live-device-axis"), stop.Token);
             paused = false;
             worker ??= Task.Run(RunAsync);
         }

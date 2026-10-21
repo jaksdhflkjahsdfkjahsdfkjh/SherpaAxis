@@ -47,11 +47,53 @@ offset, avoiding filter resets during correction transitions. `AxisProcessor`
 applies its immediate offset before filtering. Both normalize, apply deadzones
 and evaluate the curve afterwards.
 
-Desktop baseline modes are Off, Auto and By button. Auto requires a substantial
-press/release excursion and stable near-zero dwell; its capture band is limited
-to 0.5% of the calibration span. It is a heuristic, not evidence of physical
-release. By button uses an explicit held keyboard or controller binding.
-Neither mode recovers information clipped by firmware.
+Desktop drift correction uses temporary full-range controller bounds to obtain
+unclipped sensor counts on PE0 firmware 017. Original bounds are journaled before
+the change and restored on mode exit, shutdown or recovery. No device Save command
+is sent automatically. Close FEEL-VR Control and bind games only to SherpaAxis's
+vJoy device, because physical joystick reports change during raw monitoring.
+
+The controller's stored endpoints already include its hardware deadzone margins.
+They are used to reproduce firmware output, never as the original raw release
+reference. Completing hardware calibration in SherpaAxis retains the untrimmed
+captured range separately, keyed by controller serial, pedal and exact applied
+endpoints. Older/vendor calibrations without that record cannot be corrected:
+calibrate the pedal once in SherpaAxis rather than guessing its original margins.
+Changed or corrupt metadata cannot silently fall back to the trimmed minimum.
+
+Drift is `current released raw value - original raw minimum`. The resulting offset
+translates both stored endpoints, preserving their original distance from the raw
+endpoints. For raw 3,200,500..4,700,500 and 5% margins, hardware bounds are
+3,275,500..4,625,500. A release at 3,000,500 means an offset of -200,000 and hardware
+bounds 3,075,500..4,425,500; the two 75,000-count margins remain intact. A release
+at the original raw minimum produces zero correction, despite those margins.
+
+Off uses normal firmware-calibrated reports. Auto requires five press/release
+cycles within two minutes, each with at least 10% travel and one stable second
+at release. Stability allows at most 0.2% peak-to-peak variation. Across qualified
+stable windows, jitter is the largest observed peak-to-peak spread. Release estimates
+must agree within twice that measured spread, bounded to 0.05%..0.2% of the original
+raw span. This tolerance cannot grow beyond the ceiling to accommodate movement.
+Differences from the existing baseline within that noise band need no new correction.
+Direction and drift magnitude are assessed after five consistent cycles, rather
+than rejecting an isolated startup candidate. Mismatches, gaps and reconnects clear evidence.
+Automatic adjustment only moves zero downwards and only while both current and
+predicted final output are near release. Upward drift requires manual confirmation.
+This is a conservative heuristic: a single sensor cannot prove that a foot is off.
+
+By button requires a fresh button press and one stable second with the foot off.
+Releasing the binding pauses adjustment; pedal movement requires a new capture.
+Fix drift performs that stable-second check without a binding. Both support shifts
+up to 25% of the original raw span, subject to sensor limits and the profile's correction
+limit. Both endpoints move together, preserving span, hardware margins, profile deadzones and curves.
+Offsets are temporary and are cleared on reconnect, rather than saved in profiles.
+
+Save corrected calibration is a separate explicit action, available only after an
+accepted correction settles with the pedal released. It verifies controller identity
+and unchanged original bounds, retains a hardware backup, writes only the selected
+pedal's translated range and sends Save. The matching raw reference is translated
+and retained too, so a later session does not apply the same drift twice. Unknown
+controller state is never overwritten.
 
 ## Offline replay
 

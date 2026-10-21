@@ -50,6 +50,19 @@ shows whether they are stored in your profile. Save your profile to keep them
 after restart; enable **Auto-load** if you want
 it applied the next time the app starts.
 
+For sensor drift, close FEEL-VR CONTROL and choose a baseline correction mode in
+Tuning. First calibrate each affected pedal once in SherpaAxis so it can retain
+the original raw range separately from the hardware deadzone margins; correction
+is blocked if that reference is missing. **Auto** waits for five consistent press/release cycles and only corrects
+downward drift during stable release. **By button** checks a stable second while
+you hold your binding with your foot off. **Fix drift** performs that check
+without a binding and supports drift in either direction. Correction moves both
+range endpoints together, preserving sensitivity, hardware margins and profile deadzones. It is
+temporary until you explicitly choose **Save corrected calibration**; the original
+hardware calibration is backed up first. If readings disagree, no new correction
+is applied. Keep your foot completely off for manual checks: stability alone
+cannot distinguish a released pedal from steady foot pressure.
+
 To update, exit SherpaAxis from the tray and run the newer `Setup.exe`. Your
 profiles and settings are retained. Enable **Start with Windows** in Settings
 if you want the app to launch when you sign in.

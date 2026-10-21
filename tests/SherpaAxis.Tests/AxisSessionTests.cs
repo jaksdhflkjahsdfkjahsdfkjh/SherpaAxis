@@ -6,6 +6,22 @@ namespace SherpaAxis.Tests;
 public sealed class AxisSessionTests
 {
     [Fact]
+    public void RestoringKnownCorrectionRequiresAStartedSessionAndHonorsItsLimit()
+    {
+        var session = Session();
+        Assert.Throws<InvalidOperationException>(() => session.RestoreBaselineCorrection(-5));
+        session.Process(95, 0, 1);
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.RestoreBaselineCorrection(double.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.RestoreBaselineCorrection(session.MaximumBaselineCorrection + 1));
+        session.RestoreBaselineCorrection(-5);
+        Assert.Equal(-5, session.TargetCorrection);
+        Assert.Equal(0, session.Process(95, .01, 1).Processing.Output);
+        session.Process(95, .02, 2);
+        Assert.Equal(0, session.BaselineCorrection);
+        Assert.Equal(0, session.TargetCorrection);
+    }
+
+    [Fact]
     public void RequestsNeedAnEstablishedSessionAndDoNotGrantReleasePermission()
     {
         var session = Session();
