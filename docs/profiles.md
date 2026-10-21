@@ -53,7 +53,10 @@ processing overrides when a profile is supplied.
 ## Desktop library
 
 The desktop library keeps named profiles separate from runtime state.
-Apply activates editor settings; saving persists the profile. Display names
+Valid tuning changes apply automatically; saving persists the profile.
+The saved/unsaved indicator compares effective profile settings, ignoring numeric
+formatting and unused editor fields. Invalid values retain the last valid processing
+configuration and show a validation message. Display names
 are not trusted as filesystem paths.
 
 Auto-load designates one saved startup profile. Selecting another removes
@@ -61,5 +64,6 @@ the previous designation. Creating or editing a profile does not apply it
 automatically on a future startup without that selection.
 
 Unfinished editor text is kept in a separate bounded draft file, not saved as
-a valid processing profile. Recovered/undeleted drafts require Apply. The last
+a valid processing profile. Recovering or undeleting a draft applies its valid
+settings automatically. The last
 deleted profile can be restored during the session without overwriting a file.
