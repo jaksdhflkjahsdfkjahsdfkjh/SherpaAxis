@@ -1,0 +1,277 @@
+#ifndef AppVersion
+  #define AppVersion "0.1.0"
+#endif
+#ifndef AppSource
+  #define AppSource "..\publish\setup-package\app"
+#endif
+#ifndef VJoyInstaller
+  #define VJoyInstaller "..\publish\setup-package\prerequisites\vJoySetup_v2.2.2.0_Win10_Win11.exe"
+#endif
+#ifndef VJoyHash
+  #define VJoyHash "EF569A3105CD301B89580F18F60C66B339E95296ACF2C0DFCAF4B4BBF8AB68FE"
+#endif
+#ifndef VJoyLibrary
+  #define VJoyLibrary "{commonpf64}\vJoy\x64\vJoyInterface.dll"
+#endif
+#ifndef SetupOutput
+  #define SetupOutput "..\publish"
+#endif
+
+[Setup]
+#ifdef InstallerTest
+AppId=SherpaAxis-Installer-Test
+AppName=SherpaAxis Installer Test
+PrivilegesRequired=lowest
+DefaultDirName={localappdata}\SherpaAxis-Installer-Test
+AppMutex=Local\SherpaAxis.InstallerTest
+SetupMutex=SherpaAxis.InstallerTest.Setup
+#else
+AppId={{48CBF14C-6F5A-43EE-8F67-AE44052BA58B}
+AppName=SherpaAxis
+PrivilegesRequired=admin
+DefaultDirName={autopf}\SherpaAxis
+DisableDirPage=yes
+UsePreviousAppDir=no
+AppMutex=Local\SherpaAxis.PedalsUtility
+SetupMutex=SherpaAxis.Setup
+#endif
+AppVersion={#AppVersion}
+AppPublisher=SherpaAxis contributors
+ArchitecturesAllowed=x64os
+ArchitecturesInstallIn64BitMode=x64os
+MinVersion=10.0.19045
+WizardStyle=modern dark polar includetitlebar
+DisableProgramGroupPage=yes
+DisableWelcomePage=no
+LicenseFile=..\LICENSE
+SetupIconFile=..\src\SherpaAxis.App\Assets\SherpaAxis.ico
+UninstallDisplayIcon={app}\SherpaAxis.App.exe
+OutputDir={#SetupOutput}
+OutputBaseFilename=Setup
+Compression=lzma2/normal
+SolidCompression=yes
+CloseApplications=yes
+RestartApplications=no
+SetupLogging=yes
+UninstallLogging=yes
+VersionInfoDescription=SherpaAxis Setup
+VersionInfoVersion={#AppVersion}
+VersionInfoTextVersion={#AppVersion}
+VersionInfoProductVersion={#AppVersion}
+VersionInfoProductTextVersion={#AppVersion}
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
+
+[Files]
+Source: "{#AppSource}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#VJoyInstaller}"; DestDir: "{tmp}"; DestName: "vJoySetup.exe"; Flags: dontcopy
+Source: "Complete-VJoySetup.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "vJoy-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: ConfigureDevice
+
+[Icons]
+#ifdef InstallerTest
+Name: "{autoprograms}\SherpaAxis Installer Test"; Filename: "{app}\SherpaAxis.App.exe"
+#else
+Name: "{autoprograms}\SherpaAxis"; Filename: "{app}\SherpaAxis.App.exe"
+Name: "{autodesktop}\SherpaAxis"; Filename: "{app}\SherpaAxis.App.exe"; Tasks: desktopicon
+#endif
+
+[Run]
+Filename: "{app}\SherpaAxis.App.exe"; Description: "{cm:LaunchProgram,SherpaAxis}"; Flags: postinstall nowait skipifsilent runasoriginaluser; Check: CanLaunchApplication
+
+[Code]
+const
+  DeferredTaskName = 'SherpaAxis.DeviceSetup.48CBF14C';
+#ifdef InstallerTest
+  StartupValueName = 'SherpaAxis-Installer-Test';
+  StartupRegistryKey = 'Software\SherpaAxisInstallerTest\Startup';
+#else
+  StartupValueName = 'SherpaAxis';
+  StartupRegistryKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
+#endif
+var
+  DriverInstalled: Boolean;
+  RestartRequired: Boolean;
+  ConfigurationFailed: Boolean;
+  DeferredSetupCreated: Boolean;
+  InstallationCompleted: Boolean;
+
+procedure RemoveDeferredSetup;
+#ifndef InstallerTest
+var
+  Scheduler, Folder: Variant;
+#endif
+begin
+#ifndef InstallerTest
+  try
+    Scheduler := CreateOleObject('Schedule.Service');
+    Scheduler.Connect;
+    Folder := Scheduler.GetFolder('\');
+    if Folder.GetTasks(0).Count > 0 then
+      Folder.DeleteTask(DeferredTaskName, 0);
+  except
+    Log('No deferred device setup task was removed: ' + GetExceptionMessage);
+  end;
+#endif
+end;
+
+procedure RegisterDeferredSetup;
+#ifdef InstallerTest
+begin
+  SaveStringToFile(ExpandConstant('{#VJoyLibrary}') + '.deferred', 'pending', False);
+end;
+#else
+var
+  Scheduler, Folder, Task, Trigger, Action: Variant;
+begin
+  Scheduler := CreateOleObject('Schedule.Service');
+  Scheduler.Connect;
+  Folder := Scheduler.GetFolder('\');
+  Task := Scheduler.NewTask(0);
+  Task.RegistrationInfo.Description := 'Finish the SherpaAxis virtual pedal device setup after a driver restart.';
+  Task.Principal.UserId := 'SYSTEM';
+  Task.Principal.LogonType := 5;
+  Task.Principal.RunLevel := 1;
+  Task.Settings.StartWhenAvailable := True;
+  Task.Settings.DisallowStartIfOnBatteries := False;
+  Task.Settings.StopIfGoingOnBatteries := False;
+  Task.Settings.ExecutionTimeLimit := 'PT2M';
+  Trigger := Task.Triggers.Create(8);
+  Trigger.Delay := 'PT15S';
+  Action := Task.Actions.Create(0);
+  Action.Path := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  Action.Arguments := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+    ExpandConstant('{app}\Complete-VJoySetup.ps1') + '"';
+  Action.WorkingDirectory := ExpandConstant('{app}');
+  Folder.RegisterTaskDefinition(DeferredTaskName, Task, 6, 'SYSTEM', '', 5);
+end;
+#endif
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ExitCode: Integer;
+  InstallerPath: String;
+begin
+  Result := '';
+#ifndef InstallerTest
+  if CompareText(RemoveBackslashUnlessRoot(ExpandFileName(WizardDirValue)),
+    ExpandConstant('{autopf}\SherpaAxis')) <> 0 then
+  begin
+    Result := 'SherpaAxis must be installed in Program Files so its driver setup tools remain protected.';
+    Exit;
+  end;
+#endif
+  if DriverInstalled or FileExists(ExpandConstant('{#VJoyLibrary}')) then
+    Exit;
+  WizardForm.PreparingLabel.Caption := 'Installing the vJoy driver and runtime...';
+  ExtractTemporaryFile('vJoySetup.exe');
+  InstallerPath := ExpandConstant('{tmp}\vJoySetup.exe');
+  if CompareText(GetSHA256OfFile(InstallerPath), '{#VJoyHash}') <> 0 then
+  begin
+    Result := 'The bundled vJoy installer could not be verified. Download SherpaAxis Setup again.';
+    Exit;
+  end;
+  if not Exec(InstallerPath,
+    '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /RESTARTEXITCODE=3010 /COMPONENTS="Apps,Apps\vJoyConf"',
+    '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    Result := 'Could not start vJoy installation: ' + SysErrorMessage(ExitCode);
+    Exit;
+  end;
+  Log(Format('vJoy installation returned %d', [ExitCode]));
+  if (ExitCode <> 0) and (ExitCode <> 3010) then
+  begin
+    Result := Format('vJoy installation failed (code %d). Restart Windows and run Setup again.', [ExitCode]);
+    Exit;
+  end;
+  RestartRequired := ExitCode = 3010;
+  if not RestartRequired and not FileExists(ExpandConstant('{#VJoyLibrary}')) then
+  begin
+    Result := 'vJoy installation did not provide its runtime. Restart Windows and run Setup again.';
+    Exit;
+  end;
+  DriverInstalled := True;
+end;
+
+procedure ConfigureDevice;
+var
+  ExitCode: Integer;
+  StartupCommand: String;
+begin
+  if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, StartupCommand) and
+    (StartupCommand <> '') then
+    if not RegWriteStringValue(HKCU, StartupRegistryKey, StartupValueName,
+      '"' + ExpandConstant('{app}\SherpaAxis.App.exe') + '" --startup') then
+      Log('Could not update the existing Windows startup entry. Review Start with Windows in Settings.');
+  if not RestartRequired then
+  begin
+    WizardForm.StatusLabel.Caption := 'Configuring the virtual pedal device...';
+    if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--configure-vjoy',
+      ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+      ExitCode := 1;
+    Log(Format('Virtual pedal setup returned %d', [ExitCode]));
+    RestartRequired := ExitCode = 3010;
+    ConfigurationFailed := (ExitCode <> 0) and not RestartRequired;
+  end;
+  if RestartRequired then
+  begin
+    RegisterDeferredSetup;
+    DeferredSetupCreated := True;
+  end
+  else if not ConfigurationFailed then
+    RemoveDeferredSetup;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssDone then
+    InstallationCompleted := True;
+end;
+
+procedure DeinitializeSetup;
+begin
+  if DeferredSetupCreated and not InstallationCompleted then
+    RemoveDeferredSetup;
+end;
+
+function NeedRestart: Boolean;
+begin
+  Result := RestartRequired;
+end;
+
+function CanLaunchApplication: Boolean;
+begin
+  Result := not RestartRequired and not ConfigurationFailed;
+end;
+
+function GetCustomSetupExitCode: Integer;
+begin
+  Result := 0;
+  if ConfigurationFailed then
+    Result := 1;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpFinished) and ConfigurationFailed then
+    WizardForm.FinishedLabel.Caption :=
+      'SherpaAxis is installed, but vJoy needs attention. Close other vJoy applications, open SherpaAxis Settings and select Automatic vJoy setup. An incompatible driver may need repair.';
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Command: String;
+begin
+  if CurUninstallStep <> usUninstall then
+    Exit;
+  RemoveDeferredSetup;
+  if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, Command) and
+    (Pos('"' + ExpandConstant('{app}\SherpaAxis.App.exe') + '"', Command) = 1) then
+    RegDeleteValue(HKCU, StartupRegistryKey, StartupValueName);
+end;
