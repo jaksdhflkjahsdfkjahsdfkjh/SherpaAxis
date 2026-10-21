@@ -130,6 +130,7 @@ public sealed class DriftHardwareTests
             await using (var cursor = input.WatchAsync(CancellationToken.None).GetAsyncEnumerator())
             {
                 Assert.True(await cursor.MoveNextAsync());
+                Assert.Equal("PE001700", engine.OwnedControllerIdentity?.SerialNumber);
                 Assert.Equal(PedalHardwareSettings.Defaults, device.State);
                 var backup = await HardwareRecoveryStore.ReadAsync(Path.Combine(folder, "raw.json"));
                 Assert.Equal(Original, backup.Saved);
@@ -139,6 +140,7 @@ public sealed class DriftHardwareTests
                 Assert.True(engine.DriftState(Profiles.PedalAxis.Brake).RawAvailable);
             }
             Assert.Equal(Original, device.State);
+            Assert.Null(engine.OwnedControllerIdentity);
             Assert.Equal(0, device.Saves);
             Assert.Equal(1, device.Disposals);
             Assert.False(File.Exists(Path.Combine(folder, "raw.json")));

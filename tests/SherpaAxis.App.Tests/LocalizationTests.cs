@@ -22,11 +22,12 @@ public sealed class LocalizationTests
     public Task LanguageSelectorChangesTheInterfaceImmediatelyPreservesProfilesAndSurvivesRestart() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var desktop = new SettingsAndTrayTests.FakeDesktop();
+        var profileDirectory = Path.Combine(Path.GetTempPath(), "SherpaAxis-localization-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await using (var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services))
+            await using (var main = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services, profileLibrary: new(profileDirectory)))
             {
-                await main.InitializeDesktopAsync();
+                await main.InitializeForLaunchAsync();
                 main.Show();
                 await main.RequestPanelModeAsync(SidePanelMode.Settings);
                 var viewModel = Assert.IsType<DashboardViewModel>(main.DataContext);
@@ -69,7 +70,7 @@ public sealed class LocalizationTests
                 selector.SelectedValue = "uk";
                 await main.SavePreferencesAsync();
             }
-            await using var restarted = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services);
+            await using var restarted = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services, profileLibrary: new(profileDirectory));
             await restarted.InitializeDesktopAsync();
             Assert.Equal("uk", Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences.Language);
             desktop.Store.Fail = true;
@@ -78,7 +79,11 @@ public sealed class LocalizationTests
             Assert.Equal("uk", Localizer.Instance.Language);
             Assert.Equal("uk", Assert.IsType<DashboardViewModel>(restarted.DataContext).Preferences.Language);
         }
-        finally { Localizer.Instance.Language = "en"; }
+        finally
+        {
+            Localizer.Instance.Language = "en";
+            if (Directory.Exists(profileDirectory)) { Directory.Delete(profileDirectory, true); }
+        }
     });
 
     [Fact]

@@ -1,5 +1,6 @@
 using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.Core;
+using SherpaAxis.Devices;
 using SherpaAxis.FeelVR;
 using SherpaAxis.Profiles;
 
@@ -11,6 +12,9 @@ public sealed partial class DashboardEngine
     private PedalAxis? fixRequested;
     private long fixRequestedAt;
     private string? driftInputError;
+    private HidDeviceIdentity? ownedControllerIdentity;
+    public HidDeviceIdentity? OwnedControllerIdentity { get { lock (sync) { return ownedControllerIdentity; } } }
+    internal void SetOwnedControllerIdentity(HidDeviceIdentity? identity) { lock (sync) { ownedControllerIdentity = identity; } }
     public bool RequiresSensorInput { get { lock (sync) { return activeProfile.Axes.Values.Any(axis => axis.CorrectionMode != BaselineCorrectionMode.Off); } } }
 
     public void SetDriftInputError(string message) { lock (sync) { driftInputError = message; } }

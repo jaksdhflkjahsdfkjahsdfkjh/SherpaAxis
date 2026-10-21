@@ -31,6 +31,7 @@ public sealed class NativePedalInput(DashboardEngine engine,
                 try
                 {
                     connection = await connect(token).ConfigureAwait(false);
+                    engine.SetOwnedControllerIdentity(connection.Identity);
                     if (pendingRecovery is { } path && File.Exists(path))
                     {
                         var snapshot = await HardwareRecoveryStore.ReadAsync(path, token).ConfigureAwait(false);
@@ -103,9 +104,16 @@ public sealed class NativePedalInput(DashboardEngine engine,
         finally
         {
             transaction?.Dispose();
-            engine.SetSensorCalibration(null);
-            if (connection is not null) { await connection.DisposeAsync().ConfigureAwait(false); }
-            if (pending) { engine.SetDriftInputError("Controller restoration pending; recovery must verify the original calibration before output resumes."); }
+            try
+            {
+                if (connection is not null) { await connection.DisposeAsync().ConfigureAwait(false); }
+            }
+            finally
+            {
+                engine.SetOwnedControllerIdentity(null);
+                engine.SetSensorCalibration(null);
+                if (pending) { engine.SetDriftInputError("Controller restoration pending; recovery must verify the original calibration before output resumes."); }
+            }
         }
     }
 
