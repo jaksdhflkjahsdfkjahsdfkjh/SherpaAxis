@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -45,8 +46,14 @@ public sealed class Localizer : INotifyPropertyChanged
     public static string KeyFor(string source) => "T" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)))[..12];
     public static string Translate(string source) => Instance.TranslateText(source, Instance.Language);
     public static void Bind(DependencyObject target, DependencyProperty property, string source) => BindingOperations.SetBinding(target, property,
-        new Binding($"[{KeyFor(source)}]") { Source = Instance, Mode = BindingMode.OneWay });
+        new Binding(nameof(Language)) { Source = Instance, Mode = BindingMode.OneWay, Converter = new BoundTextConverter(source) });
     public IReadOnlyDictionary<string, string> Translations => ukrainian;
+
+    private sealed class BoundTextConverter(string source) : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => Instance.TranslateText(source, (string)value);
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
+    }
 
     public string TranslateText(string source, string code) => TranslateText(source, code, 0);
     private string TranslateText(string source, string code, int depth)

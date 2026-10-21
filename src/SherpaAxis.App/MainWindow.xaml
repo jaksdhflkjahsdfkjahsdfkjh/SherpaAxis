@@ -495,6 +495,8 @@
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
+                            <CheckBox x:Name="HidePhysicalPedalsSetting" Content="{loc:Text TF2A7D02C9C28}" IsChecked="{Binding HidePhysicalPedals}" Click="PreferenceChanged" ToolTip="{loc:Text T9AD475023259}"/>
+                            <TextBlock Text="{loc:Translate Value={Binding InputVisibilityStatus}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
                             <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text T2140CBD331E9}"/>
                             <TextBlock Text="{loc:Text TA4FE65264EF7}" Style="{StaticResource Section}"/>
                             <controls:StableComboBox x:Name="LanguageSelector" ItemsSource="{x:Static vm:PreferencesViewModel.Languages}" SelectedValuePath="Code" DisplayMemberPath="Name" ItemTemplate="{x:Null}" SelectedValue="{Binding Language, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="LanguageChanged" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" AutomationProperties.Name="{loc:Text TA4FE65264EF7}" ToolTip="{loc:Text TB697FD987325}"/>

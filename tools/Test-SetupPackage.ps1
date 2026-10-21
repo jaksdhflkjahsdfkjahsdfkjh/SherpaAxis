@@ -26,9 +26,13 @@ class SetupStub {
     static int Main(string[] args) {
         bool configure = Array.IndexOf(args, "--configure-vjoy") >= 0;
         bool dfu = Array.IndexOf(args, "--configure-dfuse") >= 0;
-        File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), dfu ? "dfuse\n" : configure ? "configure\n" : "driver\n");
-        int result = int.Parse(Environment.GetEnvironmentVariable(dfu ? "SHERPAAXIS_SETUP_TEST_DFUSE" : configure ? "SHERPAAXIS_SETUP_TEST_CONFIGURE" : "SHERPAAXIS_SETUP_TEST_DRIVER"));
-        if (!configure && !dfu && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY"), "installed");
+        bool release = Array.IndexOf(args, "--release-input-configuration") >= 0;
+        bool hidHide = Array.IndexOf(args, "/install") >= 0;
+        if (release) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "release\n"); return 0; }
+        File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), hidHide ? "hidhide\n" : dfu ? "dfuse\n" : configure ? "configure\n" : "driver\n");
+        int result = int.Parse(Environment.GetEnvironmentVariable(hidHide ? "SHERPAAXIS_SETUP_TEST_HIDHIDE" : dfu ? "SHERPAAXIS_SETUP_TEST_DFUSE" : configure ? "SHERPAAXIS_SETUP_TEST_CONFIGURE" : "SHERPAAXIS_SETUP_TEST_DRIVER"));
+        if (!configure && !dfu && !hidHide && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY"), "installed");
+        if (hidHide && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY") + ".hidhide", "installed");
         return result;
     }
 }
@@ -36,7 +40,7 @@ class SetupStub {
 & (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:winexe /platform:x64 "/out:$stub" $stubSource
 if ($LASTEXITCODE -ne 0) { throw 'Installer test stub compilation failed.' }
 $stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
-$variables = @('SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
+$variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
 $previousEnvironment = @{}
 foreach ($name in $variables) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $env:SHERPAAXIS_SETUP_TEST_TRACE = $trace
@@ -66,9 +70,9 @@ function Get-RealStartupSnapshot {
 }
 
 function Build-Fixture {
-    param([string]$Name, [string]$Version = '0.1.0', [string]$Hash = $stubHash)
+    param([string]$Name, [string]$Version = '0.1.0', [string]$Hash = $stubHash, [string]$HidHideHash = $stubHash)
     $output = Join-Path $testRoot $Name
-    $compileOutput = & $CompilerPath /Q /DInstallerTest=1 "/DAppSource=$payload" "/DVJoyInstaller=$stub" "/DVJoyHash=$Hash" "/DVJoyLibrary=$library" "/DSetupOutput=$output" "/DAppVersion=$Version" (Join-Path $repositoryDirectory 'installer/Setup.iss') 2>&1
+    $compileOutput = & $CompilerPath /Q /DInstallerTest=1 "/DAppSource=$payload" "/DVJoyInstaller=$stub" "/DHidHideInstaller=$stub" "/DHidHideHash=$HidHideHash" "/DHidHideCli=$library.hidhide" "/DVJoyHash=$Hash" "/DVJoyLibrary=$library" "/DSetupOutput=$output" "/DAppVersion=$Version" (Join-Path $repositoryDirectory 'installer/Setup.iss') 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Fixture compilation failed: $compileOutput" }
     $executable = Join-Path $output 'Setup.exe'
     $metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
@@ -84,10 +88,11 @@ function Invoke-Fixture {
 }
 
 function Reset-Fixture {
+    $env:SHERPAAXIS_SETUP_TEST_HIDHIDE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DFUSE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '0'
     $env:SHERPAAXIS_SETUP_TEST_CONFIGURE = '0'
-    foreach ($file in @($trace, $library, "$library.deferred")) {
+    foreach ($file in @($trace, $library, "$library.deferred", "$library.hidhide")) {
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
     }
 }
@@ -105,10 +110,11 @@ try {
     $setup = Build-Fixture 'setup'
     $upgrade = Build-Fixture 'upgrade' '0.1.1'
     $badHash = Build-Fixture 'bad-hash' '0.1.0' ('0' * 64)
+    $badHidHideHash = Build-Fixture 'bad-hidhide-hash' '0.1.0' $stubHash ('0' * 64)
 
     Reset-Fixture
     Invoke-Fixture $setup 'fresh-install' 0
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nconfigure`ndfuse") 'Fresh setup did not install and configure in order.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nhidhide`nconfigure`ndfuse") 'Fresh setup did not install and configure in order.'
     Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Uninstall registration is missing.'
     Assert-Setup (-not (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue)) 'Setup enabled Windows startup without consent.'
     $personalFile = Join-Path $installDirectory 'personal-settings.txt'
@@ -129,10 +135,27 @@ try {
     Reset-Fixture
     Set-Content -LiteralPath $library -Value 'existing'
     Invoke-Fixture $setup 'existing-driver' 0
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "configure`ndfuse") 'Existing driver was replaced.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "hidhide`nconfigure`ndfuse") 'Existing driver was replaced.'
     Uninstall-Fixture
     Assert-Setup (Test-Path -LiteralPath $library) 'Uninstall removed the shared driver.'
     Write-Output 'PASS: existing driver reuse and shared driver preservation'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    Set-Content -LiteralPath "$library.hidhide" -Value 'existing'
+    Invoke-Fixture $setup 'existing-hidhide' 0
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "configure`ndfuse") 'Existing HidHide was reinstalled.'
+    Uninstall-Fixture
+    Assert-Setup (Test-Path -LiteralPath "$library.hidhide") 'Uninstall removed the shared HidHide installation.'
+    Assert-Setup ((Get-Content -LiteralPath $trace)[-1] -eq 'release') 'Uninstall did not run input-configuration cleanup.'
+    Write-Output 'PASS: existing HidHide reuse, cleanup and shared driver preservation'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    Invoke-Fixture $badHidHideHash 'invalid-hidhide-hash' 7
+    Assert-Setup (-not (Test-Path -LiteralPath $trace)) 'An unverified HidHide installer ran.'
+    Write-Output 'PASS: HidHide prerequisite integrity failure'
+
 
     Reset-Fixture
     Invoke-Fixture $badHash 'invalid-hash' 7
@@ -150,7 +173,7 @@ try {
     Reset-Fixture
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '3010'
     Invoke-Fixture $setup 'driver-restart' 3010
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`ndfuse") 'Configuration ran before the required restart.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nhidhide`ndfuse") 'Configuration ran before the required restart.'
     Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'Restart did not schedule device setup.'
     Uninstall-Fixture
     Write-Output 'PASS: driver restart and deferred setup'
@@ -185,6 +208,22 @@ try {
     Invoke-Fixture $setup 'dfuse-driver-restart' 3010
     Uninstall-Fixture
     Write-Output 'PASS: DfuSe driver restart'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_HIDHIDE = '1603'
+    Invoke-Fixture $setup 'hidhide-failure' 7
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'hidhide') 'Configuration ran after failed HidHide installation.'
+    Write-Output 'PASS: HidHide installation failure'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_HIDHIDE = '3010'
+    Invoke-Fixture $setup 'hidhide-restart' 3010
+    Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'HidHide restart did not defer device configuration.'
+    Uninstall-Fixture
+    Write-Output 'PASS: HidHide restart and uninstall cleanup'
+
 
 }
 finally {

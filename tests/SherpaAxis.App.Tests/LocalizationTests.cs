@@ -19,6 +19,49 @@ namespace SherpaAxis.App.Tests;
 public sealed class LocalizationTests
 {
     [Fact]
+    public Task SourceBindingsKeepReadableFallbackTextAndTranslateIndividualParagraphs() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        const string missing = "A readable sentence without a catalog entry.";
+        var text = new TextBlock();
+        try
+        {
+            Localizer.Instance.Language = "en";
+            Assert.False(Localizer.Instance.Translations.ContainsKey(missing));
+            Localizer.Bind(text, TextBlock.TextProperty, missing + "\n\nBrake");
+            Assert.Equal(missing + "\n\nBrake", text.Text);
+            Localizer.Instance.Language = "uk";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal(missing + "\n\nГальмо", text.Text);
+        }
+        finally { Localizer.Instance.Language = "en"; }
+    });
+
+    [Fact]
+    public Task SetupGuideDisplaysInstructionsAndCurrentFirmwareWorkflowInBothLanguages() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        await using var main = new MainWindow(new DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
+        main.Opacity = 0; main.ShowInTaskbar = false; main.Show();
+        var guide = main.CreateSetupGuideWindow();
+        try
+        {
+            Localizer.Instance.Language = "en";
+            guide.Opacity = 0; guide.ShowInTaskbar = false; guide.Show();
+            var text = Assert.IsType<TextBlock>(Assert.IsType<ScrollViewer>(guide.Content).Content);
+            Assert.StartsWith("Install SherpaAxis", text.Text, StringComparison.Ordinal);
+            Assert.Contains("Setup includes firmware 017, ST DfuSe and its USB driver.", text.Text, StringComparison.Ordinal);
+            Assert.Contains("choose Flash", text.Text, StringComparison.Ordinal);
+            Assert.DoesNotMatch(@"\AT[0-9A-F]{12}\z", text.Text);
+            Localizer.Instance.Language = "uk";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal("Налаштування пристрою", guide.Title);
+            Assert.StartsWith("Установіть SherpaAxis", text.Text, StringComparison.Ordinal);
+            Assert.Contains("Інсталятор містить прошивку 017, ST DfuSe та USB-драйвер.", text.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("Native calibration supports", text.Text, StringComparison.Ordinal);
+        }
+        finally { guide.Close(); Localizer.Instance.Language = "en"; }
+    });
+
+    [Fact]
     public Task LanguageSelectorChangesTheInterfaceImmediatelyPreservesProfilesAndSurvivesRestart() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var desktop = new SettingsAndTrayTests.FakeDesktop();

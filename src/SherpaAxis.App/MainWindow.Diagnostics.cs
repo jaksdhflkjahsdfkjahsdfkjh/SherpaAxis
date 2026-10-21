@@ -47,28 +47,29 @@ public partial class MainWindow
         { desktop.Log?.Write("diagnostics", "An operation needs attention.", failure); if (!closing) { viewModel.Diagnostics.Status = $"Device checks failed: {failure.Message}"; } }
         finally { viewModel.Diagnostics.Busy = false; }
     }
-    private async void CheckDiagnosticsClick(object sender, RoutedEventArgs e) => await CheckDeviceDiagnosticsAsync();
+    private async void CheckDiagnosticsClick(object sender, RoutedEventArgs e) { await UpdateInputVisibilityAsync(); await CheckDeviceDiagnosticsAsync(); }
     private void ControllerTestClick(object sender, RoutedEventArgs e) => OpenDiagnosticTool("control.exe", "joy.cpl");
     private void VJoyConfigurationClick(object sender, RoutedEventArgs e) => OpenDiagnosticTool(
         Path.Combine(Path.GetDirectoryName(VJoyController.DefaultLibraryPath)!, "vJoyConf.exe"));
-    private void SetupGuideClick(object sender, RoutedEventArgs e)
+    private void SetupGuideClick(object sender, RoutedEventArgs e) => CreateSetupGuideWindow().ShowDialog();
+    internal Window CreateSetupGuideWindow()
     {
         var dialog = new Window
         {
             Owner = this,
-            Title = Localization.Localizer.Translate("Device setup guide"),
             Width = 620,
             Height = 510,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = Background,
             Foreground = Foreground
         };
+        Localization.Localizer.Bind(dialog, Window.TitleProperty, "Device setup guide");
         var text = new System.Windows.Controls.TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(24), FontSize = 14 };
         Localization.Localizer.Bind(text, System.Windows.Controls.TextBlock.TextProperty,
-            "Install SherpaAxis with its installer to install vJoy and its SDK together. Complete any Windows restart requested by the driver installer.\n\nAutomatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.\n\nIn your game, bind X to throttle, Y to brake and Z to clutch from the selected vJoy device. Remove duplicate physical-pedal bindings.\n\nNative calibration supports PE0 firmware 017. Settings → Firmware update can program the reviewed PE0017 vendor image using installed ST DfuSe tools. Prepare the update, review the controller and image details, then explicitly start flashing. Newer firmware is not downgraded.\n\nResolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
+            "Install SherpaAxis with its installer to install vJoy and its SDK together. Complete any Windows restart requested by the driver installer.\n\nAutomatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.\n\nIn your game, bind X to throttle, Y to brake and Z to clutch from the selected vJoy device. SherpaAxis must stay running to send processed pedal input; minimizing to the tray keeps output running, while Exit stops it. HidHide prevents duplicate physical-pedal input while SherpaAxis runs. Keep the physical HID driver installed. Use Settings to turn physical-pedal hiding off. Close SherpaAxis before using the physical pedals directly.\n\nNative calibration supports PE0 firmware 017. Setup includes firmware 017, ST DfuSe and its USB driver. In Settings → Firmware update, choose Update firmware, select the bundled image and choose Flash. After programming and verification, reconnect the pedals and choose Check firmware. Open update logs shows retained logs and automatic calibration backups. Backup calibration saves a separate settings backup. Newer firmware is not downgraded.\n\nResolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
         dialog.Content = new System.Windows.Controls.ScrollViewer { Content = text, VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto };
         dialog.SourceInitialized += (_, _) => WindowTheme.Apply(dialog);
-        dialog.ShowDialog();
+        return dialog;
     }
     private void OpenDiagnosticTool(string path, string? argument = null)
     {

@@ -83,6 +83,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         {
             diagnosedConnection = viewModel.InputConnection;
             diagnosedReceiving = viewModel.IsReceiving;
+            _ = UpdateInputVisibilityAsync();
             _ = CheckDeviceDiagnosticsAsync();
         }
     }
@@ -225,6 +226,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             if (recoveryCheck is { } checkingRecovery) { await checkingRecovery; }
             if (diagnosticsCheck is { } checkingDevices) { await checkingDevices; }
             if (settingsOperation is { } savingSettings) { await savingSettings; }
+            if (visibilityOperation is { } configuringVisibility) { await configuringVisibility; }
             if (activeOperation is { } pending)
             {
                 try { await pending; }
@@ -237,6 +239,12 @@ public partial class MainWindow : Window, IAsyncDisposable
             var stopInput = source.DisposeAsync().AsTask();
             var stopRuntime = runtime?.DisposeAsync().AsTask() ?? Task.CompletedTask;
             await Task.WhenAll(stopInput, stopRuntime, CloseHardwareAsync());
+            if (desktop.InputVisibility is not null)
+            {
+                try { await desktop.InputVisibility.ReleaseAsync(CancellationToken.None); }
+                catch (Exception failure) when (OperationErrors.IsExpected(failure))
+                { desktop.Log?.Write("input-visibility", "Physical visibility cleanup needs attention; reopen SherpaAxis or use HidHide Configuration Client.", failure); }
+            }
             CalibrationHost.Content = null;
             cachedCalibrationView = null;
             viewModel.HardwareDisplay = null;
@@ -247,6 +255,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             activationSource = null;
             if (Application.Current is { } application) { application.SessionEnding -= SessionEnding; }
             lifetime.Dispose();
+            desktop.InputVisibility?.Dispose();
             disposed = true;
             if (desktopInitialization is not null) { desktop.Log?.Write("lifecycle", "Application closed normally."); }
         }

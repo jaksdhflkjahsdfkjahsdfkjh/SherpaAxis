@@ -5,7 +5,8 @@ using SherpaAxis.Bridge;
 
 namespace SherpaAxis.App.Services.Output;
 
-public sealed class AutomaticVJoy(string path, Func<IReadOnlyList<VJoyDeviceInfo>> inspect, Func<uint, IVirtualController> connect)
+public sealed class AutomaticVJoy(string path, Func<IReadOnlyList<VJoyDeviceInfo>> inspect, Func<uint, IVirtualController> connect,
+    Action<IReadOnlyList<VJoyDeviceInfo>, uint>? nameDevice = null)
 {
     private readonly object sync = new();
     private uint? selected;
@@ -13,14 +14,20 @@ public sealed class AutomaticVJoy(string path, Func<IReadOnlyList<VJoyDeviceInfo
     public uint? SelectedId { get { lock (sync) { Load(); return selected; } } }
     public static string DefaultPath => AppDataPaths.VirtualDevice;
     public static AutomaticVJoy Default() => new(DefaultPath, () => VJoyController.Inspect(VJoyController.DefaultLibraryPath),
-        id => new VJoyController(VJoyController.DefaultLibraryPath, id));
+        id => new VJoyController(VJoyController.DefaultLibraryPath, id), (devices, id) =>
+        {
+            try { VJoyDeviceName.Default().Apply(devices, id); }
+            catch (Exception failure) when (Diagnostics.OperationErrors.IsExpected(failure))
+            { Diagnostics.DiagnosticLog.Default.Write("vjoy-name", "Could not update the Windows controller display name.", failure); }
+        });
 
     public IVirtualController Connect()
     {
         lock (sync)
         {
             Load();
-            var id = VJoyDeviceSelection.Select(inspect(), selected);
+            var devices = inspect();
+            var id = VJoyDeviceSelection.Select(devices, selected);
             var controller = connect(id);
             try
             {
@@ -34,6 +41,7 @@ public sealed class AutomaticVJoy(string path, Func<IReadOnlyList<VJoyDeviceInfo
                     finally { if (File.Exists(temporary)) { File.Delete(temporary); } }
                     selected = id;
                 }
+                nameDevice?.Invoke(devices, id);
                 return controller;
             }
             catch { controller.Dispose(); throw; }

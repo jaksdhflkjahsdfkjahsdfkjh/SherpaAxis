@@ -16,6 +16,18 @@ public partial class App : Application, IDisposable
         DispatcherUnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled-ui", "Unhandled UI exception.", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled", "Unhandled process exception.", args.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, args) => DiagnosticLog.Default.Write("unobserved-task", "Unobserved task exception.", args.Exception);
+        if (e.Args.Length == 1 && e.Args[0] == "--release-input-configuration")
+        {
+            var result = 0;
+            try { using var visibility = WindowsHidHide.Default(); await visibility.ReleaseAsync(CancellationToken.None); }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            { DiagnosticLog.Default.Write("input-visibility", "Could not release physical pedal hiding.", failure); result = 1; }
+            try { VJoyDeviceName.Default().Restore(); }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            { DiagnosticLog.Default.Write("vjoy-name", "Could not restore the previous controller display name.", failure); result = 1; }
+            Shutdown(result);
+            return;
+        }
         if (e.Args.Contains("--configure-vjoy", StringComparer.OrdinalIgnoreCase))
         {
             // Installer/elevated helper must run before the normal single-instance activation path.
