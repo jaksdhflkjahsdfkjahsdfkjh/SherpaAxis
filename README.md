@@ -21,7 +21,7 @@ Requirements: Windows 10 22H2 or Windows 11 (64-bit Intel/AMD) and FEEL-VR
 Pedals One. Native hardware calibration supports the PE0 controller with firmware 017.
 
 Installation uses a single offline `Setup.exe`. It includes the .NET runtime and
-the vJoy driver and runtime libraries; you do not need to install developer tools
+the vJoy driver, ST DfuSe firmware tool and USB driver, and runtime libraries; you do not need to install developer tools
 or run scripts.
 
 1. Close FEEL-VR CONTROL, including its tray instance, games and other vJoy feeders.
@@ -71,9 +71,15 @@ To uninstall, open Windows **Settings → Apps**, select **SherpaAxis** and choo
 **Uninstall**. Your profiles and settings are retained. The shared vJoy driver
 stays installed for other applications that use it.
 
-Optional firmware updates require ST DfuSe and its USB driver separately; see
-the [firmware guide](docs/firmware.md). Setup does not flash pedal firmware.
+For pedal firmware updates, open **Settings → Firmware update → Update firmware**,
+select a bundled firmware and choose **Flash**. Setup includes firmware 017 in
+`Firmwares` and the DfuSe tool in `Tools\DfuSe` inside the SherpaAxis installation.
+Use **Check firmware** after reconnecting and **Backup calibration** for a separate
+settings backup. **Open update logs** opens the retained logs and automatic backups.
+See the [firmware guide](docs/firmware.md) for recovery details. Setup prepares the
+USB driver; it does not flash pedal firmware.
 
 ## License
 
 SherpaAxis is licensed under the [MIT License](LICENSE).
+Bundled ST DfuSe components retain their [ST license](vendor/dfuse/SLA0044.txt).

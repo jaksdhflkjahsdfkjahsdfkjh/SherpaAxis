@@ -25,9 +25,10 @@ using System.IO;
 class SetupStub {
     static int Main(string[] args) {
         bool configure = Array.IndexOf(args, "--configure-vjoy") >= 0;
-        File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), configure ? "configure\n" : "driver\n");
-        int result = int.Parse(Environment.GetEnvironmentVariable(configure ? "SHERPAAXIS_SETUP_TEST_CONFIGURE" : "SHERPAAXIS_SETUP_TEST_DRIVER"));
-        if (!configure && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY"), "installed");
+        bool dfu = Array.IndexOf(args, "--configure-dfuse") >= 0;
+        File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), dfu ? "dfuse\n" : configure ? "configure\n" : "driver\n");
+        int result = int.Parse(Environment.GetEnvironmentVariable(dfu ? "SHERPAAXIS_SETUP_TEST_DFUSE" : configure ? "SHERPAAXIS_SETUP_TEST_CONFIGURE" : "SHERPAAXIS_SETUP_TEST_DRIVER"));
+        if (!configure && !dfu && result == 0) File.WriteAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_LIBRARY"), "installed");
         return result;
     }
 }
@@ -35,7 +36,7 @@ class SetupStub {
 & (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:winexe /platform:x64 "/out:$stub" $stubSource
 if ($LASTEXITCODE -ne 0) { throw 'Installer test stub compilation failed.' }
 $stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
-$variables = @('SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
+$variables = @('SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
 $previousEnvironment = @{}
 foreach ($name in $variables) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $env:SHERPAAXIS_SETUP_TEST_TRACE = $trace
@@ -83,6 +84,7 @@ function Invoke-Fixture {
 }
 
 function Reset-Fixture {
+    $env:SHERPAAXIS_SETUP_TEST_DFUSE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '0'
     $env:SHERPAAXIS_SETUP_TEST_CONFIGURE = '0'
     foreach ($file in @($trace, $library, "$library.deferred")) {
@@ -106,7 +108,7 @@ try {
 
     Reset-Fixture
     Invoke-Fixture $setup 'fresh-install' 0
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nconfigure") 'Fresh setup did not install and configure in order.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nconfigure`ndfuse") 'Fresh setup did not install and configure in order.'
     Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Uninstall registration is missing.'
     Assert-Setup (-not (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue)) 'Setup enabled Windows startup without consent.'
     $personalFile = Join-Path $installDirectory 'personal-settings.txt'
@@ -127,7 +129,7 @@ try {
     Reset-Fixture
     Set-Content -LiteralPath $library -Value 'existing'
     Invoke-Fixture $setup 'existing-driver' 0
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'configure') 'Existing driver was replaced.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "configure`ndfuse") 'Existing driver was replaced.'
     Uninstall-Fixture
     Assert-Setup (Test-Path -LiteralPath $library) 'Uninstall removed the shared driver.'
     Write-Output 'PASS: existing driver reuse and shared driver preservation'
@@ -148,7 +150,7 @@ try {
     Reset-Fixture
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '3010'
     Invoke-Fixture $setup 'driver-restart' 3010
-    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq 'driver') 'Configuration ran before the required restart.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`ndfuse") 'Configuration ran before the required restart.'
     Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'Restart did not schedule device setup.'
     Uninstall-Fixture
     Write-Output 'PASS: driver restart and deferred setup'
@@ -168,6 +170,22 @@ try {
     Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Configuration failure left an app without an uninstaller.'
     Uninstall-Fixture
     Write-Output 'PASS: configuration failure and recovery through uninstall'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_DFUSE = '5'
+    Invoke-Fixture $setup 'dfuse-driver-failure' 1
+    Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'DfuSe failure left an app without an uninstaller.'
+    Uninstall-Fixture
+    Write-Output 'PASS: DfuSe driver staging failure'
+
+    Reset-Fixture
+    Set-Content -LiteralPath $library -Value 'existing'
+    $env:SHERPAAXIS_SETUP_TEST_DFUSE = '3010'
+    Invoke-Fixture $setup 'dfuse-driver-restart' 3010
+    Uninstall-Fixture
+    Write-Output 'PASS: DfuSe driver restart'
+
 }
 finally {
     Uninstall-Fixture
