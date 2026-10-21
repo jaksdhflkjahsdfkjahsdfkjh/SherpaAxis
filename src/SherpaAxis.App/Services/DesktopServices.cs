@@ -22,13 +22,15 @@ public interface IApplicationTray : IDisposable
 public sealed record DesktopServices(IApplicationPreferencesStore Preferences, IStartupRegistration Startup,
     Func<Func<TrayMenuState>, IApplicationTray> CreateTray, Func<HwndSource, IButtonStateSource>? Buttons = null,
     PedalRuntimeServices? Runtime = null, StartupHardwareRecovery? Recovery = null, DeviceDiagnostics? Diagnostics = null, FirmwareUpdater? Firmware = null,
-    DiagnosticLog? Log = null, ProfileDraftStore? Drafts = null)
+    DiagnosticLog? Log = null, ProfileDraftStore? Drafts = null,
+    Func<CorrectedCalibration, CancellationToken, Task>? SaveCorrectedCalibration = null)
 {
     public static DesktopServices Default()
     {
         var vjoy = AutomaticVJoy.Default();
         return new(new ApplicationPreferencesStore(ApplicationPreferencesStore.DefaultPath),
         new WindowsStartupRegistration(System.IO.Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe")), state => new ApplicationTray(state),
-        source => new WindowsButtonInput(source), PedalRuntimeServices.Default(vjoy), StartupHardwareRecovery.Default(), DeviceDiagnostics.Default(vjoy), FirmwareUpdater.Default(), DiagnosticLog.Default, ProfileDraftStore.Default());
+            source => new WindowsButtonInput(source), PedalRuntimeServices.Default(vjoy), StartupHardwareRecovery.Default(), DeviceDiagnostics.Default(vjoy), FirmwareUpdater.Default(), DiagnosticLog.Default, ProfileDraftStore.Default(),
+            new CorrectedCalibrationWriter(PedalControllerConnection.OpenAsync, HardwareRecoveryStore.DefaultDirectory).SaveAsync);
     }
 }

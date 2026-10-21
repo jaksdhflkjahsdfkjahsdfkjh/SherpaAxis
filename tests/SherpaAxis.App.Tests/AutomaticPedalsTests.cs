@@ -43,11 +43,11 @@ public sealed class AutomaticPedalsTests
         combo.SelectedItem = "By button";
         await Dispatcher.Yield(DispatcherPriority.ContextIdle);
         Assert.True(model.IsButtonCorrection);
-        Assert.Equal(Visibility.Visible, ((FrameworkElement)bind.Parent).Visibility);
+        Assert.Equal(Visibility.Visible, Assert.IsType<StackPanel>(main.FindName("CorrectionBindingPanel")).Visibility);
         combo.SelectedItem = "Auto";
         await Dispatcher.Yield(DispatcherPriority.ContextIdle);
         Assert.False(model.IsButtonCorrection);
-        Assert.Equal(Visibility.Collapsed, ((FrameworkElement)bind.Parent).Visibility);
+        Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(main.FindName("CorrectionBindingPanel")).Visibility);
         model.Refresh(); content.UpdateLayout();
         var before = Pixels(plot);
         var pending = main.RequestPanelModeAsync(SidePanelMode.Calibration);
@@ -122,23 +122,57 @@ public sealed class AutomaticPedalsTests
     });
 
     [Fact]
+    public void NoiseToleranceIsBoundedAndLeavingTheApprovedClusterRequiresFiveNewCycles()
+    {
+        var learner = new AutomaticBaseline();
+        var calibration = new AxisCalibration(100, 1100);
+        double time = 0;
+        void Hold(double value, int samples)
+        {
+            for (var index = 0; index < samples; index++)
+            { learner.Observe(value, time, 1, calibration, 250, .05); time += .01; }
+        }
+        void Cycle()
+        {
+            Hold(800, 10);
+            for (var index = 0; index < 120; index++) { Hold(80 + index % 2, 1); }
+        }
+        for (var cycle = 0; cycle < 5; cycle++) { Cycle(); }
+        Assert.True(learner.Learning);
+        Assert.Equal(2, learner.NoiseTolerance);
+        Hold(84, 150);
+        Assert.False(learner.Learning);
+        Assert.Equal(0, learner.CycleCount);
+        Hold(84, 200);
+        Assert.Equal(0, learner.CycleCount);
+        for (var cycle = 0; cycle < 4; cycle++) { Cycle(); Assert.False(learner.Learning); }
+        Cycle(); Assert.True(learner.Learning);
+    }
+
+    [Fact]
     public void AutoLearnsOnlyOneStableBoundedReleaseAndResetsOnGapsOrReconnect()
     {
         var learner = new AutomaticBaseline();
-        var calibration = new AxisCalibration(0, 1000);
-        for (var i = 0; i < 200; i++) { Assert.Null(learner.Observe(3, i * .01, 1, calibration, 5, .05)); }
-        Assert.Null(learner.Observe(500, 2, 1, calibration, 5, .05));
-        for (var i = 1; i <= 110; i++) { learner.Observe(3, 2 + i * .01, 1, calibration, 5, .05); }
+        var calibration = new AxisCalibration(100, 1100);
+        double time = 0;
+        double? Observe(double value, long connection = 1)
+        { var result = learner.Observe(value, time, connection, calibration, 5, .05); time += .01; return result; }
+        for (var sample = 0; sample < 200; sample++) { Assert.Null(Observe(97)); }
+        for (var cycle = 0; cycle < 5; cycle++)
+        {
+            Observe(600);
+            for (var sample = 0; sample < 110; sample++) { Observe(97); }
+        }
         Assert.True(learner.Learning);
-        Assert.Equal(3, learner.Observe(3, 3.11, 1, calibration, 5, .05));
+        Assert.Equal(97, Observe(97));
         learner.Complete();
-        Assert.Null(learner.Observe(4, 3.12, 1, calibration, 5, .05));
-        learner.Observe(500, 3.13, 1, calibration, 5, .05);
-        Assert.Null(learner.Observe(3, 4, 1, calibration, 5, .05));
-        learner.Observe(500, 4.01, 1, calibration, 5, .05);
-        Assert.Null(learner.Observe(3, 4.02, 2, calibration, 5, .05));
-        learner.Observe(500, 4.03, 2, calibration, 5, .05);
-        for (var i = 1; i <= 200; i++) { Assert.Null(learner.Observe(i % 2 == 0 ? 1 : 4, 4.03 + i * .01, 2, calibration, 5, .05)); }
+        Assert.Null(Observe(98));
+        Observe(600); time += 1;
+        Assert.Null(Observe(97)); Assert.Equal(0, learner.CycleCount);
+        Observe(600);
+        Assert.Null(Observe(97, 2)); Assert.Equal(0, learner.CycleCount);
+        Observe(600, 2);
+        for (var sample = 0; sample < 200; sample++) { Assert.Null(Observe(sample % 2 == 0 ? 97 : 100, 2)); }
     }
 
     [Theory]
@@ -149,23 +183,24 @@ public sealed class AutomaticPedalsTests
         using var buttons = new ButtonStateBuffer();
         var button = new CorrectionButton(kind, code, device);
         var engine = new DashboardEngine();
-        var axes = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => new AxisProfile(new(0, 1000),
-            maximumBaselineCorrection: 5, correctionMode: axis == PedalAxis.Brake ? BaselineCorrectionMode.ByButton : BaselineCorrectionMode.Off,
+        var axes = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => new AxisProfile(new(0, DashboardEngine.DeviceMaximum(axis)),
+            maximumBaselineCorrection: DashboardEngine.DeviceMaximum(axis) * .005, correctionMode: axis == PedalAxis.Brake ? BaselineCorrectionMode.ByButton : BaselineCorrectionMode.Off,
             correctionButton: axis == PedalAxis.Brake ? button : null));
-        engine.Configure(new("Bound", axes), axes.Keys.ToDictionary(axis => axis, _ => new AxisSessionSettings(100, .05)));
+        engine.Configure(new("Bound", axes), axes.Keys.ToDictionary(axis => axis, axis => new AxisSessionSettings(DashboardEngine.DeviceMaximum(axis) * .1, .05)));
         engine.Begin(new("live-device-axis"));
+        engine.SetSensorCalibration(new("test-controller", new(new(0, 1000), new(0, 1000), new(0, 1000)), new Dictionary<PedalAxis, HardwareCalibrationRange> { [PedalAxis.Brake] = new(0, 1000) }));
         void Sample(int i) => engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(i * 10), 1, new(3, 3, 3)));
         buttons.Set(button, true);
         Sample(0); engine.ProcessCorrectionButtons(buttons); Sample(1);
         Assert.Equal(0, engine.Snapshot(PedalAxis.Brake).Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection);
         buttons.Set(button, false); engine.ProcessCorrectionButtons(buttons);
         buttons.Set(button, true);
-        for (var i = 2; i < 22; i++) { engine.ProcessCorrectionButtons(buttons); Sample(i); }
+        for (var i = 2; i < 162; i++) { engine.ProcessCorrectionButtons(buttons); Sample(i); }
         var frame = engine.Snapshot(PedalAxis.Brake);
         var correction = frame.Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection;
         Assert.InRange(correction, .01, 3);
         Assert.All(frame.Axes.Where(axis => axis.Axis != PedalAxis.Brake), axis => Assert.Equal(0, axis.Result!.Value.Processing.BaselineCorrection));
-        buttons.Set(button, false); engine.ProcessCorrectionButtons(buttons); Sample(22);
+        buttons.Set(button, false); engine.ProcessCorrectionButtons(buttons); Sample(162);
         Assert.Equal(correction, engine.Snapshot(PedalAxis.Brake).Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection);
     }
 
@@ -201,19 +236,20 @@ public sealed class AutomaticPedalsTests
     public void AutomaticCorrectionReachesStableReleasedBaselineAndClearsAfterReconnect()
     {
         var engine = new DashboardEngine();
-        var axes = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => new AxisProfile(new(0, 1000),
-            maximumBaselineCorrection: 5, correctionMode: axis == PedalAxis.Brake ? BaselineCorrectionMode.Auto : BaselineCorrectionMode.Off));
-        engine.Configure(new("Automatic", axes), axes.Keys.ToDictionary(axis => axis, _ => new AxisSessionSettings(100, .05)));
+        var axes = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => new AxisProfile(new(0, DashboardEngine.DeviceMaximum(axis)),
+            maximumBaselineCorrection: DashboardEngine.DeviceMaximum(axis) * .005,
+            correctionMode: axis == PedalAxis.Brake ? BaselineCorrectionMode.Auto : BaselineCorrectionMode.Off));
+        engine.Configure(new("Automatic", axes), axes.Keys.ToDictionary(axis => axis, axis => new AxisSessionSettings(DashboardEngine.DeviceMaximum(axis) * .1, .05)));
         engine.Begin(new("live-device-axis"));
-        for (var i = 0; i <= 250; i++)
-        {
-            var brake = i < 10 ? 500 : 3;
-            engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(i * 10), 1, new(3, brake, 3)));
-        }
+        engine.SetSensorCalibration(new("test-controller", new(new(0, 1000), new(100, 1100), new(0, 1000)), new Dictionary<PedalAxis, HardwareCalibrationRange> { [PedalAxis.Brake] = new(100, 1100) }));
+        var index = 0;
+        void Sample(int brake, int connection = 1) => engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(index++ * 10), connection, new(3, brake, 3)));
+        for (var cycle = 0; cycle < 5; cycle++)
+        { Sample(600); for (var sample = 0; sample < 120; sample++) { Sample(97); } }
         var before = engine.Snapshot(PedalAxis.Brake);
-        Assert.Equal(3, before.Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection);
+        Assert.Equal(-3, before.Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection);
         Assert.All(before.Axes.Where(axis => axis.Axis != PedalAxis.Brake), axis => Assert.Equal(0, axis.Result!.Value.Processing.BaselineCorrection));
-        engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(2510), 2, new(3, 3, 3)));
+        Sample(97, 2);
         Assert.Equal(0, engine.Snapshot(PedalAxis.Brake).Axes.Single(axis => axis.Axis == PedalAxis.Brake).Result!.Value.Processing.BaselineCorrection);
     }
 

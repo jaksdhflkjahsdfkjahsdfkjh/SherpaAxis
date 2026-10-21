@@ -15,12 +15,12 @@ public sealed class WindowsHidFeatureConnection : IFeatureReportReader, IFeature
     private bool disposed;
     public HidDeviceInfo Device { get; }
 
-    public WindowsHidFeatureConnection(HidDeviceInfo collection)
+    public WindowsHidFeatureConnection(HidDeviceInfo collection, bool exclusive = false)
     {
         ArgumentNullException.ThrowIfNull(collection);
         if (collection.FeatureReportLength == 0) { throw new ArgumentException("Collection has no feature reports.", nameof(collection)); }
         Device = collection;
-        handle = HidNative.CreateFileW(collection.Path, 0, 3, 0, 3, 0x40000000, 0);
+        handle = HidNative.CreateFileW(collection.Path, 0, exclusive ? 0u : 3u, 0, 3, 0x40000000, 0);
         if (handle.IsInvalid)
         {
             var failure = new Win32Exception(Marshal.GetLastPInvokeError());

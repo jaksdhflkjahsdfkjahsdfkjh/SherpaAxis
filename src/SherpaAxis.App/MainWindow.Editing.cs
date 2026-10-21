@@ -64,6 +64,7 @@ public partial class MainWindow
         var dialog = new BindButtonDialog(this, buttons);
         if (dialog.ShowDialog() == true && dialog.Binding is { } button) { Run(() => viewModel.BindCorrection(button)); }
     }
+    private void ClearCorrectionBindingClick(object sender, RoutedEventArgs e) => Run(viewModel.ClearCorrectionBinding);
 
     private void TuningValuesChanged(object sender, RoutedEventArgs e)
     {

@@ -68,17 +68,18 @@ public sealed partial class DashboardViewModel
         Changed(nameof(UsesTimeFilter));
         Changed(nameof(FilterInfo));
         Changed(nameof(HasFilterDraft));
-        Changed(nameof(SelectedCorrectionMode)); Changed(nameof(IsButtonCorrection)); Changed(nameof(CorrectionModeHint)); Changed(nameof(CorrectionBindingLabel));
+        Changed(nameof(SelectedCorrectionMode)); Changed(nameof(IsButtonCorrection)); Changed(nameof(CorrectionModeHint)); Changed(nameof(CorrectionBindingLabel)); Changed(nameof(HasCorrectionBinding));
         Changed(nameof(SelectedAutoLoad));
     }
 
     public static IReadOnlyList<string> CorrectionModes { get; } = ["Off", "Auto", "By button"];
     public string SelectedCorrectionMode => Editor.CorrectionMode switch { BaselineCorrectionMode.Auto => "Auto", BaselineCorrectionMode.ByButton => "By button", _ => "Off" };
     public bool IsButtonCorrection => Editor.CorrectionMode == BaselineCorrectionMode.ByButton;
+    public bool HasCorrectionBinding => Editor.CorrectionButton is not null;
     public string CorrectionModeHint => Editor.CorrectionMode switch
     {
-        BaselineCorrectionMode.Auto => "Captures one stable near-zero baseline after a press and release. Limited to 0.5% of the axis range; active pedal travel is excluded. Hardware-clipped values cannot be recovered.",
-        BaselineCorrectionMode.ByButton => "Hold the bound key or controller button only while this pedal is fully released. Adjustment is bounded and stops when you release the button.",
+        BaselineCorrectionMode.Auto => "Requires raw input and five consistent press/release cycles with one-second stable releases. Mismatched cycles do not change correction. Upward drift requires Fix drift with your foot off. Temporary correction never saves hardware automatically.",
+        BaselineCorrectionMode.ByButton => "Hold the bound control with your foot completely off the pedal. One stable second is required before correction starts. Release the control to stop adjustment. Fix drift provides the same check without a binding.",
         _ => "Baseline adjustment is off. Hardware calibration remains unchanged."
     };
     public string CorrectionBindingLabel => Editor.CorrectionButton is not { } button ? "No button bound" : button.Kind == "keyboard"
@@ -94,16 +95,18 @@ public sealed partial class DashboardViewModel
         };
         Editor.CorrectionMode = selected;
         if (selected == BaselineCorrectionMode.Off) { Editor.MaximumCorrection = "0"; }
-        else if (Editor.BuildProfile().MaximumBaselineCorrection == 0)
+        else if (Editor.BuildProfile().MaximumBaselineCorrection <= Editor.BuildProfile().Calibration.Span * .005)
         {
             var span = Editor.BuildProfile().Calibration.Span;
-            Editor.MaximumCorrection = (span * .005).ToString("R", CultureInfo.InvariantCulture);
+            Editor.MaximumCorrection = (span * .25).ToString("R", CultureInfo.InvariantCulture);
             Editor.CorrectionRate = (span * .1).ToString("R", CultureInfo.InvariantCulture);
         }
         NotifyFilterSettings(); RefreshUnsavedState();
     }
     public void BindCorrection(CorrectionButton button)
-    { Editor.CorrectionButton = button; NotifyFilterSettings(); RefreshUnsavedState(); }
+    { Editor.CorrectionButton = button; NotifyFilterSettings(); RefreshUnsavedState(); RefreshDrift(); }
+    public void ClearCorrectionBinding()
+    { Editor.CorrectionButton = null; NotifyFilterSettings(); RefreshUnsavedState(); RefreshDrift(); }
 
     public void SetFilterKind(string kind)
     {

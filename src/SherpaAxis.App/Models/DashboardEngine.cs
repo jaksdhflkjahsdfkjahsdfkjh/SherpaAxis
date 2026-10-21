@@ -7,7 +7,7 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Models;
 
-public sealed class DashboardEngine
+public sealed partial class DashboardEngine
 {
     private readonly object sync = new();
     private readonly TimeProvider clock;
@@ -50,23 +50,36 @@ public sealed class DashboardEngine
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(limits);
-        var replacements = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis,
-            axis => (profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis))))
-                .CreateSession(limits[axis]));
-        var snapshot = new RecordedConfiguration(JsonSerializer.Deserialize<JsonElement>(ProfileJson.Serialize(profile)),
-            Array.AsReadOnly(limits.Select(pair => new RecordedAxisLimits(pair.Key, pair.Value.MaximumCorrectionPerSecond,
-                pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
         lock (sync)
         {
+            var inputProfiles = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => ProfileForInput(axis,
+                profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis)))));
+            var inputLimits = limits.ToDictionary(pair => pair.Key, pair => sensorCalibration?.Map(pair.Key, pair.Value) ?? pair.Value);
+            var replacements = inputProfiles.ToDictionary(pair => pair.Key, pair => pair.Value.CreateSession(inputLimits[pair.Key]));
+            var snapshot = new RecordedConfiguration(JsonSerializer.Deserialize<JsonElement>(ProfileJson.Serialize(new(profile.Name, inputProfiles))),
+                Array.AsReadOnly(inputLimits.Select(pair => new RecordedAxisLimits(pair.Key, pair.Value.MaximumCorrectionPerSecond,
+                    pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
             if (!completingCalibration) { InvalidateCalibration("Processing settings changed. Start calibration again."); }
             SuspendOutput("processing settings changed");
             foreach (var (axis, session) in replacements)
             {
-                var replacement = new AxisState(session);
+                var inputProfile = inputProfiles[axis];
+                var replacement = new AxisState(session, new AxisProfile(inputProfile.Calibration, inputProfile.Deadzone, inputProfile.Curve).CreateProcessor());
                 if (axes.TryGetValue(axis, out var old))
                 {
                     replacement.Minimum = old.Minimum;
                     replacement.Maximum = old.Maximum;
+                    if (sensorCalibration is not null && IsFresh(old) && Math.Abs(old.Session.BaselineCorrection) <= session.MaximumBaselineCorrection)
+                    {
+                        replacement.CarryCorrection = old.Session.BaselineCorrection;
+                        replacement.BaselineApproved = old.BaselineApproved && old.Session.BaselineCorrection == old.Session.TargetCorrection;
+                        if (replacement.BaselineApproved)
+                        {
+                            replacement.DriftStatus = Math.Abs(old.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
+                                : "Drift fixed for this session. Save corrected calibration to keep it in the controller";
+                        }
+                        else if (old.Session.BaselineCorrection != 0) { replacement.DriftStatus = "Drift correction paused; capture again to continue"; }
+                    }
                 }
 
                 axes[axis] = replacement;
@@ -104,6 +117,7 @@ public sealed class DashboardEngine
     {
         lock (sync)
         {
+            fixRequested = null;
             InvalidateCalibration("Input source ended. Start input and calibrate again.");
             SuspendOutput("input source ended");
             Event("source-ended", new { Message = message });
@@ -156,22 +170,35 @@ public sealed class DashboardEngine
             foreach (var (axis, values) in axes)
             {
                 var raw = axis switch { PedalAxis.Throttle => input.Throttle, PedalAxis.Brake => input.Brake, _ => input.Clutch };
-                var released = values.AuthorizedAt.HasValue && clock.GetElapsedTime(values.AuthorizedAt.Value) < TimeSpan.FromMilliseconds(150);
                 var settings = activeProfile.Axes[axis];
-                if (settings.CorrectionMode == BaselineCorrectionMode.Auto)
-                {
-                    var baseline = values.Automatic.Observe(raw, elapsed, connection, settings.Calibration,
-                        settings.MaximumBaselineCorrection, activeLimits[axis].ResetAfterSeconds);
-                    if (baseline is { } candidate) { values.Session.ConfirmReleasedBaseline(candidate); released = true; }
-                }
+                var released = sensorCalibration is null && settings.CorrectionMode != BaselineCorrectionMode.ByButton
+                    && values.AuthorizedAt.HasValue && clock.GetElapsedTime(values.AuthorizedAt.Value) < TimeSpan.FromMilliseconds(150);
+                released |= ProcessDrift(axis, values, raw, settings);
                 var result = values.Session.Process(raw, elapsed, connection, released);
+                if (values.CarryCorrection is { } carried)
+                {
+                    values.Session.RestoreBaselineCorrection(carried);
+                    values.CarryCorrection = null;
+                    result = values.Session.Process(raw, elapsed, connection, false);
+                }
                 if (values.Automatic.Learning && values.Session.BaselineCorrection == values.Session.TargetCorrection) { values.Automatic.Complete(); }
+                if ((values.ManualAdjusting || values.ButtonCaptured) && values.Session.BaselineCorrection == values.Session.TargetCorrection)
+                {
+                    values.ManualAdjusting = false;
+                    values.DriftStatus = Math.Abs(values.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
+                        : "Drift fixed for this session. Save corrected calibration to keep it in the controller";
+                }
                 if (result.ResetReason != AxisSessionResetReason.None)
                 {
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap) { SuspendOutput("sampling gap"); }
                     values.History.Clear();
                     values.LastPlotAt = null;
                     values.AuthorizedAt = null;
+                    if (result.ResetReason == AxisSessionResetReason.SamplingGap)
+                    {
+                        values.ReleaseWindow.Reset(); values.BaselineApproved = false; values.ManualCapture = values.ManualAdjusting = false;
+                        values.DriftStatus = "Input interrupted; drift check cancelled";
+                    }
                 }
 
                 values.Current = result;
@@ -251,14 +278,21 @@ public sealed class DashboardEngine
                 var settings = activeProfile.Axes[axis];
                 if (settings.CorrectionMode != BaselineCorrectionMode.ByButton || settings.CorrectionButton is not { } button) { continue; }
                 var down = buttons.IsDown(button);
-                if (!down) { value.BindingReady = true; value.BindingWasDown = false; value.AuthorizedAt = null; continue; }
-                if (!value.BindingReady || !IsFresh(value)) { continue; }
-                if (!value.BindingWasDown)
+                if (!down)
                 {
-                    var raw = value.Current!.Value.Processing.Input;
-                    if (Math.Abs(raw - settings.Calibration.ReleasedReference) > settings.MaximumBaselineCorrection) { value.BindingReady = false; continue; }
-                    value.Session.ConfirmReleasedBaseline(raw);
+                    if (value.BindingWasDown && !value.ManualCapture && !value.ManualAdjusting)
+                    {
+                        value.DriftStatus = value.BaselineApproved && value.Session.BaselineCorrection == value.Session.TargetCorrection
+                            ? Math.Abs(value.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
+                                : "Drift fixed for this session. Save corrected calibration to keep it in the controller"
+                            : value.Session.BaselineCorrection == 0 ? "Drift check cancelled; no correction applied" : "Drift correction paused; capture again to continue";
+                        value.ManualStarted = null;
+                    }
+                    value.BindingReady = true; value.BindingWasDown = false; value.AuthorizedAt = null; value.ReleaseWindow.Reset(); value.ButtonCaptured = false;
+                    continue;
                 }
+                if (!value.BindingReady || !IsFresh(value) || sensorCalibration is null) { continue; }
+                if (!value.BindingWasDown) { value.ReleaseWindow.Reset(); value.ButtonCaptured = false; if (!value.ManualCapture) { value.ManualStarted = null; } }
                 value.BindingWasDown = true;
                 value.AuthorizedAt = clock.GetTimestamp();
             }
@@ -484,6 +518,10 @@ public sealed class DashboardEngine
             axis.Session.Reset();
             axis.Automatic.Reset();
             axis.BindingReady = axis.BindingWasDown = false;
+            axis.ReleaseWindow.Reset(); axis.ButtonCaptured = axis.BaselineApproved = axis.ManualCapture = axis.ManualAdjusting = false;
+            axis.CarryCorrection = null;
+            axis.ManualStarted = axis.ManualCandidate = null;
+            axis.DriftStatus = "Ready. Use Fix drift or hold the bound button to check the released pedal";
             axis.Current = null;
             axis.AuthorizedAt = null;
             axis.LastSampleAt = null;
@@ -494,10 +532,20 @@ public sealed class DashboardEngine
         }
     }
 
-    private sealed class AxisState(AxisSession session)
+    private sealed class AxisState(AxisSession session, AxisProcessor releaseGuard)
     {
         public AxisSession Session { get; } = session;
+        public AxisProcessor ReleaseGuard { get; } = releaseGuard;
         public AutomaticBaseline Automatic { get; } = new();
+        public StableReleaseWindow ReleaseWindow { get; } = new();
+        public bool ButtonCaptured { get; set; }
+        public bool BaselineApproved { get; set; }
+        public bool ManualCapture { get; set; }
+        public bool ManualAdjusting { get; set; }
+        public double? ManualStarted { get; set; }
+        public double? ManualCandidate { get; set; }
+        public double? CarryCorrection { get; set; }
+        public string DriftStatus { get; set; } = "Ready. Use Fix drift or hold the bound button to check the released pedal";
         public bool BindingReady { get; set; }
         public bool BindingWasDown { get; set; }
         public AxisSessionResult? Current { get; set; }
