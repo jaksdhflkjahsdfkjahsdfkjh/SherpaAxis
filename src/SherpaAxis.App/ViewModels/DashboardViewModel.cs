@@ -46,6 +46,8 @@ public sealed partial class DashboardViewModel : ObservableObject
     public StartupRecoveryViewModel Recovery { get; } = new();
     public DeviceDiagnosticsViewModel Diagnostics { get; } = new();
     public FirmwareUpdateViewModel Firmware { get; } = new();
+    private bool vendorControlRunning;
+    public bool VendorControlRunning { get => vendorControlRunning; set => Set(ref vendorControlRunning, value); }
     public int InputConnection { get; private set; }
     public bool IsSwitchingMode { get => isSwitchingMode; set { if (Set(ref isSwitchingMode, value)) { Changed(nameof(CanTune)); } } }
     public bool CanTune => CanEdit && !IsCalibrationMode && !IsSwitchingMode;

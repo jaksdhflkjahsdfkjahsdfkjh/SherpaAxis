@@ -106,7 +106,8 @@ public static class WindowsFirmwareServices
 
     private static void EnsureToolsClosed()
     {
-        foreach (var name in new[] { "FEEL_VR_Control", "DfuSeCommand", "DfuSeDemo" })
+        Diagnostics.VendorControl.RequireClosed();
+        foreach (var name in new[] { "DfuSeCommand", "DfuSeDemo" })
         {
             var processes = Process.GetProcessesByName(name);
             foreach (var process in processes) { process.Dispose(); }

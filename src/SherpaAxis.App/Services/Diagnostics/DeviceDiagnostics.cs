@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using SherpaAxis.App.Services.Output;
 using SherpaAxis.Bridge;
@@ -12,16 +13,26 @@ public sealed record DeviceDiagnosticsResult(IReadOnlyList<DeviceCheck> Checks, 
 public sealed class DeviceDiagnostics(
     Func<CancellationToken, Task<HidDeviceIdentity?>> identity,
     Func<IReadOnlyList<VJoyDeviceInfo>> inspectVJoy,
-    Func<uint?> selectedId)
+    Func<uint?> selectedId, Func<bool>? vendorControlRunning = null)
 {
     public static DeviceDiagnostics Default(AutomaticVJoy vjoy) => new(ReadIdentityAsync,
-        () => VJoyController.Inspect(VJoyController.DefaultLibraryPath), () => vjoy.SelectedId);
+        () => VJoyController.Inspect(VJoyController.DefaultLibraryPath), () => vjoy.SelectedId, VendorControl.IsRunning);
 
     public async Task<DeviceDiagnosticsResult> CheckAsync(CancellationToken token, Func<HidDeviceIdentity?>? ownedIdentity = null)
     {
         token.ThrowIfCancellationRequested();
         var checks = new List<DeviceCheck>();
         var firmwareWarning = false;
+        if (vendorControlRunning is not null)
+        {
+            try
+            {
+                var running = vendorControlRunning();
+                checks.Add(new("FEEL-VR Control", running ? VendorControl.ConflictMessage : "FEEL-VR Control is closed.", running));
+            }
+            catch (Exception failure) when (Expected(failure, token))
+            { checks.Add(new("FEEL-VR Control", $"Could not check FEEL-VR Control: {failure.Message}", true)); }
+        }
         try
         {
             var device = ownedIdentity?.Invoke();
@@ -86,6 +97,6 @@ public sealed class DeviceDiagnostics(
     }
 
     private static bool Expected(Exception failure, CancellationToken token) => failure is IOException or InvalidDataException or UnauthorizedAccessException
-        or InvalidOperationException or ArgumentException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException or TimeoutException
+        or InvalidOperationException or ArgumentException or DllNotFoundException or BadImageFormatException or EntryPointNotFoundException or TimeoutException or Win32Exception
         || failure is OperationCanceledException && !token.IsCancellationRequested;
 }

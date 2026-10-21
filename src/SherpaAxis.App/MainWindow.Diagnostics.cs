@@ -15,6 +15,25 @@ public partial class MainWindow
     private Task? diagnosticsCheck;
     private int diagnosedConnection;
     private bool diagnosedReceiving;
+    private long vendorControlCheckedAt;
+
+    internal void RefreshVendorControlStatus()
+    {
+        vendorControlCheckedAt = Environment.TickCount64;
+        if (closing || desktop.VendorControlRunning is null) { return; }
+        try
+        {
+            var running = desktop.VendorControlRunning();
+            if (running != viewModel.VendorControlRunning)
+            {
+                viewModel.VendorControlRunning = running;
+                desktop.Log?.Write("vendor-control", running ? VendorControl.ConflictMessage : "FEEL-VR Control is closed.");
+                if (!viewModel.IsCalibrationMode) { _ = CheckDeviceDiagnosticsAsync(); }
+            }
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        { desktop.Log?.Write("vendor-control", "Could not check whether FEEL-VR Control is running.", failure); }
+    }
     internal Task CheckDeviceDiagnosticsAsync()
     {
         if (closing || desktop.Diagnostics is null) { return Task.CompletedTask; }

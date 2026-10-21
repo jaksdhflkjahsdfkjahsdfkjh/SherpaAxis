@@ -1,4 +1,5 @@
 using System.IO;
+using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.Devices;
 using SherpaAxis.FeelVR;
 
@@ -12,6 +13,8 @@ public sealed record PedalControllerConnection(CalibrationSnapshot Snapshot, Hid
 
     public static async Task<PedalControllerConnection> OpenAsync(CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        VendorControl.RequireClosed();
         var source = new WindowsHidInputSource();
         var devices = await Task.Run(() => source.Find(PedalInputReport.VendorId, PedalInputReport.ProductId), token).ConfigureAwait(false);
         var configurations = devices.Where(PedalCalibrationReport.Supports).ToArray();

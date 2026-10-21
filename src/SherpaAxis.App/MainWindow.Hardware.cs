@@ -140,6 +140,7 @@ public partial class MainWindow
 
     private async Task ConnectCalibrationAsync(CancellationToken token)
     {
+        if (desktop.VendorControlRunning is not null) { VendorControl.RequireClosed(desktop.VendorControlRunning); }
         var selectedChannel = viewModel.SelectedAxis switch
         {
             PedalAxis.Throttle => PedalChannel.Throttle,

@@ -218,6 +218,10 @@
                 </StackPanel>
             </Border>
             <StackPanel Grid.Row="1">
+                <Border x:Name="VendorControlWarning" Background="#202334" BorderBrush="#B18445" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,12">
+                    <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding VendorControlRunning}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                    <TextBlock Text="{loc:Text TD8080869C6E9}" TextWrapping="Wrap" Foreground="#FFCE83" FontSize="13" AutomationProperties.LiveSetting="Assertive"/>
+                </Border>
                 <Border x:Name="DraftRecoveryPanel" Background="#202334" BorderBrush="#B18445" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,12">
                     <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasRecoverableDrafts}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
                     <DockPanel>

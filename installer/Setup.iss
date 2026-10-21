@@ -25,6 +25,9 @@
 #ifndef HidHideCli
   #define HidHideCli "{commonpf64}\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe"
 #endif
+#ifndef VendorControlProcess
+  #define VendorControlProcess "FEEL_VR_Control.exe"
+#endif
 
 [Setup]
 #ifdef InstallerTest
@@ -72,6 +75,12 @@ VersionInfoProductTextVersion={#AppVersion}
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
+
+[CustomMessages]
+english.CloseVendorControl=FEEL-VR Control is running. Exit it completely, including its tray instance, then click Retry to continue installation.
+ukrainian.CloseVendorControl=FEEL-VR Control запущено. Повністю закрийте програму, зокрема її значок у системному треї, а потім натисніть «Повторити», щоб продовжити встановлення.
+english.VendorControlCheckFailed=Could not check whether FEEL-VR Control is running. Restart Windows and run Setup again. Details: %1
+ukrainian.VendorControlCheckFailed=Не вдалося перевірити, чи запущено FEEL-VR Control. Перезавантажте Windows і запустіть інсталятор знову. Подробиці: %1
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
@@ -209,12 +218,30 @@ begin
     Result := 'HidHide installation did not provide its configuration tool. Restart Windows and run Setup again.';
 end;
 
+function CheckVendorControl: String;
+var
+  Locator, Services, Processes: Variant;
+begin
+  Result := '';
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Services := Locator.ConnectServer('.', 'root\CIMV2');
+    Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name = ''{#VendorControlProcess}''');
+    if Processes.Count > 0 then
+      Result := CustomMessage('CloseVendorControl');
+  except
+    Result := FmtMessage(CustomMessage('VendorControlCheckFailed'), [GetExceptionMessage]);
+  end;
+  if Result <> '' then Log(Result);
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ExitCode: Integer;
   InstallerPath: String;
 begin
-  Result := '';
+  Result := CheckVendorControl;
+  if Result <> '' then Exit;
 #ifndef InstallerTest
   if CompareText(RemoveBackslashUnlessRoot(ExpandFileName(WizardDirValue)),
     ExpandConstant('{autopf}\SherpaAxis')) <> 0 then

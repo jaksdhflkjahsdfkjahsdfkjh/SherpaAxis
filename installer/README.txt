@@ -4,6 +4,10 @@ Run Setup.exe. The installation wizard requests administrator approval, installs
 the application and registers its Windows uninstaller. The installed app runs
 with normal user permissions. Its .NET runtime is included.
 
+Exit FEEL-VR Control completely, including its tray instance, before installation.
+Setup checks for its process before installing prerequisites or copying files.
+If it is running, close it and click Retry. Silent setup exits with code 7.
+
 Setup installs the unmodified signed Brunner vJoy 2.2.2.0 driver and runtime SDK
 when missing, then creates an unused virtual device with X/Y/Z axes and no buttons,
 POVs or force feedback. Existing device configurations are preserved. If a free
@@ -16,8 +20,8 @@ The application remembers its selected vJoy ID per user so simulator bindings st
 stable. Bind X=throttle, Y=brake and Z=clutch from that vJoy device in your game.
 Settings includes diagnostics, Automatic vJoy setup and Windows controller test.
 Firmware updates in Settings support the reviewed PE0017 vendor image only.
-Install ST DfuSe and its USB driver separately; these are not bundled here.
-Firmware is not redistributed and no firmware is flashed by this installer.
+Setup includes firmware 017, the ST DfuSe tool and its USB driver. It prepares
+the driver but does not flash pedal firmware.
 Physical flashing still requires acceptance testing before public release.
 
 Uninstall SherpaAxis from Windows Settings > Apps. Profiles and settings are

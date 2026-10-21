@@ -10,6 +10,29 @@ namespace SherpaAxis.App.Tests;
 public sealed class DeviceDiagnosticsTests
 {
     [Fact]
+    public void VendorGuardRejectsControllerAccessUntilTheVendorAppIsClosed()
+    {
+        var failure = Assert.Throws<IOException>(() => VendorControl.RequireClosed(() => true));
+        Assert.Equal(VendorControl.ConflictMessage, failure.Message);
+        VendorControl.RequireClosed(() => false);
+    }
+
+    [Fact]
+    public async Task RunningVendorAppIsReportedSeparatelyFromControllerFirmware()
+    {
+        var running = true;
+        var diagnostics = new DeviceDiagnostics(_ => Task.FromResult<HidDeviceIdentity?>(new("FEEL-VR", "Pedals", "PE001700")),
+            () => Devices(new VJoyDeviceInfo(2, VJoyDeviceState.Free, true, true)), () => 2, () => running);
+        var result = await diagnostics.CheckAsync(CancellationToken.None);
+        Assert.False(result.FirmwareWarning);
+        Assert.Equal(VendorControl.ConflictMessage, Assert.Single(result.Checks, check => check.Title == "FEEL-VR Control").Detail);
+        Assert.True(Assert.Single(result.Checks, check => check.Title == "FEEL-VR Control").NeedsAttention);
+        running = false;
+        var closed = await diagnostics.CheckAsync(CancellationToken.None);
+        Assert.DoesNotContain(closed.Checks, check => check.NeedsAttention);
+    }
+
+    [Fact]
     public async Task ActiveControllerIdentityIsReusedWithoutOpeningAnotherHidHandle()
     {
         var reads = 0;
@@ -217,6 +240,44 @@ public sealed class DeviceDiagnosticsTests
 [Collection("WPF UI")]
 public sealed class DeviceDiagnosticsUiTests
 {
+    [Fact]
+    public Task VendorConflictIsVisibleAtStartupAndAcrossPanelsAndClearsAfterClosing() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var running = true;
+        var connections = 0;
+        var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-vendor-warning-" + Guid.NewGuid().ToString("N"));
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        desktop.Store.Value = new(StartInTray: true);
+        try
+        {
+            await using var main = new MainWindow(new(), (_, _, _) =>
+            { connections++; return Task.FromException<SherpaAxis.App.Services.Hardware.HardwareCalibrationSession>(new IOException("Fake disconnected controller")); },
+                desktop.Services with { VendorControlRunning = () => running }, new(directory));
+            await main.InitializeForLaunchAsync();
+            main.Opacity = 0; main.ShowInTaskbar = false; main.Show();
+            await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ContextIdle);
+            var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+            var warning = Assert.IsType<System.Windows.Controls.Border>(main.FindName("VendorControlWarning"));
+            Assert.True(model.VendorControlRunning);
+            Assert.False(main.ShouldStartHidden);
+            Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
+            Assert.Contains("tray instance", Assert.IsType<System.Windows.Controls.TextBlock>(warning.Child).Text, StringComparison.Ordinal);
+            await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+            Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
+            await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Calibration);
+            Assert.Equal(0, connections);
+            Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
+            running = false;
+            main.RefreshVendorControlStatus();
+            await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ContextIdle);
+            Assert.False(model.VendorControlRunning);
+            Assert.Equal(System.Windows.Visibility.Collapsed, warning.Visibility);
+            await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Calibration);
+            Assert.Equal(1, connections);
+        }
+        finally { if (Directory.Exists(directory)) { Directory.Delete(directory, true); } }
+    });
+
     [Fact]
     public Task SettingsFirmwareCheckUsesTheActiveInputConnectionIdentity() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
