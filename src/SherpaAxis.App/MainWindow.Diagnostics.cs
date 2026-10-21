@@ -26,7 +26,7 @@ public partial class MainWindow
         viewModel.Diagnostics.Status = "Checking device and virtual output…";
         try
         {
-            var result = await Task.Run(() => desktop.Diagnostics!.CheckAsync(lifetime.Token), lifetime.Token);
+            var result = await Task.Run(() => desktop.Diagnostics!.CheckAsync(lifetime.Token, () => engine.OwnedControllerIdentity), lifetime.Token);
             if (closing) { return; }
             viewModel.Diagnostics.Apply(result);
             foreach (var check in result.Checks.Where(check => check.NeedsAttention)) { desktop.Log?.Write("device-check", check.Title + ": " + check.Detail); }

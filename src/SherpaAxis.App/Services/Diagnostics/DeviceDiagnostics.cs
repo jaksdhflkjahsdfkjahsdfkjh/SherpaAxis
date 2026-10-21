@@ -17,13 +17,24 @@ public sealed class DeviceDiagnostics(
     public static DeviceDiagnostics Default(AutomaticVJoy vjoy) => new(ReadIdentityAsync,
         () => VJoyController.Inspect(VJoyController.DefaultLibraryPath), () => vjoy.SelectedId);
 
-    public async Task<DeviceDiagnosticsResult> CheckAsync(CancellationToken token)
+    public async Task<DeviceDiagnosticsResult> CheckAsync(CancellationToken token, Func<HidDeviceIdentity?>? ownedIdentity = null)
     {
+        token.ThrowIfCancellationRequested();
         var checks = new List<DeviceCheck>();
         var firmwareWarning = false;
         try
         {
-            var device = await identity(token).ConfigureAwait(false);
+            var device = ownedIdentity?.Invoke();
+            if (device is null)
+            {
+                try { device = await identity(token).ConfigureAwait(false); }
+                catch (IOException)
+                {
+                    // Raw monitoring may acquire the exclusive handle while discovery is in flight.
+                    device = ownedIdentity?.Invoke();
+                    if (device is null) { throw; }
+                }
+            }
             if (device is null) { checks.Add(new("Firmware", "Connect the FEEL-VR pedals to check firmware.")); }
             else
             {

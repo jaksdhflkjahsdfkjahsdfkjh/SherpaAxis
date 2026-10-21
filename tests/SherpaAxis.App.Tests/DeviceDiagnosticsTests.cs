@@ -10,6 +10,40 @@ namespace SherpaAxis.App.Tests;
 public sealed class DeviceDiagnosticsTests
 {
     [Fact]
+    public async Task ActiveControllerIdentityIsReusedWithoutOpeningAnotherHidHandle()
+    {
+        var reads = 0;
+        var diagnostics = new DeviceDiagnostics(_ =>
+        {
+            reads++;
+            return Task.FromException<HidDeviceIdentity?>(new IOException("Exclusive handle is already held"));
+        }, () => Devices(new VJoyDeviceInfo(2, VJoyDeviceState.Owned, true, true)), () => 2);
+        HidDeviceIdentity? owned = new("FEEL-VR", "Pedals", "PE001700");
+        var result = await diagnostics.CheckAsync(CancellationToken.None, () => owned);
+        Assert.Equal(0, reads);
+        Assert.False(result.FirmwareWarning);
+        Assert.DoesNotContain(result.Checks, check => check.NeedsAttention);
+        owned = null;
+        var closed = await diagnostics.CheckAsync(CancellationToken.None, () => owned);
+        Assert.Equal(1, reads);
+        Assert.Contains(closed.Checks, check => check.Title == "Firmware" && check.NeedsAttention);
+    }
+
+    [Fact]
+    public async Task OwnershipAcquiredDuringDiscoveryReplacesASharingFailureWithVerifiedIdentity()
+    {
+        HidDeviceIdentity? owned = null;
+        var diagnostics = new DeviceDiagnostics(_ =>
+        {
+            owned = new("FEEL-VR", "Pedals", "PE001700");
+            return Task.FromException<HidDeviceIdentity?>(new IOException("Acquired during discovery"));
+        }, () => Devices(new VJoyDeviceInfo(2, VJoyDeviceState.Free, true, true)), () => 2);
+        var result = await diagnostics.CheckAsync(CancellationToken.None, () => owned);
+        Assert.False(result.FirmwareWarning);
+        Assert.DoesNotContain(result.Checks, check => check.NeedsAttention);
+    }
+
+    [Fact]
     public void NativeAxisCodesDoNotMistakeMissingAxesOrSdkFailuresForEnabledAxes()
     {
         Assert.True(VJoyController.DecodeAxisPresence(1));
@@ -183,6 +217,27 @@ public sealed class DeviceDiagnosticsTests
 [Collection("WPF UI")]
 public sealed class DeviceDiagnosticsUiTests
 {
+    [Fact]
+    public Task SettingsFirmwareCheckUsesTheActiveInputConnectionIdentity() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var reads = 0;
+        var diagnostics = new DeviceDiagnostics(_ =>
+        { reads++; return Task.FromException<HidDeviceIdentity?>(new IOException("Already open")); },
+            () => [new(2, VJoyDeviceState.Owned, true, true)], () => 2);
+        var engine = new SherpaAxis.App.Models.DashboardEngine();
+        var fake = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(engine, desktopServices: fake.Services with { Diagnostics = diagnostics });
+        engine.SetOwnedControllerIdentity(new("FEEL-VR", "Pedals", "PE001700"));
+        await main.CheckDeviceDiagnosticsAsync();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.Equal(0, reads);
+        Assert.False(Assert.Single(model.Diagnostics.Checks, check => check.Title == "Firmware").NeedsAttention);
+        engine.SetOwnedControllerIdentity(null);
+        await main.CheckDeviceDiagnosticsAsync();
+        Assert.Equal(1, reads);
+        Assert.True(Assert.Single(model.Diagnostics.Checks, check => check.Title == "Firmware").NeedsAttention);
+    });
+
     [Fact]
     public Task SettingsChecksAndRetryAreBoundWithoutOpeningHardwareOrStealingFocus() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
