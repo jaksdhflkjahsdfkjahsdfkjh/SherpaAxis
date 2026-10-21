@@ -68,6 +68,7 @@ public partial class MainWindow : Window, IAsyncDisposable
 
     private void RefreshTick(object? sender, EventArgs e)
     {
+        if (Environment.TickCount64 - vendorControlCheckedAt >= 1000) { RefreshVendorControlStatus(); }
         if (Environment.TickCount64 - unsavedRefreshAt >= 500)
         { unsavedRefreshAt = Environment.TickCount64; viewModel.RefreshUnsavedState(); }
         if (source.Failure is { } failure)

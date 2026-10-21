@@ -24,6 +24,7 @@ using System;
 using System.IO;
 class SetupStub {
     static int Main(string[] args) {
+        if (Array.IndexOf(args, "--hold") >= 0) { System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite); return 0; }
         bool configure = Array.IndexOf(args, "--configure-vjoy") >= 0;
         bool dfu = Array.IndexOf(args, "--configure-dfuse") >= 0;
         bool release = Array.IndexOf(args, "--release-input-configuration") >= 0;
@@ -39,6 +40,9 @@ class SetupStub {
 '@ | Set-Content -LiteralPath $stubSource -Encoding utf8
 & (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:winexe /platform:x64 "/out:$stub" $stubSource
 if ($LASTEXITCODE -ne 0) { throw 'Installer test stub compilation failed.' }
+$vendorExecutable = Join-Path $testRoot 'SherpaAxis.SetupTest.Vendor.exe'
+Copy-Item -LiteralPath $stub -Destination $vendorExecutable
+$vendorProcess = $null
 $stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
 $variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
 $previousEnvironment = @{}
@@ -72,7 +76,7 @@ function Get-RealStartupSnapshot {
 function Build-Fixture {
     param([string]$Name, [string]$Version = '0.1.0', [string]$Hash = $stubHash, [string]$HidHideHash = $stubHash)
     $output = Join-Path $testRoot $Name
-    $compileOutput = & $CompilerPath /Q /DInstallerTest=1 "/DAppSource=$payload" "/DVJoyInstaller=$stub" "/DHidHideInstaller=$stub" "/DHidHideHash=$HidHideHash" "/DHidHideCli=$library.hidhide" "/DVJoyHash=$Hash" "/DVJoyLibrary=$library" "/DSetupOutput=$output" "/DAppVersion=$Version" (Join-Path $repositoryDirectory 'installer/Setup.iss') 2>&1
+    $compileOutput = & $CompilerPath /Q /DInstallerTest=1 /DVendorControlProcess=SherpaAxis.SetupTest.Vendor.exe "/DAppSource=$payload" "/DVJoyInstaller=$stub" "/DHidHideInstaller=$stub" "/DHidHideHash=$HidHideHash" "/DHidHideCli=$library.hidhide" "/DVJoyHash=$Hash" "/DVJoyLibrary=$library" "/DSetupOutput=$output" "/DAppVersion=$Version" (Join-Path $repositoryDirectory 'installer/Setup.iss') 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Fixture compilation failed: $compileOutput" }
     $executable = Join-Path $output 'Setup.exe'
     $metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
@@ -81,8 +85,8 @@ function Build-Fixture {
 }
 
 function Invoke-Fixture {
-    param([string]$Executable, [string]$Name, [int]$Expected)
-    $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LANG=english', '/RESTARTEXITCODE=3010', "/DIR=`"$installDirectory`"", "/LOG=`"$(Join-Path $testRoot ($Name + '.log'))`"")
+    param([string]$Executable, [string]$Name, [int]$Expected, [string]$Language = 'english')
+    $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/LANG=$Language", '/RESTARTEXITCODE=3010', "/DIR=`"$installDirectory`"", "/LOG=`"$(Join-Path $testRoot ($Name + '.log'))`"")
     $process = Start-Process -FilePath $Executable -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
     Assert-Setup ($process.ExitCode -eq $Expected) "$Name returned $($process.ExitCode), expected $Expected."
 }
@@ -113,6 +117,22 @@ try {
     $badHidHideHash = Build-Fixture 'bad-hidhide-hash' '0.1.0' $stubHash ('0' * 64)
 
     Reset-Fixture
+    $vendorProcess = Start-Process -FilePath $vendorExecutable -ArgumentList '--hold' -WindowStyle Hidden -PassThru
+    Invoke-Fixture $setup 'vendor-running-english' 7
+    Invoke-Fixture $setup 'vendor-running-ukrainian' 7 'ukrainian'
+    Assert-Setup (-not $vendorProcess.HasExited) 'Setup terminated the conflicting application.'
+    Assert-Setup (-not (Test-Path -LiteralPath $trace)) 'Setup ran a prerequisite while the vendor application was open.'
+    Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Setup installed the app while the vendor application was open.'
+    Assert-Setup (-not (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe'))) 'Blocked setup copied the app.'
+    Assert-Setup ((Get-Content -LiteralPath (Join-Path $testRoot 'vendor-running-english.log') -Raw) -match 'including its tray instance') 'English setup did not explain how to close FEEL-VR Control.'
+    Assert-Setup ((Get-Content -LiteralPath (Join-Path $testRoot 'vendor-running-ukrainian.log') -Raw -Encoding utf8) -match 'Повністю закрийте програму') 'Ukrainian setup did not show the localized conflict message.'
+    $vendorProcess.Kill()
+    Assert-Setup ($vendorProcess.WaitForExit(5000)) 'Test vendor process did not stop.'
+    $vendorProcess.Dispose()
+    $vendorProcess = $null
+    Write-Output 'PASS: vendor conflict blocks installation before prerequisites, with localized guidance and no forced shutdown'
+
+    Reset-Fixture
     Invoke-Fixture $setup 'fresh-install' 0
     Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim() -eq "driver`nhidhide`nconfigure`ndfuse") 'Fresh setup did not install and configure in order.'
     Assert-Setup (Test-Path -LiteralPath $uninstallKey) 'Uninstall registration is missing.'
@@ -124,6 +144,15 @@ try {
         $testStartup.Dispose()
     }
     New-ItemProperty -LiteralPath $startupKey -Name $startupName -Value '"C:\Previous Portable Build\SherpaAxis.App.exe" --startup' -PropertyType String -Force | Out-Null
+    $previousTrace = Get-Content -LiteralPath $trace -Raw
+    $vendorProcess = Start-Process -FilePath $vendorExecutable -ArgumentList '--hold' -WindowStyle Hidden -PassThru
+    Invoke-Fixture $upgrade 'vendor-running-upgrade' 7
+    Assert-Setup ((Get-ItemProperty -LiteralPath $uninstallKey).DisplayVersion -eq '0.1.0') 'Blocked upgrade changed the installed version.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw) -ceq $previousTrace) 'Blocked upgrade ran device configuration.'
+    $vendorProcess.Kill()
+    Assert-Setup ($vendorProcess.WaitForExit(5000)) 'Test vendor process did not stop.'
+    $vendorProcess.Dispose()
+    $vendorProcess = $null
     Invoke-Fixture $upgrade 'upgrade' 0
     Assert-Setup ((Get-ItemProperty -LiteralPath $uninstallKey).DisplayVersion -eq '0.1.1') 'Upgrade version was not registered.'
     Assert-Setup ((Get-Content -LiteralPath $trace | Where-Object { $_ -eq 'driver' }).Count -eq 1) 'Upgrade reinstalled an existing driver.'
@@ -227,6 +256,15 @@ try {
 
 }
 finally {
+    if ($vendorProcess) {
+        try {
+            if (-not $vendorProcess.HasExited) {
+                $vendorProcess.Kill()
+                $vendorProcess.WaitForExit(5000) | Out-Null
+            }
+        }
+        finally { $vendorProcess.Dispose() }
+    }
     Uninstall-Fixture
     foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process') }
     Assert-Setup ((Get-RealStartupSnapshot) -ceq $originalStartup) 'Installer tests modified real Windows startup settings.'

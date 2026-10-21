@@ -26,7 +26,7 @@ public partial class MainWindow
     private bool exitRequested;
     private bool hidingToTray;
     private WindowState restoreState = WindowState.Maximized;
-    internal bool ShouldStartHidden => preferences.StartInTray && tray is not null && !viewModel.Recovery.IsBlocked && !viewModel.Firmware.Blocked && !viewModel.HasRecoverableDrafts;
+    internal bool ShouldStartHidden => preferences.StartInTray && tray is not null && !viewModel.Recovery.IsBlocked && !viewModel.Firmware.Blocked && !viewModel.HasRecoverableDrafts && !viewModel.VendorControlRunning;
     internal bool IsDisposed => disposed;
 
     private async void DesktopLoaded(object sender, RoutedEventArgs e) { Loaded -= DesktopLoaded; await InitializeDesktopAsync(); }
@@ -35,6 +35,7 @@ public partial class MainWindow
     {
         await InitializeDesktopAsync(); await InitializeLibraryAsync();
         if (closing) { return; }
+        RefreshVendorControlStatus();
         await CheckStartupRecoveryAsync();
         await CheckFirmwareStartupAsync();
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
