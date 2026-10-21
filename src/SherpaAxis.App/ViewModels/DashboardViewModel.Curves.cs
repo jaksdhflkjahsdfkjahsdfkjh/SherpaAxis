@@ -30,7 +30,7 @@ public sealed partial class DashboardViewModel
         RefreshDraftCurve();
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage($"{axis} curve edited. Apply activates it; Save profile keeps it for later.");
+        RefreshUnsavedState();
     }
 
     public void SetCurvePreset(PedalAxis axis, string name)
@@ -40,7 +40,7 @@ public sealed partial class DashboardViewModel
         RefreshDraftCurve();
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage($"{axis}: {name} curve ready. Apply activates all pedal drafts.");
+        RefreshUnsavedState();
     }
 
     public void ClearCurve(PedalAxis axis)
@@ -51,7 +51,7 @@ public sealed partial class DashboardViewModel
         RefreshDraftCurve();
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage($"{axis} curve cleared to linear. Calibration, deadzones and filters retained. Apply to activate.");
+        RefreshUnsavedState();
     }
 
     private void UpdateCurve()

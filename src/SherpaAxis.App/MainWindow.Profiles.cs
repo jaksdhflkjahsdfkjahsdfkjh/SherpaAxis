@@ -67,8 +67,7 @@ public partial class MainWindow
         selected.FilePath = await library.SaveAsync(profile, selected.FilePath, lifetime.Token);
         viewModel.MarkSelectedSaved();
         viewModel.SetAutoLoadPath(autoLoadProfilePath);
-        StopHold(); viewModel.Apply();
-        viewModel.ShowMessage("Profile saved and applied.");
+        viewModel.ShowMessage("Profile saved.");
     }
     private void ProfileMenuClick(object sender, RoutedEventArgs e)
     {
@@ -125,7 +124,7 @@ public partial class MainWindow
         StopHold(); viewModel.RestoreDeletedProfile(deleted.Tab, deleted.Index);
         viewModel.SetAutoLoadPath(autoLoadProfilePath);
         deletedProfile = null; viewModel.CanUndoDelete = false;
-        viewModel.ShowMessage("Profile restored. Review it and Apply settings to activate it.");
+        viewModel.ShowMessage("Profile restored. Valid settings apply automatically.");
         await FlushDraftsAsync();
     });
     private async void OpenProfileClick(object sender, RoutedEventArgs e)

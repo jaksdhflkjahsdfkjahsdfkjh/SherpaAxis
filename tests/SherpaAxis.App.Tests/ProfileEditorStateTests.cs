@@ -6,18 +6,18 @@ namespace SherpaAxis.App.Tests;
 public sealed class ProfileEditorStateTests
 {
     [Fact]
-    public void DraftAssessmentTracksRevertsInvalidTextProfileSwitchesAndApply()
+    public void ProfileAssessmentSeparatesUnsavedSettingsFromInvalidText()
     {
         var model = new DashboardViewModel(new DashboardEngine());
         model.Editor.LowerDeadzone = "12";
         model.RefreshUnsavedState();
-        Assert.Contains("Unapplied", model.DraftStatus, StringComparison.Ordinal);
+        Assert.Contains("Unsaved", model.DraftStatus, StringComparison.Ordinal);
         model.Editor.LowerDeadzone = "0";
         model.RefreshUnsavedState();
         Assert.DoesNotContain("Unapplied", model.DraftStatus, StringComparison.Ordinal);
         model.Editor.LowerDeadzone = "unfinished";
         model.RefreshUnsavedState(); model.RefreshUnsavedState();
-        Assert.Contains("Unapplied", model.DraftStatus, StringComparison.Ordinal);
+        Assert.NotEmpty(model.ValidationMessage);
         var draft = model.SelectedProfile!;
         model.Load(new("Another", DashboardEngine.DefaultProfile().Axes));
         model.SwitchProfile(draft);

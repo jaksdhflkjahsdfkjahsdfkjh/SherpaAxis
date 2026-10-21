@@ -30,23 +30,24 @@ public sealed class GraphInteractionTests
     }
 
     [Fact]
-    public void FilterDraftIndicatorTracksAppliedValuesPerPedalAndInvalidEdits()
+    public void FiltersApplyAutomaticallyAndInvalidEditsKeepTheLastValidSettings()
     {
         var model = new DashboardViewModel(new DashboardEngine());
         Assert.False(model.HasFilterDraft);
         model.SetFilterPreset("Smooth");
-        Assert.True(model.HasFilterDraft);
+        Assert.False(model.HasFilterDraft);
         model.Apply();
         Assert.False(model.HasFilterDraft);
-        Assert.Equal("Filter settings applied", model.FilterApplyInfo);
+        Assert.Empty(model.ValidationMessage);
         model.Editor.FilterMilliseconds = "20.0";
         Assert.False(model.HasFilterDraft);
         model.Editor.FilterMilliseconds = "25";
-        Assert.True(model.HasFilterDraft);
+        model.RefreshUnsavedState();
+        Assert.False(model.HasFilterDraft);
         model.SelectedAxis = PedalAxis.Throttle;
         Assert.False(model.HasFilterDraft);
         model.SelectedAxis = PedalAxis.Brake;
-        Assert.True(model.HasFilterDraft);
+        Assert.False(model.HasFilterDraft);
         model.Editor.FilterMilliseconds = "invalid";
         Assert.True(model.HasFilterDraft);
         Assert.Throws<ArgumentException>(model.Apply);

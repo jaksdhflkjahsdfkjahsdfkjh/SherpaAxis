@@ -87,7 +87,7 @@ public sealed class ProfileDeletionTests
         model.SelectedAxis = SherpaAxis.Profiles.PedalAxis.Clutch;
         Assert.Equal("Aggressive", model.Editor.CurveKind);
         Assert.Null(model.SelectedProfile!.FilePath);
-        Assert.All(model.Curve, point => Assert.Equal(point.Input, point.Output, 8));
+        Assert.All(model.Curve, point => Assert.Equal(Math.Sqrt(point.Input), point.Output, 8));
     });
     [Theory]
     [InlineData(true)]

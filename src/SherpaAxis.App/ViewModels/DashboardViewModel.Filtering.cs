@@ -30,7 +30,6 @@ public sealed partial class DashboardViewModel
             catch (ArgumentException) { return true; }
         }
     }
-    public string FilterApplyInfo => HasFilterDraft ? "Filter draft · Apply settings to update" : "Filter settings applied";
     public string FilterPreset => FilterPresets.Identify(Editor);
     public string SelectedFilterKind => Editor.FilterEnabled ? Editor.FilterKind : "Off";
     public bool UsesWindowFilter => Editor.FilterKind is "MovingAverage" or "Median" or "WeightedMovingAverage" or "MedianExponential";
@@ -58,7 +57,7 @@ public sealed partial class DashboardViewModel
         }
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage($"{SelectedAxis}: {name} filter in draft. Apply settings to see it in the graph.");
+        RefreshUnsavedState();
     }
 
     public void NotifyFilterSettings()
@@ -68,7 +67,7 @@ public sealed partial class DashboardViewModel
         Changed(nameof(UsesWindowFilter));
         Changed(nameof(UsesTimeFilter));
         Changed(nameof(FilterInfo));
-        Changed(nameof(HasFilterDraft)); Changed(nameof(FilterApplyInfo));
+        Changed(nameof(HasFilterDraft));
         Changed(nameof(SelectedCorrectionMode)); Changed(nameof(IsButtonCorrection)); Changed(nameof(CorrectionModeHint)); Changed(nameof(CorrectionBindingLabel));
         Changed(nameof(SelectedAutoLoad));
     }
@@ -101,10 +100,10 @@ public sealed partial class DashboardViewModel
             Editor.MaximumCorrection = (span * .005).ToString("R", CultureInfo.InvariantCulture);
             Editor.CorrectionRate = (span * .1).ToString("R", CultureInfo.InvariantCulture);
         }
-        NotifyFilterSettings(); Apply();
+        NotifyFilterSettings(); RefreshUnsavedState();
     }
     public void BindCorrection(CorrectionButton button)
-    { Editor.CorrectionButton = button; NotifyFilterSettings(); Apply(); }
+    { Editor.CorrectionButton = button; NotifyFilterSettings(); RefreshUnsavedState(); }
 
     public void SetFilterKind(string kind)
     {
@@ -114,7 +113,7 @@ public sealed partial class DashboardViewModel
         Editor.FilterEnabled = true;
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage($"{SelectedAxis}: filter changed in draft. Apply settings to update processing.");
+        RefreshUnsavedState();
     }
 
     private static string FilterLabel(AxisProfile axis)

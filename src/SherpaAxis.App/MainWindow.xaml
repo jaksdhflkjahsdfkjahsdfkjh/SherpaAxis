@@ -224,7 +224,7 @@
                             <Button Content="{loc:Text TF8B6B337B812}" Click="RestoreDraftsClick" Padding="10,7" FontSize="12"/>
                             <Button x:Name="DiscardDraftsButton" Content="{loc:Text T145545F4C7A6}" Click="DiscardDraftsClick" Padding="10,7" FontSize="12"/>
                         </StackPanel>
-                        <TextBlock Text="{loc:Text T473D97AC62C6}" TextWrapping="Wrap" Foreground="#FFCE83" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:Text T2577E128A1F8}" TextWrapping="Wrap" Foreground="#FFCE83" VerticalAlignment="Center"/>
                     </DockPanel>
                 </Border>
             <Border x:Name="ProfileBar" Grid.Row="1" Background="#111E30" BorderBrush="#24354C" BorderThickness="1" CornerRadius="7" Padding="10,8" Margin="0,0,0,12">
@@ -279,7 +279,7 @@
                     </StackPanel>
                     <controls:StableComboBox x:Name="ProfileSelector" ItemsSource="{Binding ProfileTabs}" SelectedItem="{Binding SelectedProfile, Mode=OneWay}"
                         IsSynchronizedWithCurrentItem="False" DisplayMemberPath="DisplayName" ItemTemplate="{x:Null}" SelectionChanged="ProfileSelectionChanged" MinWidth="160" HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="{loc:Text T75192487A033}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TADDF90F3C1C2}"/>
+                        AutomationProperties.Name="{loc:Text T75192487A033}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text T484973638A1D}"/>
                 </DockPanel>
             </Border>
             </StackPanel>
@@ -325,14 +325,14 @@
                             </Grid>
                         </Border>
                         <Expander Grid.Row="2" x:Name="CurvesSection" Header="{loc:Text T31FF831B9097}" IsExpanded="True">
-                            <StackPanel><TextBlock Text="{loc:Text T87777DB69638}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <StackPanel><TextBlock Text="{loc:Text T67662D152A12}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
                         <ItemsControl ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanTune}" Height="240">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate><DataTemplate>
                                 <Border BorderBrush="#304157" BorderThickness="1" CornerRadius="5" Padding="8" Margin="4,0">
                                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <TextBlock Text="{loc:Translate Value={Binding Title}}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-                                        <controls:StableComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{loc:Translate Value={Binding Title}}" ToolTip="{loc:Text TE1C88387AE08}" AutomationProperties.HelpText="{loc:Text TE1C88387AE08}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <controls:StableComboBox Grid.Row="1" ItemsSource="{x:Static vm:DashboardViewModel.CurveKinds}" SelectedItem="{Binding CurveKind, Mode=OneWay}" SelectionChanged="PedalPresetChanged" FontSize="11" AutomationProperties.Name="{loc:Translate Value={Binding Title}}" ToolTip="{loc:Text TA1CA24FF7A03}" AutomationProperties.HelpText="{loc:Text TA1CA24FF7A03}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                         <controls:CurveEditor Grid.Row="2" Points="{Binding Points, Mode=OneWay}" Preview="{Binding Preview}" Applied="{Binding Applied}" Edited="CurveEdited" MinHeight="115" Margin="0,8,0,6" AutomationProperties.Name="{loc:Translate Value={Binding Title}}"/>
                                         <Button Grid.Row="3" Content="{loc:Text TBF37CDFBB7E6}" Click="ClearCurveClick" FontSize="11" Padding="7,5" Margin="0" ToolTip="{loc:Text T707055171B8C}"/>
                                     </Grid>
@@ -360,11 +360,16 @@
                             </TextBlock>
                         </WrapPanel>
                         <Grid>
-                    <DockPanel x:Name="TuningSidePanel" IsEnabled="{Binding CanTune}">
+                    <DockPanel x:Name="TuningSidePanel" IsEnabled="{Binding CanTune}" TextBox.TextChanged="TuningValuesChanged" CheckBox.Checked="TuningValuesChanged" CheckBox.Unchecked="TuningValuesChanged" ComboBox.SelectionChanged="TuningValuesChanged">
                         <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
-                            <DockPanel><Button DockPanel.Dock="Right" Content="{loc:Text TE3DA1EDB7BCD}" Style="{StaticResource Primary}" Click="ApplyClick" Padding="10,9" FontSize="12" Margin="10,0,0,0" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T3C3F72BD8A8C}"/><controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="{loc:Text T6BA9651225F6}" ToolTip="{loc:Text T15E4C75CF19D}" AutomationProperties.HelpText="{loc:Text T15E4C75CF19D}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></DockPanel>
+                            <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.AxisNames}" SelectedItem="{Binding SelectedAxis}" AutomationProperties.Name="{loc:Text T6BA9651225F6}" ToolTip="{loc:Text T15E4C75CF19D}" AutomationProperties.HelpText="{loc:Text T15E4C75CF19D}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                             <TextBlock Text="{loc:Translate Value={Binding ActiveProfileInfo}}" Foreground="#95A9C1" FontSize="10" Margin="0,8,0,4" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock x:Name="DraftStatusLabel" Text="{loc:Translate Value={Binding DraftStatus}}" Foreground="#DFBC7A" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap" ToolTip="{loc:Text T9BF6F634F355}"/>
+                            <TextBlock x:Name="DraftStatusLabel" Text="{loc:Translate Value={Binding DraftStatus}}" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap" ToolTip="{loc:Text T5E91DB28FE39}">
+                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#DFBC7A"/><Style.Triggers><DataTrigger Binding="{Binding IsProfileSaved}" Value="True"><Setter Property="Foreground" Value="#78B5AD"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock x:Name="TuningValidationLabel" Text="{loc:Translate Value={Binding ValidationMessage}}" Foreground="#EEA397" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8">
+                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ValidationMessage}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
@@ -380,7 +385,7 @@
                                 <StackPanel Grid.Column="2"><TextBlock Text="{loc:Text T66C9AB177708}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TC3D113259402}"  ToolTip="{loc:Text T53A2BD681D4F}" AutomationProperties.HelpText="{loc:Text T53A2BD681D4F}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>
                             </Grid>
                             <CheckBox Content="{loc:Text T239208CFC826}" IsChecked="{Binding Editor.Inverted}"  ToolTip="{loc:Text T6B225B2B0307}" AutomationProperties.HelpText="{loc:Text T6B225B2B0307}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
-                            <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text T4B6749DC0077}"/>
+                            <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text TE4EF64224DD3}"/>
 
                                 </StackPanel></Expander>
                                 <StackPanel Margin="0,22,0,0">
@@ -389,22 +394,20 @@
                                     <TextBlock Text="{loc:Text TDA12AB901FF9}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
                                 </DockPanel>
 <TextBlock Text="{loc:Text T7252E7CE0085}" Style="{StaticResource Label}"/>
-                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterPresetNames}" SelectedItem="{Binding FilterPreset, Mode=OneWay}" SelectionChanged="FilterPresetChanged" AutomationProperties.Name="{loc:Text T03200E71BF42}" ToolTip="{loc:Text T9220E4A4A2D4}" AutomationProperties.HelpText="{loc:Text T9220E4A4A2D4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterPresetNames}" SelectedItem="{Binding FilterPreset, Mode=OneWay}" SelectionChanged="FilterPresetChanged" AutomationProperties.Name="{loc:Text T03200E71BF42}" ToolTip="{loc:Text T1CE203E5C01B}" AutomationProperties.HelpText="{loc:Text T1CE203E5C01B}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                 <TextBlock Text="{loc:Text TD704D8AF25BE}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
-                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding SelectedFilterKind, Mode=OneWay}" SelectedValuePath="Kind" SelectionChanged="FilterKindChanged" AutomationProperties.Name="{loc:Text T0EB445C2D077}" ToolTip="{loc:Text T35442DE78199}" AutomationProperties.HelpText="{loc:Text T35442DE78199}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterKinds}" SelectedValue="{Binding SelectedFilterKind, Mode=OneWay}" SelectedValuePath="Kind" SelectionChanged="FilterKindChanged" AutomationProperties.Name="{loc:Text T0EB445C2D077}" ToolTip="{loc:Text T0B564801E8F1}" AutomationProperties.HelpText="{loc:Text T0B564801E8F1}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                 <TextBlock Text="{loc:Translate Value={Binding FilterInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                <TextBlock Text="{loc:Translate Value={Binding FilterApplyInfo}}" FontSize="10" Margin="0,8,0,0">
-                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#78B5AD"/><Style.Triggers><DataTrigger Binding="{Binding HasFilterDraft}" Value="True"><Setter Property="Foreground" Value="#DFBC7A"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                                </TextBlock>
+
                                 <Expander Header="{loc:Text T9F088DBEBD6C}" Background="Transparent" BorderThickness="0" ToolTip="{loc:Text TC3B699D8F91C}">
                                     <StackPanel>
                                         <TextBlock Text="{loc:Text TE8DAE57204F5}" Foreground="#95A9C1" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                         <TextBlock Text="{loc:Text T7CD69A466046}" Style="{StaticResource Label}"/>
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterTimes}" IsEditable="True" Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesTimeFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T8C1C35D31637}" ToolTip="{loc:Text TBFAA1F0FF1A4}" AutomationProperties.HelpText="{loc:Text TBFAA1F0FF1A4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterTimes}" IsEditable="True" Text="{Binding Editor.FilterMilliseconds, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesTimeFilter}" AutomationProperties.Name="{loc:Text T8C1C35D31637}" ToolTip="{loc:Text TBFAA1F0FF1A4}" AutomationProperties.HelpText="{loc:Text TBFAA1F0FF1A4}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                         <TextBlock Text="{loc:Text TFAE9677F899E}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterWindows}" IsEditable="True" Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesWindowFilter}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text TAF313ED69026}" ToolTip="{loc:Text T4238064D0997}" AutomationProperties.HelpText="{loc:Text T4238064D0997}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.FilterWindows}" IsEditable="True" Text="{Binding Editor.FilterWindowSamples, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UsesWindowFilter}" AutomationProperties.Name="{loc:Text TAF313ED69026}" ToolTip="{loc:Text T4238064D0997}" AutomationProperties.HelpText="{loc:Text T4238064D0997}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                         <TextBlock Text="{loc:Text T8EF60384F041}" Style="{StaticResource Label}" Margin="0,10,0,5"/>
-                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.ResetGaps}" IsEditable="True" Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" TextBox.TextChanged="FilterTextChanged" LostKeyboardFocus="FilterFocusChanged" SelectionChanged="FilterSelectionChanged" AutomationProperties.Name="{loc:Text T2D69910E0832}" ToolTip="{loc:Text TFB755B129F06}" AutomationProperties.HelpText="{loc:Text TFB755B129F06}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
+                                        <controls:StableComboBox ItemsSource="{x:Static vm:DashboardViewModel.ResetGaps}" IsEditable="True" Text="{Binding Editor.FilterGapMilliseconds, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T2D69910E0832}" ToolTip="{loc:Text TFB755B129F06}" AutomationProperties.HelpText="{loc:Text TFB755B129F06}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/>
                                     </StackPanel>
                                 </Expander>
                                 </StackPanel>

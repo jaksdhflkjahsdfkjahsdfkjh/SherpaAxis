@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using SherpaAxis.App.Controls;
 using SherpaAxis.App.ViewModels;
 
@@ -8,7 +9,7 @@ namespace SherpaAxis.App;
 
 public partial class MainWindow
 {
-    private bool filterRefreshPending;
+    private bool settingsRefreshPending;
     private void CurveEdited(object? sender, EventArgs e) => Run(() =>
     {
         if (sender is not CurveEditor { DataContext: PedalCurveViewModel panel, Points: { } points }) { return; }
@@ -64,15 +65,16 @@ public partial class MainWindow
         if (dialog.ShowDialog() == true && dialog.Binding is { } button) { Run(() => viewModel.BindCorrection(button)); }
     }
 
-    private void FilterValuesChanged(object sender, RoutedEventArgs e)
+    private void TuningValuesChanged(object sender, RoutedEventArgs e)
     {
-        if (viewModel is null || filterRefreshPending || closing) { return; }
-        filterRefreshPending = true;
-        Dispatcher.BeginInvoke(() => { filterRefreshPending = false; if (!closing) { viewModel.NotifyFilterSettings(); } });
+        if (viewModel is null || settingsRefreshPending || closing) { return; }
+        settingsRefreshPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            settingsRefreshPending = false;
+            if (!closing) { viewModel.RefreshUnsavedState(); viewModel.NotifyFilterSettings(); }
+        });
     }
-    private void FilterTextChanged(object sender, TextChangedEventArgs e) => FilterValuesChanged(sender, e);
-    private void FilterSelectionChanged(object sender, SelectionChangedEventArgs e) => FilterValuesChanged(sender, e);
-    private void FilterFocusChanged(object sender, KeyboardFocusChangedEventArgs e) => FilterValuesChanged(sender, e);
 
     private void ToggleGraphPauseClick(object sender, RoutedEventArgs e) => viewModel.GraphPaused = !viewModel.GraphPaused;
     private void GraphWindowKeyDown(object sender, KeyEventArgs e)

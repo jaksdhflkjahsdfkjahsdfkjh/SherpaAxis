@@ -24,7 +24,8 @@ public sealed partial class DashboardViewModel
         editors[selectedAxis] = maximum ? Editor with { Maximum = value } : Editor with { Minimum = value };
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage("Captured into the editor. Review the bounds, then Apply.");
+        RefreshUnsavedState();
+        ShowMessage("Captured bounds apply automatically. Save the profile to keep them.");
     }
 
     public void UseObservedRange()
@@ -42,7 +43,8 @@ public sealed partial class DashboardViewModel
         };
         Changed(nameof(Editor));
         NotifyFilterSettings();
-        ShowMessage("Observed bounds copied into the editor. Review them, then Apply.");
+        RefreshUnsavedState();
+        ShowMessage("Observed bounds apply automatically. Save the profile to keep them.");
     }
 
     public void ResetEditor()
@@ -52,7 +54,8 @@ public sealed partial class DashboardViewModel
         Changed(nameof(Editor));
         NotifyFilterSettings();
         RefreshDraftCurve();
-        ShowMessage("Device-range defaults are in the editor. Apply to activate them.");
+        RefreshUnsavedState();
+        ShowMessage("Device-range defaults applied. Save the profile to keep them.");
     }
 
     public void ResetInputMapping()
@@ -65,7 +68,8 @@ public sealed partial class DashboardViewModel
             Inverted = false
         };
         Changed(nameof(Editor));
-        ShowMessage("Full controller range is in the draft. Apply settings to activate. Curves, filters and deadzones are retained.");
+        RefreshUnsavedState();
+        ShowMessage("Full controller range applied. Curves, filters and deadzones are retained.");
     }
 
     public void CancelCalibration()
@@ -100,7 +104,7 @@ public sealed partial class DashboardViewModel
                     Inverted = false
                 };
                 SetCalibrating(false);
-                CalibrationInfo = "Software mapping applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart. Other draft settings still require Apply.";
+                CalibrationInfo = "Software mapping applied. Minimum = 0%, maximum = 100%. Save profile to keep it after restart.";
                 CalibrationRangeInfo = FormattableString.Invariant($"0% = {result.Minimum:N0}\n100% = {result.Maximum:N0}");
                 Changed(nameof(CalibrationRangeInfo));
                 Changed(nameof(Editor));

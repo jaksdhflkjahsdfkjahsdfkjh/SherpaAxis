@@ -138,7 +138,7 @@ public sealed class WorkbenchEditingTests
     }
 
     [Fact]
-    public void CurveDragUpdatesDraftWithoutChangingActiveOutputUntilApply()
+    public void CurveDragUpdatesActiveOutputImmediately()
     {
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine);
@@ -146,7 +146,7 @@ public sealed class WorkbenchEditingTests
         Assert.Equal("Custom", model.Editor.CurveKind);
         Assert.Equal(.8, model.DraftPoints[1].Output);
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 8388608, 0)));
-        Assert.Equal(.5, engine.Snapshot(PedalAxis.Brake).Axes.Single(a => a.Axis == PedalAxis.Brake).Result!.Value.Processing.Output);
+        Assert.Equal(.8, engine.Snapshot(PedalAxis.Brake).Axes.Single(a => a.Axis == PedalAxis.Brake).Result!.Value.Processing.Output);
         model.Apply();
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.01), 1, new(0, 8388608, 0)));
         Assert.Equal(.8, engine.Snapshot(PedalAxis.Brake).Axes.Single(a => a.Axis == PedalAxis.Brake).Result!.Value.Processing.Output);

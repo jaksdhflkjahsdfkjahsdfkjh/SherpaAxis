@@ -38,7 +38,7 @@ public sealed class UiRefreshTests
     [InlineData("Balanced")]
     [InlineData("Smooth")]
     [InlineData("Spike guard")]
-    public void FilterPresetsAreDraftsPersistAndOnlyAffectSelectedPedal(string preset)
+    public void FilterPresetsApplyImmediatelyPersistAndOnlyAffectSelectedPedal(string preset)
     {
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine) { SelectedAxis = PedalAxis.Clutch };
@@ -50,7 +50,7 @@ public sealed class UiRefreshTests
         Assert.Equal(preset, FilterPresets.Identify(AxisEditor.FromProfile(ProfileJson.Deserialize(ProfileJson.Serialize(draft)).Axes[PedalAxis.Clutch])));
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.Zero, 1, new(0, 0, 0)));
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.002), 1, new(0, 0, 16384)));
-        Assert.Equal(1, engine.Snapshot(PedalAxis.Clutch).Axes[2].Result!.Value.Processing.Output);
+        Assert.Equal(preset != "Off", engine.Snapshot(PedalAxis.Clutch).Axes[2].Result!.Value.Processing.Output < 1);
         model.Apply();
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.004), 1, new(0, 0, 0)));
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.006), 1, new(0, 0, 16384)));
