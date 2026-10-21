@@ -38,9 +38,9 @@ does not edit games' configuration or hide physical devices.
 ## Firmware updates
 
 Settings → Firmware update now supports the reviewed PE0017 vendor image through
-installed ST DfuSe tools, with file validation, controller/USB-port checks,
+bundled ST DfuSe tools, with file validation, controller/USB-port checks,
 hardware-settings backup, durable recovery journal, programming verification and
-reconnect checks. DfuSe and its USB driver must be installed separately. It does
+reconnect checks. Setup includes DfuSe and stages its signed USB driver. It does
 not download firmware through the vendor's old HTTP endpoint or downgrade newer
 firmware. See [firmware updates](firmware.md) for operation, recovery and the
 outstanding physical acceptance test. No firmware is flashed during startup/setup.
@@ -53,7 +53,8 @@ outstanding physical acceptance test. No firmware is flashed during startup/setu
 
 The script publishes a self-contained Windows x64 application, validates the
 signed upstream vJoy installer and compiles `publish/Setup.exe` with Inno Setup
-6.7.3. The build-only compiler is extracted from a pinned NuGet archive and its
+6.7.3. Firmware and DfuSe payload hashes and the USB driver's publisher signatures
+are checked before publishing. The build-only compiler is extracted from a pinned NuGet archive and its
 publisher signature is checked; no compiler is installed on the user's PC.
 Supply `-VJoyInstaller` to reuse a downloaded prerequisite, `-CompilerPath` to use
 an existing compiler, and `-Version` to set the application and setup version.
@@ -88,7 +89,7 @@ can use `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /RESTARTEXITCODE=3010 /LOG`.
 Installer checks compile a separate fixture with mock executables and use a
 private directory and an isolated per-user uninstall entry. They cover fresh
 installation, upgrades, profile preservation, uninstall, existing-driver reuse,
-prerequisite integrity and installation failures, and both restart paths. They
+prerequisite integrity and installation failures, DfuSe driver staging, and restart paths. They
 do not run the real driver installer, change virtual devices, or register a
 SYSTEM task. Native SDK startup inspection has a separate opt-in regression
 check that reads device metadata and verifies one hidden SDK window under

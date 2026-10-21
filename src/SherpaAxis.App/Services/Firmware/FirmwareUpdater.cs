@@ -37,6 +37,24 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     public static string DefaultDirectory => AppDataPaths.FirmwareUpdates;
     public static FirmwareUpdater Default() => new(DefaultDirectory, WindowsFirmwareServices.Create());
 
+    public async Task<HardwareRecoverySnapshot> BackupCalibrationAsync(CancellationToken token)
+    {
+        if (await ReadPendingAsync(token).ConfigureAwait(false) is not null)
+        { throw new IOException("Resolve the previous firmware update before backing up calibration."); }
+        await using var connection = await services.Connect(token).ConfigureAwait(false);
+        ValidateController(connection);
+        return new(2, DateTimeOffset.UtcNow, connection.Controller.Device, connection.Calibration,
+            connection.Calibration, null, SerialNumber: connection.Controller.SerialNumber, IsManualBackup: true);
+    }
+
+    public async Task<string> CheckFirmwareAsync(CancellationToken token)
+    {
+        await using var connection = await services.Connect(token).ConfigureAwait(false);
+        var identity = ValidateController(connection);
+        return $"Controller: {connection.Controller.SerialNumber}\nFirmware: {identity.Firmware}\n" +
+            (identity.Firmware == "017" ? "Firmware 017 is installed." : "Firmware 017 is available. Choose Update firmware to install it.");
+    }
+
     public async Task<FirmwarePlan> PrepareAsync(string imagePath, string toolPath, CancellationToken token)
     {
         if (await ReadPendingAsync(token).ConfigureAwait(false) is not null)
@@ -139,7 +157,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         record = record with { ProgramVerified = verified, Phase = verified ? "Awaiting reconnect" : "Programming needs review", Log = Limit(result.Output + "\n" + result.Error) };
         await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
         if (!verified) { throw new IOException("DfuSe did not confirm both programming and byte verification. Output remains paused; inspect the update log before retrying."); }
-        progress.Report("Programming verified. Unplug and reconnect the pedals, then click Check updated controller.");
+        progress.Report("Programming verified. Unplug and reconnect the pedals, then choose Check firmware.");
         return record;
     }
 

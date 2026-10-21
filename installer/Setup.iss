@@ -99,6 +99,7 @@ var
   DriverInstalled: Boolean;
   RestartRequired: Boolean;
   ConfigurationFailed: Boolean;
+  DfuConfigurationFailed: Boolean;
   DeferredSetupCreated: Boolean;
   InstallationCompleted: Boolean;
 
@@ -199,6 +200,25 @@ begin
   DriverInstalled := True;
 end;
 
+procedure ConfigureDfuDriver;
+var
+  ExitCode: Integer;
+begin
+  WizardForm.StatusLabel.Caption := 'Preparing the pedal firmware USB driver...';
+#ifdef InstallerTest
+  if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--configure-dfuse',
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+#else
+  if not Exec(ExpandConstant('{sys}\pnputil.exe'),
+    '/add-driver "' + ExpandConstant('{app}\Tools\DfuSe\Driver\STtube.inf') + '"',
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+#endif
+    ExitCode := 1;
+  Log(Format('DfuSe driver staging returned %d', [ExitCode]));
+  DfuConfigurationFailed := (ExitCode <> 0) and (ExitCode <> 3010);
+  RestartRequired := RestartRequired or (ExitCode = 3010);
+end;
+
 procedure ConfigureDevice;
 var
   ExitCode: Integer;
@@ -226,6 +246,7 @@ begin
   end
   else if not ConfigurationFailed then
     RemoveDeferredSetup;
+  ConfigureDfuDriver;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -247,13 +268,13 @@ end;
 
 function CanLaunchApplication: Boolean;
 begin
-  Result := not RestartRequired and not ConfigurationFailed;
+  Result := not RestartRequired and not ConfigurationFailed and not DfuConfigurationFailed;
 end;
 
 function GetCustomSetupExitCode: Integer;
 begin
   Result := 0;
-  if ConfigurationFailed then
+  if ConfigurationFailed or DfuConfigurationFailed then
     Result := 1;
 end;
 
@@ -262,6 +283,9 @@ begin
   if (CurPageID = wpFinished) and ConfigurationFailed then
     WizardForm.FinishedLabel.Caption :=
       'SherpaAxis is installed, but vJoy needs attention. Close other vJoy applications, open SherpaAxis Settings and select Automatic vJoy setup. An incompatible driver may need repair.';
+  if (CurPageID = wpFinished) and DfuConfigurationFailed then
+    WizardForm.FinishedLabel.Caption :=
+      'SherpaAxis is installed, but Windows could not prepare the DfuSe USB driver. Firmware updates are unavailable. Review the Setup log and run Setup again to repair it.';
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

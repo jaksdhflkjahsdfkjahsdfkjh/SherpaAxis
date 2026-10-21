@@ -19,3 +19,6 @@ publish/
 *.log
 *.trx
 *.binlog
+!firmware/*.dfu
+!vendor/dfuse/*.exe
+!vendor/dfuse/*.dll

@@ -7,6 +7,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryDirectory = Split-Path $PSScriptRoot -Parent
+$dfuDirectory = Join-Path $repositoryDirectory 'vendor/dfuse'
+$dfuManifest = Get-Content -LiteralPath (Join-Path $dfuDirectory 'sha256.json') -Raw | ConvertFrom-Json -AsHashtable
+foreach ($entry in $dfuManifest.GetEnumerator()) {
+    if ((Get-FileHash -LiteralPath (Join-Path $dfuDirectory $entry.Key) -Algorithm SHA256).Hash -ne $entry.Value) {
+        throw "Unexpected DfuSe payload hash: $($entry.Key)"
+    }
+}
+foreach ($signedFile in @('Driver/sttube.cat', 'Driver/x64/STTub30.sys')) {
+    $driverSignature = Get-AuthenticodeSignature -LiteralPath (Join-Path $dfuDirectory $signedFile)
+    if ($driverSignature.Status -ne 'Valid' -or $driverSignature.SignerCertificate.Subject -notlike '*Microsoft Windows Hardware Compatibility Publisher*') {
+        throw "Invalid DfuSe driver signature: $signedFile"
+    }
+}
+if ((Get-FileHash -LiteralPath (Join-Path $repositoryDirectory 'firmware/PE0017.dfu') -Algorithm SHA256).Hash -ne '5D525D43D7EF434E61E0DD077379629C420F95CD863E6C607201752368157757') {
+    throw 'Unexpected pedal firmware hash.'
+}
 $stageDirectory = Join-Path $repositoryDirectory 'publish/setup-package'
 $appDirectory = Join-Path $stageDirectory 'app'
 $prerequisiteDirectory = Join-Path $stageDirectory 'prerequisites'

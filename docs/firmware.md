@@ -1,7 +1,7 @@
 # Firmware
 
 The approved image is the vendor's `PE0017.dfu` for PE0 / firmware 017,
-VID `0483`, PID `A2EA`. The firmware is not redistributed.
+VID `0483`, PID `A2EA`. It is included in the application's `Firmwares` folder.
 
 ```text
 SHA-256 5D525D43D7EF434E61E0DD077379629C420F95CD863E6C607201752368157757
@@ -17,8 +17,10 @@ signature or a claim about the newest available firmware.
 ## Programming backend
 
 The updater supports known PE0 firmware 001–017; it refuses unknown hardware
-and newer firmware. ST DfuSe and its USB driver are separate prerequisites.
-Install the [ST DfuSe package](https://www.st.com/en/development-tools/stsw-stm32080.html).
+and newer firmware. Setup includes ST DfuSe 3.0.6 under `Tools\DfuSe`, its private
+runtime libraries, and the signed ST USB driver. Setup stages the driver in the
+Windows driver store without forcing changes to connected devices. Driver staging
+failures are reported by Setup. There is no separate InstallShield installation.
 Close FEEL-VR Control, DfuSe applications and games.
 
 Preparation validates the image/tool, controller identity, settings and USB
@@ -39,11 +41,13 @@ continues while the UI reports the delay.
 
 ## Desktop workflow
 
-1. Open Settings → Firmware update and select the reviewed image and DfuSe tool.
-2. Choose Prepare update and review the controller, old/new firmware and hash.
-3. Choose Flash prepared firmware and confirm that controller and image.
-4. After programming verifies, unplug/reconnect and choose Check updated controller.
-5. Review changed calibration before explicitly accepting it. Settings are never
+1. Open Settings → Firmware update. **Check firmware** reads the controller version;
+   **Backup calibration** saves a settings backup without starting calibration mode.
+2. Choose **Update firmware**, select a firmware from the dropdown and choose **Flash**.
+   The app scans only its `Firmwares` folder and omits invalid or unreviewed images.
+   Image/tool, identity and USB-port checks run automatically before programming.
+3. After programming verifies, unplug/reconnect and choose **Check firmware**.
+4. Review changed calibration before explicitly accepting it. Settings are never
    restored automatically after flashing.
 
 ## Recovery and validation
@@ -54,6 +58,9 @@ staged image, `hardware-backup.json` and `update-log.json`. These are settings
 backups, not a full firmware readback or rollback.
 
 Retry requires the same bootloader location and unchanged staged image/tool.
+Open **Update firmware → Retry flash** to retry an interrupted operation. Selection
+is locked to the original staged image until that update is resolved. Use
+**Open update logs** to inspect the retained operation and calibration backup.
 A controller reporting 017 after an uncertain update does not prove verified
 programming. Retry or explicitly accept its detected firmware and valid calibration.
 Logs remain after resolution; only the blocking journal is cleared. No automatic
@@ -61,4 +68,6 @@ retry, downgrade or HTTP firmware download is performed.
 
 Automated tests use fake transports, bootloaders and tool processes. Physical
 bootloader entry, native DfuSe programming and reconnect acceptance remain
-unverified and require a coordinated hardware test before public release.
+unverified and require a coordinated hardware test before public release. The
+bundled tool's help command and driver signatures are checked separately; these
+checks do not establish that physical flashing works on a particular Windows setup.

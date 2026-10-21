@@ -3,6 +3,10 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using SherpaAxis.App.Localization;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services.Firmware;
 using SherpaAxis.App.Services.Hardware;
@@ -14,6 +18,49 @@ namespace SherpaAxis.App.Tests;
 
 public sealed class FirmwareUpdateTests
 {
+    [Fact]
+    public void BundledCatalogOnlyOffersReviewedImagesAndReportsInvalidFiles()
+    {
+        var bundled = FirmwareCatalog.Scan(WindowsFirmwareServices.FirmwareDirectory);
+        var approved = Assert.Single(bundled.Images);
+        Assert.Equal("017", approved.Version);
+        Assert.Equal("PE0017.dfu", approved.FileName);
+        Assert.Empty(bundled.RejectedFiles);
+        var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-catalog-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.Copy(approved.Path, Path.Combine(directory, approved.FileName));
+            File.WriteAllBytes(Path.Combine(directory, "corrupt.dfu"), [1, 2]);
+            File.WriteAllBytes(Path.Combine(directory, "unreviewed.dfu"), SyntheticImage());
+            File.WriteAllText(Path.Combine(directory, "ignored.txt"), "not firmware");
+            using (var oversized = File.Create(Path.Combine(directory, "oversized.dfu"))) { oversized.SetLength(PedalFirmwareImage.MaximumLength + 1); }
+            var catalog = FirmwareCatalog.Scan(directory);
+            Assert.Single(catalog.Images);
+            string[] rejected = ["corrupt.dfu", "oversized.dfu", "unreviewed.dfu"];
+            Assert.Equal(rejected, catalog.RejectedFiles);
+            Assert.Empty(FirmwareCatalog.Scan(Path.Combine(directory, "missing")).Images);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task FirmwareCheckAndCalibrationBackupNeverSendCommandsOrCreateAnUpdate()
+    {
+        using var fake = new FakeFirmware();
+        Assert.Contains("016", await fake.Updater.CheckFirmwareAsync(CancellationToken.None), StringComparison.Ordinal);
+        var backup = await fake.Updater.BackupCalibrationAsync(CancellationToken.None);
+        Assert.Equal(FakeFirmware.InitialCalibration, backup.Saved);
+        Assert.Equal(backup.Saved, backup.LastConfirmed);
+        Assert.True(backup.IsManualBackup);
+        Assert.Equal("PE001600", backup.SerialNumber);
+        Assert.Equal(0, fake.Commands);
+        Assert.Equal(0, fake.Programs);
+        Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        await fake.Flash(await fake.Prepare());
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.BackupCalibrationAsync(CancellationToken.None));
+    }
+
     [Fact]
     public void ParserRejectsCorruptionWrongTargetsAndUnreviewedButWellFormedImages()
     {
@@ -304,31 +351,80 @@ public sealed class FirmwareUpdateTests
 public sealed class FirmwareUpdateUiTests
 {
     [Fact]
-    public Task FirmwareControlsUseThePreparedPlanAndStartupPendingUpdateBlocksLiveInput() => HardwarePedalUiTests.OnUiAsync(async () =>
+    public Task FirmwareDialogRunsPreflightAndFlashAndStartupPendingUpdateBlocksLiveInput() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         using var fake = new FirmwareUpdateTests.FakeFirmware();
         var desktop = new SettingsAndTrayTests.FakeDesktop();
-        await using (var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater }))
+        await using (var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater }, profileLibrary: new(Path.Combine(fake.Updater.DirectoryPath, "profiles"))))
         {
             await main.RequestPanelModeAsync(SidePanelMode.Settings);
             var model = Assert.IsType<DashboardViewModel>(main.DataContext);
-            model.Firmware.ImagePath = fake.ImagePath; model.Firmware.ToolPath = fake.ToolPath;
-            await main.PrepareFirmwareAsync();
-            Assert.NotNull(model.Firmware.Plan);
+            await main.InspectFirmwareAsync();
+            Assert.Contains("016", model.Firmware.Status, StringComparison.Ordinal);
+            var backupPath = Path.Combine(fake.Updater.DirectoryPath, "manual-backup.json");
+            await main.BackupFirmwareCalibrationAsync(backupPath);
+            Assert.Equal(FirmwareUpdateTests.FakeFirmware.InitialCalibration, (await HardwareRecoveryStore.ReadAsync(backupPath)).Saved);
             Assert.Equal(0, fake.Commands);
             var content = Assert.IsAssignableFrom<FrameworkElement>(main.Content);
             content.Measure(new(1340, 900)); content.Arrange(new(0, 0, 1340, 900)); content.UpdateLayout();
-            Assert.True(Assert.IsType<Button>(main.FindName("FlashFirmwareButton")).IsEnabled);
-            await main.RunFirmwareProgrammingAsync(model.Firmware.Plan, false);
+            Assert.True(Assert.IsType<Button>(main.FindName("UpdateFirmwareButton")).IsEnabled);
+            Assert.NotNull(main.FindName("CheckFirmwareButton"));
+            Assert.NotNull(main.FindName("BackupFirmwareCalibrationButton"));
+            model.Firmware.Images = [new(fake.ImagePath, "017", "test.dfu")];
+            model.Firmware.SelectedImage = model.Firmware.Images[0];
+            var dialog = new FirmwareUpdateWindow(model.Firmware, main.Resources, () => main.UpdateFirmwareAsync(fake.ImagePath)) { Opacity = 0, ShowInTaskbar = false };
+            dialog.Show();
+            dialog.UpdateLayout();
+            Assert.True(Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton")).IsEnabled);
+            try
+            {
+                string[] languages = ["en", "uk"];
+                foreach (var language in languages)
+                {
+                    Localizer.Instance.Language = language;
+                    await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+                    dialog.UpdateLayout();
+                    Assert.Equal(Localizer.Translate("Update firmware"), dialog.Title);
+                    Assert.Equal(Localizer.Translate("Flash"), Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton")).Content);
+                    if (Environment.GetEnvironmentVariable("SHERPAAXIS_UI_CAPTURE_DIR") is { Length: > 0 } folder)
+                    {
+                        var root = Assert.IsAssignableFrom<FrameworkElement>(VisualTreeHelper.GetChild(dialog, 0));
+                        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(root.ActualWidth), (int)Math.Ceiling(root.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                        bitmap.Render(root);
+                        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                        Directory.CreateDirectory(folder);
+                        using var file = File.Create(Path.Combine(folder, $"firmware-dialog-{language}.png")); encoder.Save(file);
+                    }
+                }
+            }
+            finally { Localizer.Instance.Language = "en"; }
+            fake.ToolFailure = true;
+            await main.UpdateFirmwareAsync(fake.ImagePath);
+            Assert.Equal(0, fake.Commands);
+            Assert.False(model.Firmware.Blocked || model.Firmware.Running);
+            fake.ToolFailure = false;
+            var barrier = new TaskCompletionSource<FirmwareToolResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            fake.ProgramBarrier = barrier.Task;
+            var flashing = main.UpdateFirmwareAsync(fake.ImagePath);
+            for (var attempt = 0; fake.Programs == 0 && attempt < 200; attempt++) { await Task.Delay(5); }
+            Assert.Equal(1, fake.Programs);
+            Assert.True(model.Firmware.Running);
+            Assert.False(Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton")).IsEnabled);
+            dialog.Close();
+            Assert.True(dialog.IsVisible);
+            barrier.SetResult(FirmwareUpdateTests.FakeFirmware.Success);
+            await flashing;
             Assert.True(model.Firmware.Blocked);
-            Assert.Null(model.Firmware.Plan);
+            Assert.Equal("Retry flash", model.Firmware.FlashLabel);
+            Assert.False(model.Firmware.Running);
+            dialog.Close();
         }
         var inputStarts = 0;
         await using (var restarted = new MainWindow(new(), desktopServices: desktop.Services with
         {
             Firmware = fake.Updater,
             Runtime = new(token => { inputStarts++; throw new InvalidOperationException("Input must stay blocked"); }, () => throw new InvalidOperationException("Output must stay blocked"))
-        }))
+        }, profileLibrary: new(Path.Combine(fake.Updater.DirectoryPath, "profiles"))))
         {
             await restarted.InitializeForLaunchAsync();
             var model = Assert.IsType<DashboardViewModel>(restarted.DataContext);

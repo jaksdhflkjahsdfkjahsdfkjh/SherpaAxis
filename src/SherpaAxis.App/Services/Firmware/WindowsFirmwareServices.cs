@@ -10,13 +10,9 @@ namespace SherpaAxis.App.Services.Firmware;
 public static class WindowsFirmwareServices
 {
     public static FirmwareUpdateServices Create() => new(ConnectAsync, Bootloaders, CheckToolAsync, ProgramAsync);
-    public static string DefaultImagePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "feel-vr.com", "FEEL-VR Control", "Firmwares", "PE0017.dfu");
-    public static string FindTool()
-    {
-        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "STMicroelectronics", "Software");
-        try { return Directory.EnumerateDirectories(root).OrderDescending(StringComparer.OrdinalIgnoreCase).Select(path => Path.Combine(path, "Bin", "DfuSeCommand.exe")).FirstOrDefault(File.Exists) ?? ""; }
-        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { return ""; }
-    }
+    public static string FirmwareDirectory => Path.Combine(AppContext.BaseDirectory, "Firmwares");
+    public static string DefaultImagePath => Path.Combine(FirmwareDirectory, "PE0017.dfu");
+    public static string FindTool() => Path.Combine(AppContext.BaseDirectory, "Tools", "DfuSe", "DfuSeCommand.exe");
 
     private static UsbDeviceLocation[] Bootloaders()
     {
@@ -52,12 +48,12 @@ public static class WindowsFirmwareServices
     {
         EnsureToolsClosed();
         if (!Path.IsPathFullyQualified(path) || !string.Equals(Path.GetFileName(path), "DfuSeCommand.exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
-        { throw new IOException("Select the installed ST DfuSeCommand.exe before preparing the update."); }
+        { throw new IOException("The bundled DfuSe tool is missing. Run SherpaAxis Setup again."); }
         var version = FileVersionInfo.GetVersionInfo(path);
         if (version.CompanyName?.Contains("STMicroelectronics", StringComparison.OrdinalIgnoreCase) != true)
         { throw new IOException("The selected program is not identified as the STMicroelectronics DfuSe command tool."); }
-        foreach (var name in new[] { "STDFU.dll", "STDFUPRT.dll", "STDFUFiles.dll" })
-        { if (!File.Exists(Path.Combine(Path.GetDirectoryName(path)!, name))) { throw new IOException("The DfuSe installation is incomplete. Install the complete ST package, including its USB driver."); } }
+        foreach (var name in new[] { "STDFU.dll", "STDFUPRT.dll", "STDFUFiles.dll", "STTubeDevice30.dll", "mfc120.dll", "msvcp120.dll", "msvcr120.dll" })
+        { if (!File.Exists(Path.Combine(Path.GetDirectoryName(path)!, name))) { throw new IOException("The bundled DfuSe files are incomplete. Run SherpaAxis Setup again."); } }
         var start = CreateStart(path); start.ArgumentList.Add("-?");
         using var process = Start(start);
         var output = process.StandardOutput.ReadToEndAsync(token);
