@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -15,11 +16,11 @@ public sealed class FirmwareConnection(RecoveryControllerConnection controller, 
     public PedalCalibration Calibration { get; } = calibration;
     public ValueTask DisposeAsync() => Controller.DisposeAsync();
 }
-public sealed record FirmwareToolResult(int ExitCode, string Output, string Error);
+public sealed record FirmwareToolResult(int ExitCode, string Output, string Error, bool ReadbackRequested = true);
 public sealed record FirmwarePlan(string ImagePath, string ToolPath, string ToolHash, PedalFirmwareImage Image,
     string SerialNumber, string OriginalVersion, string LocationPath, HidDeviceInfo Device, PedalCalibration Calibration);
 public sealed record FirmwareUpdateRecord(int SchemaVersion, DateTimeOffset StartedAtUtc, FirmwarePlan Plan,
-    string StagedImagePath, string BackupPath, bool ProgramVerified, string Phase, string Log = "");
+    string StagedImagePath, string BackupPath, bool ProgramVerified, string Phase, string Log = "", bool DownloadCompleted = false);
 public sealed record FirmwareCheckResult(bool Complete, bool CanAccept, string Detail);
 public sealed record FirmwareUpdateServices(
     Func<CancellationToken, Task<FirmwareConnection>> Connect,
@@ -27,7 +28,8 @@ public sealed record FirmwareUpdateServices(
     Func<string, CancellationToken, Task> CheckTool,
     Func<string, string, IProgress<string>, Task<FirmwareToolResult>> Program,
     Func<TimeSpan, CancellationToken, Task>? Delay = null,
-    Func<byte[], PedalFirmwareImage>? ValidateImage = null);
+    Func<byte[], PedalFirmwareImage>? ValidateImage = null,
+    Func<UsbDeviceLocation, Task>? PrepareBootloader = null);
 
 public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices services)
 {
@@ -100,19 +102,18 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             progress.Report("Entering the pedal bootloader… Keep the USB cable connected.");
             // A cancelled/failed SET_FEATURE may still reach the device. The durable journal already blocks output.
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            await connection.Controller.Writer.WriteAsync(connection.Controller.Device,
-                PedalCommandReport.Encode(PedalDeviceCommand.EnterBootloader), deadline.Token).ConfigureAwait(false);
-            // From this point, user/window cancellation must never kill a programming process.
-            var found = false;
-            for (var attempt = 0; attempt < 40; attempt++)
+            try
             {
-                var candidates = services.Bootloaders();
-                if (candidates.Count > 1 || candidates.Count == 1 && candidates[0].LocationPath != plan.LocationPath)
-                { throw new IOException("The DFU device does not uniquely match the original pedal USB port. Programming was not started."); }
-                if (candidates.Count == 1 && candidates[0].DriverReady) { found = true; break; }
-                await DelayAsync(TimeSpan.FromMilliseconds(250), CancellationToken.None).ConfigureAwait(false);
+                await connection.Controller.Writer.WriteAsync(connection.Controller.Device,
+                    PedalCommandReport.Encode(PedalDeviceCommand.EnterBootloader), deadline.Token).ConfigureAwait(false);
             }
-            if (!found) { throw new IOException("The pedal bootloader did not appear. Check the DfuSe USB driver; the update record was retained."); }
+            catch (Exception failure) when (failure is IOException or OperationCanceledException or TimeoutException)
+            {
+                record = record with { Phase = "Waiting for bootloader", Log = "Bootloader command completion uncertain: " + failure.Message };
+                await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
+                progress.Report("The pedal disconnected during bootloader entry. Checking its original USB port…");
+            }
+            // From this point, user/window cancellation must never kill a programming process.
             return await ProgramAsync(record, progress).ConfigureAwait(false);
         }
         catch (Exception failure)
@@ -131,8 +132,83 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         return await ProgramAsync(record, progress).ConfigureAwait(false);
     }
 
+    public async Task<string> RestoreCalibrationBackupAsync(CancellationToken token)
+    {
+        var record = await ReadPendingAsync(token).ConfigureAwait(false) ?? throw new IOException("No firmware update calibration backup is pending.");
+        if (services.Bootloaders().Count != 0) { throw new IOException("Reconnect the pedals in normal mode before restoring their calibration backup."); }
+        var backup = await HardwareRecoveryStore.ReadAsync(record.BackupPath, token).ConfigureAwait(false);
+        await using var connection = await services.Connect(token).ConfigureAwait(false);
+        var identity = ValidateController(connection);
+        if (identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath
+            || !PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber)
+            || !backup.IsManualBackup || backup.Saved != record.Plan.Calibration
+            || !PedalDeviceIdentity.SameController(backup.SerialNumber!, connection.Controller.SerialNumber))
+        { throw new IOException("The reconnected controller, firmware, USB port and saved calibration backup must match the original update."); }
+        var directory = Path.GetDirectoryName(record.BackupPath)!;
+        using var transaction = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, connection.Controller.Device, connection.Calibration),
+            connection.Controller.Reader, connection.Controller.Writer, new HardwareRecoveryStore(Path.Combine(directory, "calibration-restore.json")),
+            TimeSpan.FromSeconds(2), connection.Controller.SerialNumber);
+        await new HardwareRecoveryStore(Path.Combine(directory, "post-flash-calibration-backup.json"))
+            .WriteAsync(await transaction.CreateHardwareBackupAsync(token).ConfigureAwait(false), token).ConfigureAwait(false);
+        await transaction.RestoreHardwareBackupAsync(backup with { Device = connection.Controller.Device }, token).ConfigureAwait(false);
+        await transaction.SaveAsync(token).ConfigureAwait(false);
+        const string detail = "Original calibration restored, saved to the controller and read back successfully. Choose Check firmware to review the update.";
+        await WriteAsync(record with { Log = Limit(record.Log + "\n" + detail) }, CancellationToken.None).ConfigureAwait(false);
+        return detail;
+    }
+
+    public async Task<FirmwareCheckResult> CompleteUpdateAsync(IProgress<string> progress, CancellationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+        var record = await ReadPendingAsync(token).ConfigureAwait(false) ?? throw new IOException("No firmware update is pending.");
+        if (!record.DownloadCompleted && !record.ProgramVerified)
+        { throw new IOException("Programming was not confirmed. Automatic calibration restoration is unavailable; review the update logs."); }
+        progress.Report("Firmware programmed. Waiting for the pedals to reconnect automatically…");
+        var started = Stopwatch.GetTimestamp();
+        for (var attempt = 0; attempt < 120 && Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(30); attempt++)
+        {
+            token.ThrowIfCancellationRequested();
+            var bootloaders = services.Bootloaders();
+            if (bootloaders.Count > 1 || bootloaders.Count == 1 && bootloaders[0].LocationPath != record.Plan.LocationPath)
+            { throw new IOException("The connected bootloader does not uniquely match the recorded pedal USB port. Calibration was not restored."); }
+            if (bootloaders.Count == 0)
+            {
+                FirmwareConnection? connection = null;
+                try { connection = await services.Connect(token).ConfigureAwait(false); }
+                catch (Exception failure) when (failure is IOException or TimeoutException) { }
+                if (connection is not null)
+                {
+                    bool restore;
+                    await using (connection)
+                    {
+                        var identity = ValidateController(connection);
+                        if (!PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber)
+                            || identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath)
+                        { throw new IOException("The reconnected controller, firmware or USB port does not match the update. Calibration was not restored."); }
+                        restore = connection.Calibration != record.Plan.Calibration || HasCalibrationRecovery(record);
+                    }
+                    if (restore)
+                    {
+                        progress.Report("Pedals reconnected. Restoring and saving the original calibration…");
+                        await RestoreCalibrationBackupAsync(token).ConfigureAwait(false);
+                    }
+                    progress.Report("Checking firmware and restored calibration…");
+                    var result = await CheckConnectionAsync(false, token).ConfigureAwait(false);
+                    if (!result.Complete) { throw new IOException(result.Detail); }
+                    return result;
+                }
+            }
+            await DelayAsync(TimeSpan.FromMilliseconds(250), token).ConfigureAwait(false);
+        }
+        throw new IOException("Programming finished, but the pedals did not reconnect in time. Reconnect them at the original USB port and choose Check firmware; the calibration backup is retained.");
+    }
+
+    private static bool HasCalibrationRecovery(FirmwareUpdateRecord record) =>
+        Directory.GetFileSystemEntries(Path.GetDirectoryName(record.BackupPath)!, "calibration-restore.json").Length != 0;
+
     private async Task<FirmwareUpdateRecord> ProgramAsync(FirmwareUpdateRecord record, IProgress<string> progress)
     {
+        await WaitForBootloaderAsync(record.Plan.LocationPath, progress).ConfigureAwait(false);
         var candidates = services.Bootloaders();
         if (candidates.Count != 1 || !candidates[0].DriverReady || candidates[0].LocationPath != record.Plan.LocationPath)
         { throw new IOException("Connect only the original pedal bootloader at its recorded USB port before retrying."); }
@@ -143,22 +219,58 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         await using var toolLock = new FileStream(record.Plan.ToolPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (Convert.ToHexString(await SHA256.HashDataAsync(toolLock).ConfigureAwait(false)) != record.Plan.ToolHash)
         { throw new IOException("The DfuSe tool changed; programming was not started."); }
-        record = record with { Phase = "Programming and verifying", ProgramVerified = false, Log = "" };
+        record = record with { Phase = "Programming firmware", ProgramVerified = false, DownloadCompleted = false };
         await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
-        progress.Report("Programming and verifying firmware… Do not unplug the pedals or close the app.");
+        progress.Report("Programming firmware… Do not unplug the pedals or close the app.");
         FirmwareToolResult result;
         try { result = await services.Program(record.Plan.ToolPath, record.StagedImagePath, progress).ConfigureAwait(false); }
         catch (Exception failure)
         {
-            await WriteAsync(record with { Phase = "Programming needs review", Log = Limit(failure.Message) }, CancellationToken.None).ConfigureAwait(false);
+            await WriteAsync(record with { Phase = "Programming needs review", Log = Limit(record.Log + "\n" + failure.Message) }, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
-        var verified = VerifyToolResult(result);
-        record = record with { ProgramVerified = verified, Phase = verified ? "Awaiting reconnect" : "Programming needs review", Log = Limit(result.Output + "\n" + result.Error) };
+        var verified = result.ReadbackRequested && VerifyToolResult(result);
+        var downloaded = result.ExitCode == 0 && result.Output.Split('\n').Any(line => line.Trim() == "Upgrade successful !");
+        var completed = verified || !result.ReadbackRequested && downloaded;
+        record = record with
+        {
+            ProgramVerified = verified,
+            DownloadCompleted = completed,
+            Phase = completed ? "Awaiting controller check" : "Programming needs review",
+            Log = Limit(record.Log + "\n" + result.Output + "\n" + result.Error + (result.ReadbackRequested ? "" : "\nByte readback was not performed; the pedal firmware restarts after download."))
+        };
         await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
-        if (!verified) { throw new IOException("DfuSe did not confirm both programming and byte verification. Output remains paused; inspect the update log before retrying."); }
-        progress.Report("Programming verified. Unplug and reconnect the pedals, then choose Check firmware.");
+        if (!completed) { throw new IOException("DfuSe did not confirm successful programming. Output remains paused; inspect the update log before retrying."); }
+        progress.Report(verified ? "Programming verified. Unplug and reconnect the pedals, then choose Check firmware."
+            : "Firmware programming completed. The pedals may reconnect automatically. Choose Check firmware and review calibration. Byte readback was not performed.");
         return record;
+    }
+
+    private async Task WaitForBootloaderAsync(string location, IProgress<string> progress)
+    {
+        var prepared = false;
+        var detected = false;
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            var candidates = services.Bootloaders();
+            if (candidates.Count > 1 || candidates.Count == 1 && candidates[0].LocationPath != location)
+            { throw new IOException("The DFU device does not uniquely match the original pedal USB port. Programming was not started."); }
+            if (candidates.Count == 1)
+            {
+                detected = true;
+                if (candidates[0].DriverReady) { return; }
+                if (!prepared && services.PrepareBootloader is not null)
+                {
+                    prepared = true;
+                    progress.Report("The pedal bootloader is connected. Preparing its DfuSe USB driver; approve Windows administrator access if requested.");
+                    await services.PrepareBootloader(candidates[0]).ConfigureAwait(false);
+                }
+            }
+            await DelayAsync(TimeSpan.FromMilliseconds(250), CancellationToken.None).ConfigureAwait(false);
+        }
+        throw new IOException(detected
+            ? "The pedal bootloader is connected, but its DfuSe USB driver is not ready. Run SherpaAxis Setup to repair it, then choose Retry flash. The backup and update record were retained."
+            : "The pedal bootloader did not appear at its recorded USB port. Reconnect the pedals at that port and choose Retry flash. The backup and update record were retained.");
     }
 
     public async Task<FirmwareCheckResult> CheckConnectionAsync(bool acceptCurrent, CancellationToken token)
@@ -170,14 +282,21 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         var identity = ValidateController(connection);
         if (!PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber) || identity.Firmware != record.Plan.Image.Version)
         { throw new IOException("The reconnected controller identity or firmware does not match the prepared update."); }
-        if (!record.ProgramVerified && !acceptCurrent)
-        { return new(false, true, "The original controller reports firmware 017, but the previous programming result is unverified. Retry the update or explicitly accept the detected firmware and calibration."); }
-        if (connection.Calibration != record.Plan.Calibration && !acceptCurrent)
-        { return new(false, true, "Firmware 017 is detected, but hardware calibration changed. Calibrate the pedals or review the backup, then explicitly accept the current calibration."); }
+        if (connection.Usb.LocationPath != record.Plan.LocationPath)
+        { return new(false, false, "Reconnect the original controller at its recorded USB port, then choose Check firmware. Output remains paused."); }
+        if (connection.Calibration != record.Plan.Calibration)
+        { return new(false, false, "Firmware 017 is detected, but calibration does not match the pre-update backup. Restore the calibration backup, then choose Check firmware. Output remains paused."); }
+        if (HasCalibrationRecovery(record))
+        { return new(false, false, "Calibration restoration still needs verification. Restore the calibration backup again before resuming output."); }
+        if (!record.ProgramVerified && !record.DownloadCompleted && !acceptCurrent)
+        {
+            return new(false, true, "The original controller reports firmware 017 and calibration matches the backup, but programming was not confirmed. Review the update logs. Use detected controller resumes output without claiming a verified flash.");
+        }
         token.ThrowIfCancellationRequested();
         await WriteAsync(record with { Phase = acceptCurrent ? "Detected firmware and calibration explicitly accepted" : "Controller verified after reconnect" }, token).ConfigureAwait(false);
         File.Delete(JournalPath);
-        return new(true, false, "Firmware 017 and controller identity verified. Hardware backup and update log were retained.");
+        return new(true, false, "Firmware 017 and controller identity verified. Hardware backup and update log were retained."
+            + (record.ProgramVerified ? "" : " Byte readback was not verified."));
     }
 
     public async Task<FirmwareUpdateRecord?> ReadPendingAsync(CancellationToken token)

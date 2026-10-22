@@ -104,8 +104,14 @@ termination, reopen SherpaAxis and exit normally to complete visibility cleanup.
 For pedal firmware updates, open **Settings → Firmware update → Update firmware**,
 select a bundled firmware and choose **Flash**. Setup includes firmware 017 in
 `Firmwares` and the DfuSe tool in `Tools\DfuSe` inside the SherpaAxis installation.
-Use **Check firmware** after reconnecting and **Backup calibration** for a separate
-settings backup. **Open update logs** opens the retained logs and automatic backups.
+**Check firmware** provides a manual version check; **Backup calibration** saves a
+separate settings backup. **Open update logs** opens retained logs and automatic backups.
+After **Flash**, SherpaAxis waits for the pedals to restart, restores and saves
+the original calibration if needed, and checks the controller, USB port, firmware
+and calibration automatically. Click **OK** when the update finishes. If a step
+fails, output stays paused and the backup and logs remain available for recovery.
+This checks the connected controller and calibration; firmware byte readback is
+not performed.
 See the [firmware guide](docs/firmware.md) for recovery details. Setup prepares the
 USB driver; it does not flash pedal firmware.
 

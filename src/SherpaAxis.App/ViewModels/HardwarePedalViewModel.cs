@@ -127,7 +127,10 @@ public sealed class HardwarePedalViewModel(PedalConfigurationTransaction configu
             : capture.Reports == 0 ? "Waiting for input in calibration mode…"
             : FormattableString.Invariant($"0% = {capture.Minimum:N0}\n100% = {capture.Maximum:N0}\nSensor input: {capture.Current:N0}");
         if (RangeInfo != range) { RangeInfo = range; Changed(nameof(RangeInfo)); }
-        DeviceInfo = string.Join("\n", Channels.Select(channel =>
+        var boundsLabel = capture is not null ? "Temporary calibration bounds (sensor counts)"
+            : configuration.Current == PedalHardwareSettings.Defaults ? "Full-scale defaults — calibrated limits are not set."
+            : "Hardware calibration bounds (sensor counts)";
+        DeviceInfo = boundsLabel + "\n" + string.Join("\n", Channels.Select(channel =>
         {
             var bounds = configuration.Current.Range(channel);
             return FormattableString.Invariant($"{channel}: {bounds.Minimum:N0} → {bounds.Maximum:N0}");

@@ -46,21 +46,25 @@ public sealed class LocalizationTests
         {
             Localizer.Instance.Language = "en";
             guide.Opacity = 0; guide.ShowInTaskbar = false; guide.Show();
-            var text = Assert.IsType<TextBlock>(Assert.IsType<ScrollViewer>(guide.Content).Content);
-            Assert.StartsWith("Install SherpaAxis", text.Text, StringComparison.Ordinal);
-            Assert.Contains("Setup includes firmware 017, ST DfuSe and its USB driver.", text.Text, StringComparison.Ordinal);
-            Assert.Contains("choose Flash", text.Text, StringComparison.Ordinal);
-            Assert.Contains("Setup checks for it before installing drivers", text.Text, StringComparison.Ordinal);
-            Assert.Contains("Auto waits for five consistent press/release cycles", text.Text, StringComparison.Ordinal);
-            Assert.DoesNotMatch(@"\AT[0-9A-F]{12}\z", text.Text);
+            var document = Assert.IsType<FlowDocumentScrollViewer>(guide.Content).Document;
+            string Text() => new System.Windows.Documents.TextRange(document.ContentStart, document.ContentEnd).Text;
+            Assert.StartsWith("Close FEEL-VR Control", Text(), StringComparison.Ordinal);
+            Assert.DoesNotContain("Install SherpaAxis", Text(), StringComparison.Ordinal);
+            Assert.Contains(document.Blocks.OfType<System.Windows.Documents.Paragraph>(), paragraph => paragraph.Inlines.FirstInline is System.Windows.Documents.Bold bold && new System.Windows.Documents.TextRange(bold.ContentStart, bold.ContentEnd).Text == "X = throttle · Y = brake · Z = clutch");
+            Assert.Contains("Setup includes firmware 017, ST DfuSe and its USB driver.", Text(), StringComparison.Ordinal);
+            Assert.Contains("choose Flash", Text(), StringComparison.Ordinal);
+            Assert.Contains("Auto waits for five consistent press/release cycles", Text(), StringComparison.Ordinal);
+            Assert.DoesNotMatch(@"\AT[0-9A-F]{12}\z", Text());
+            guide.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsType<FlowDocumentScrollViewer>(guide.Content), "setup-guide.png");
             Localizer.Instance.Language = "uk";
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
             Assert.Equal("Налаштування пристрою", guide.Title);
-            Assert.StartsWith("Установіть SherpaAxis", text.Text, StringComparison.Ordinal);
-            Assert.Contains("Інсталятор містить прошивку 017, ST DfuSe та USB-драйвер.", text.Text, StringComparison.Ordinal);
-            Assert.DoesNotContain("Native calibration supports", text.Text, StringComparison.Ordinal);
-            Assert.DoesNotContain("Close FEEL-VR Control completely", text.Text, StringComparison.Ordinal);
-            Assert.DoesNotContain("For drift correction", text.Text, StringComparison.Ordinal);
+            Assert.StartsWith("Закрийте FEEL-VR Control", Text(), StringComparison.Ordinal);
+            Assert.Contains("Інсталятор містить прошивку 017, ST DfuSe та USB-драйвер.", Text(), StringComparison.Ordinal);
+            Assert.DoesNotContain("Native calibration supports", Text(), StringComparison.Ordinal);
+            Assert.DoesNotContain("Close FEEL-VR Control completely", Text(), StringComparison.Ordinal);
+            Assert.DoesNotContain("For drift correction", Text(), StringComparison.Ordinal);
         }
         finally { guide.Close(); Localizer.Instance.Language = "en"; }
     });

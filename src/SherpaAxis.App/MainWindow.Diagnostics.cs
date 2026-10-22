@@ -87,13 +87,54 @@ public partial class MainWindow
         };
         dialog.Resources.MergedDictionaries.Add(Resources);
         Localization.Localizer.Bind(dialog, Window.TitleProperty, "Device setup guide");
-        var text = new System.Windows.Controls.TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(24), FontSize = 14, LineHeight = 24 };
-        Localization.Localizer.Bind(text, System.Windows.Controls.TextBlock.TextProperty,
-            "Install SherpaAxis with its installer to install vJoy and its SDK together. Complete any Windows restart requested by the driver installer.\n\nAutomatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.\n\nIn your game, bind X to throttle, Y to brake and Z to clutch from the selected vJoy device. SherpaAxis must stay running to send processed pedal input; minimizing to the tray keeps output running, while Exit stops it. HidHide prevents duplicate physical-pedal input while SherpaAxis runs. Keep the physical HID driver installed. Use Settings to turn physical-pedal hiding off. Close SherpaAxis before using the physical pedals directly.\n\nNative calibration supports PE0 firmware 017. Setup includes firmware 017, ST DfuSe and its USB driver. In Settings → Firmware update, choose Update firmware, select the bundled image and choose Flash. After programming and verification, reconnect the pedals and choose Check firmware. Open update logs shows retained logs and automatic calibration backups. Backup calibration saves a separate settings backup. Newer firmware is not downgraded.\n\nClose FEEL-VR Control completely, including its tray instance, before installation or calibration. Setup checks for it before installing drivers; close it and choose Retry to continue. SherpaAxis also shows a warning while it is running.\n\nFor drift correction, calibrate once in SherpaAxis to retain the original raw range. Auto waits for five consistent press/release cycles. Fix drift and By button require one stable second with your foot completely off. Save corrected calibration writes an accepted correction to the controller; otherwise it is temporary.\n\nResolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
-        dialog.Content = new System.Windows.Controls.ScrollViewer { Content = text, VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto };
+        var document = new System.Windows.Documents.FlowDocument
+        {
+            PagePadding = new Thickness(24),
+            FontFamily = FontFamily,
+            FontSize = 14,
+            Foreground = Foreground,
+            Background = Background,
+            ColumnWidth = double.PositiveInfinity
+        };
+        AddGuideSection(document, "Close FEEL-VR Control",
+            "Exit FEEL-VR Control completely, including its tray instance, before using SherpaAxis. Keep games closed when calibrating or changing device setup.");
+        AddGuideSection(document, "Game bindings", "X = throttle · Y = brake · Z = clutch", emphasizeBody: true);
+        AddGuideSection(document, "Virtual output and HidHide",
+            "SherpaAxis must stay running to send processed pedal input. Minimizing to the tray keeps output running; Exit stops it. HidHide hides only the physical pedal joystick from games. Keep the physical HID driver installed. Turn physical-pedal hiding off in Settings when needed.");
+        AddGuideSection(document, "Device setup",
+            "Automatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.");
+        AddGuideSection(document, "Firmware updates",
+            "Native calibration supports PE0 firmware 017. Setup includes firmware 017, ST DfuSe and its USB driver. In Settings → Firmware update, choose Update firmware, select the bundled image and choose Flash. Leave the pedals connected. SherpaAxis waits for reconnection, restores and saves the original calibration, and checks firmware and calibration automatically. Click OK when the update finishes. Byte readback is not performed. Open update logs shows retained logs and automatic calibration backups. Backup calibration saves a separate settings backup. Newer firmware is not downgraded.");
+        AddGuideSection(document, "Pedal drift correction",
+            "Calibrate once in SherpaAxis to retain the original raw range. Auto waits for five consistent press/release cycles. Hold Fix drift with your foot off for at least one stable second, and keep holding until correction finishes. Release to stop. By button uses the same stability check. Save corrected calibration is a separate controller write.");
+        AddGuideSection(document, "Recovery",
+            "Resolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
+        dialog.Content = new System.Windows.Controls.FlowDocumentScrollViewer
+        {
+            Document = document,
+            IsToolBarVisible = false,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
+        };
         dialog.SourceInitialized += (_, _) => WindowTheme.Apply(dialog);
         return dialog;
     }
+    private static void AddGuideSection(System.Windows.Documents.FlowDocument document, string title, string body, bool emphasizeBody = false)
+    {
+        var heading = new System.Windows.Documents.Run();
+        Localization.Localizer.Bind(heading, System.Windows.Documents.Run.TextProperty, title);
+        document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Bold(heading))
+        {
+            FontSize = 16,
+            Margin = new Thickness(0, document.Blocks.Count == 0 ? 0 : 16, 0, 6),
+            Foreground = new System.Windows.Media.SolidColorBrush(title == "Close FEEL-VR Control"
+                ? System.Windows.Media.Color.FromRgb(255, 206, 131) : System.Windows.Media.Color.FromRgb(120, 227, 198))
+        });
+        var text = new System.Windows.Documents.Run();
+        Localization.Localizer.Bind(text, System.Windows.Documents.Run.TextProperty, body);
+        System.Windows.Documents.Inline inline = emphasizeBody ? new System.Windows.Documents.Bold(text) : text;
+        document.Blocks.Add(new System.Windows.Documents.Paragraph(inline) { Margin = new Thickness(0), LineHeight = 24 });
+    }
+
     private void OpenDiagnosticTool(string path, string? argument = null)
     {
         try { Process.Start(new ProcessStartInfo(path, argument ?? "") { UseShellExecute = true }); }

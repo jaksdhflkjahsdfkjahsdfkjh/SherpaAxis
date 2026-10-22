@@ -5,11 +5,21 @@
         xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
         Title="{loc:Text T2D59B6CF3962}" Width="560" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" Background="#0B1220" Foreground="#E8EFF8" FontFamily="Segoe UI">
+    <Window.Resources><BooleanToVisibilityConverter x:Key="BooleanVisibility"/></Window.Resources>
     <StackPanel Margin="24">
         <TextBlock Text="{loc:Text TC2A314C3B32B}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,14"/>
         <controls:StableComboBox x:Name="FirmwareSelector" ItemsSource="{Binding Images}" SelectedItem="{Binding SelectedImage}" DisplayMemberPath="DisplayName" ItemTemplate="{x:Null}" IsEnabled="{Binding CanPrepare}" Margin="0,0,0,14" AutomationProperties.Name="{loc:Text TC2A314C3B32B}"/>
-        <TextBlock Text="{loc:Text T0F83D7DCBABE}" TextWrapping="Wrap" Foreground="#95A9C1" Margin="0,0,0,14"/>
-        <TextBlock Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Foreground="#FFCE83" Margin="0,0,0,18" AutomationProperties.LiveSetting="Polite"/>
-        <Button x:Name="FlashFirmwareButton" Content="{loc:Translate Value={Binding FlashLabel}}" Click="FlashClick" IsEnabled="{Binding CanFlash}" HorizontalAlignment="Right" MinWidth="110"/>
+        <TextBlock Text="{loc:Text T53290D60D8C9}" TextWrapping="Wrap" Foreground="#95A9C1" Margin="0,0,0,14">
+            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Completed}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+        </TextBlock>
+        <TextBlock x:Name="FirmwareStatusLabel" Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Margin="0,0,0,18" AutomationProperties.LiveSetting="Polite">
+            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#FFCE83"/><Style.Triggers><DataTrigger Binding="{Binding Completed}" Value="True"><Setter Property="Foreground" Value="#78E3C6"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+        </TextBlock>
+        <WrapPanel HorizontalAlignment="Right">
+            <Button x:Name="UseDetectedControllerButton" Content="Use detected controller" Click="UseDetectedClick" IsEnabled="{Binding CanUseDetected}" Visibility="{Binding CanAccept, Converter={StaticResource BooleanVisibility}}" FontSize="12" Margin="0,0,8,8"/>
+            <Button x:Name="RestoreFirmwareCalibrationButton" Content="Restore calibration backup" Click="RestoreCalibrationClick" IsEnabled="{Binding CanReview}" Visibility="{Binding Blocked, Converter={StaticResource BooleanVisibility}}" FontSize="12" Margin="0,0,8,8"/>
+            <Button x:Name="ReviewFirmwareButton" Content="Check firmware" Click="ReviewClick" IsEnabled="{Binding CanReview}" Visibility="{Binding Blocked, Converter={StaticResource BooleanVisibility}}" FontSize="12" Margin="0,0,8,8"/>
+            <Button x:Name="FlashFirmwareButton" Content="{loc:Translate Value={Binding FlashLabel}}" Click="FlashClick" IsEnabled="{Binding CanFlash}" MinWidth="110" Margin="0,0,0,8"/>
+        </WrapPanel>
     </StackPanel>
 </Window>

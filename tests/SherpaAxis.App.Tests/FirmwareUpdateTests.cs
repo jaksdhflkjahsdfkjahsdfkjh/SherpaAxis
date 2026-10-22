@@ -89,13 +89,164 @@ public sealed class FirmwareUpdateTests
         => Assert.Equal(expected, FirmwareUpdater.VerifyToolResult(new(code, output, "")));
 
     [Fact]
-    public void NativeToolArgumentsKeepPathsSeparateAndEnableReadbackVerification()
+    public void NativeToolArgumentsMatchVendorDownloadSequenceForAutoRestartingPedals()
     {
         var start = WindowsFirmwareServices.CreateProgrammingStart(@"C:\ST tools\DfuSeCommand.exe", @"C:\private images\PE0017.dfu");
         Assert.False(start.UseShellExecute);
         Assert.True(start.RedirectStandardError && start.RedirectStandardOutput && start.RedirectStandardInput && start.CreateNoWindow);
-        string[] expected = ["-c", "--de", "0", "--al", "0", "-d", "--v", "--fn", @"C:\private images\PE0017.dfu"];
+        string[] expected = ["-c", "--de", "0", "--al", "0", "-d", "--fn", @"C:\private images\PE0017.dfu"];
         Assert.Equal(expected, start.ArgumentList);
+    }
+
+    [Fact]
+    public async Task ConfirmedDownloadResumesOnMatchingControllerCheckWithoutClaimingReadback()
+    {
+        using var fake = new FakeFirmware();
+        fake.Result = new(0, "Upgrade successful !\r\n", "", ReadbackRequested: false);
+        var record = await fake.Flash(await fake.Prepare());
+        Assert.True(record.DownloadCompleted);
+        Assert.False(record.ProgramVerified);
+        Assert.Contains("Byte readback was not performed", record.Log, StringComparison.Ordinal);
+        Assert.False((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
+        fake.Reconnect();
+        var review = await fake.Updater.CheckConnectionAsync(false, CancellationToken.None);
+        Assert.False(review.CanAccept);
+        Assert.True(review.Complete);
+        Assert.Contains("Byte readback was not verified", review.Detail, StringComparison.Ordinal);
+        Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CompletionWaitsForReconnectRestoresCalibrationAndChecksWithoutAnotherFlash()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults, TransientConnectFailures = 3 };
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        await fake.Flash(await fake.Prepare());
+        var result = await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None);
+        Assert.True(result.Complete);
+        Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
+        Assert.Equal(1, fake.CalibrationWrites);
+        Assert.Equal(1, fake.CalibrationSaves);
+        Assert.Equal(1, fake.Commands);
+        Assert.Equal(1, fake.Programs);
+        Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CompletionDoesNotRewriteCalibrationWhenTheBackupAlreadyMatches()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true };
+        await fake.Flash(await fake.Prepare());
+        Assert.True((await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None)).Complete);
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.CalibrationSaves);
+    }
+
+    [Theory]
+    [InlineData("port")]
+    [InlineData("identity")]
+    [InlineData("missing")]
+    public async Task CompletionNeverRestoresAnUnexpectedOrMissingController(string failure)
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = failure != "missing", AfterFlashCalibration = PedalHardwareSettings.Defaults };
+        await fake.Flash(await fake.Prepare());
+        if (failure == "port") { fake.ConnectionPort = "port-2"; }
+        if (failure == "identity") { fake.Serial = "PE0017FF"; }
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.CalibrationSaves);
+        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task FailedCalibrationSaveKeepsTheUpdateBlockedAndCanBeRecoveredWithoutReflashing()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults, FailCalibrationSave = true };
+        await fake.Flash(await fake.Prepare());
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.False((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
+        fake.FailCalibrationSave = false;
+        Assert.True((await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None)).Complete);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(2, fake.CalibrationSaves);
+    }
+
+    [Fact]
+    public async Task UnconfirmedProgrammingNeverTriggersAutomaticCalibrationRestoration()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults };
+        fake.Result = new(1, "", "unknown result");
+        var plan = await fake.Prepare();
+        await Assert.ThrowsAsync<IOException>(() => fake.Flash(plan));
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.CalibrationSaves);
+    }
+
+    [Fact]
+    public async Task ControllerCheckCannotClearTheUpdateAtAnotherUsbPort()
+    {
+        using var fake = new FakeFirmware();
+        await fake.Flash(await fake.Prepare()); fake.Reconnect(); fake.ConnectionPort = "port-2";
+        var result = await fake.Updater.CheckConnectionAsync(false, CancellationToken.None);
+        Assert.False(result.Complete || result.CanAccept);
+        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.False((await fake.Updater.CheckConnectionAsync(true, CancellationToken.None)).Complete);
+        fake.ConnectionPort = "port-1";
+        Assert.True((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
+    }
+
+    [Theory]
+    [InlineData(1, "Upgrade successful !")]
+    [InlineData(0, "not Upgrade successful !")]
+    [InlineData(0, "Download failed")]
+    public async Task DownloadOnlyModeStillRejectsMissingOrFailedProgramming(int exitCode, string output)
+    {
+        using var fake = new FakeFirmware();
+        fake.Result = new(exitCode, output, "", ReadbackRequested: false);
+        var plan = await fake.Prepare();
+        await Assert.ThrowsAsync<IOException>(() => fake.Flash(plan));
+        var record = await fake.Updater.ReadPendingAsync(CancellationToken.None);
+        Assert.False(record!.DownloadCompleted);
+        Assert.False(record.ProgramVerified);
+    }
+
+    [Fact]
+    public async Task CalibrationResetIsReportedAndBackupCanBeExplicitlyRestoredWithoutAnotherFlash()
+    {
+        using var fake = new FakeFirmware();
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        await fake.Flash(await fake.Prepare());
+        fake.Reconnect();
+        fake.Calibration = new(new(0, 16384), new(0, 16777216), new(0, 16384));
+        var review = await fake.Updater.CheckConnectionAsync(false, CancellationToken.None);
+        Assert.False(review.Complete);
+        Assert.False(review.CanAccept);
+        Assert.Contains("calibration does not match", review.Detail, StringComparison.Ordinal);
+        Assert.False((await fake.Updater.CheckConnectionAsync(true, CancellationToken.None)).Complete);
+        await Assert.ThrowsAsync<InvalidOperationException>(fake.Prepare);
+        await fake.Updater.RestoreCalibrationBackupAsync(CancellationToken.None);
+        Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
+        Assert.Equal(1, fake.CalibrationWrites);
+        Assert.Equal(1, fake.CalibrationSaves);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(1, fake.Commands);
+        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.True((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
+        var next = await fake.Prepare();
+        Assert.Equal(FakeFirmware.InitialCalibration, next.Calibration);
+    }
+
+    [Fact]
+    public async Task CalibrationBackupRestorationRejectsAnotherControllerBeforeWriting()
+    {
+        using var fake = new FakeFirmware();
+        await fake.Flash(await fake.Prepare());
+        fake.Reconnect(); fake.Serial = "PE0017FF";
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.RestoreCalibrationBackupAsync(CancellationToken.None));
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.CalibrationSaves);
     }
 
     [Fact]
@@ -176,7 +327,6 @@ public sealed class FirmwareUpdateTests
     [InlineData("wrong-port")]
     [InlineData("multiple")]
     [InlineData("no-driver")]
-    [InlineData("write-uncertain")]
     public async Task BootloaderFailuresRetainRecoveryAndNeverStartProgramming(string failure)
     {
         using var fake = new FakeFirmware();
@@ -187,6 +337,78 @@ public sealed class FirmwareUpdateTests
         Assert.Equal(0, fake.Programs);
         Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
         await Assert.ThrowsAsync<InvalidOperationException>(fake.Prepare);
+    }
+
+    [Theory]
+    [InlineData("io")]
+    [InlineData("timeout")]
+    [InlineData("cancelled")]
+    public async Task DisconnectDuringBootCommandContinuesOnlyAfterMatchingBootloaderAppears(string error)
+    {
+        using var fake = new FakeFirmware();
+        var plan = await fake.Prepare();
+        fake.BootWriteFailure = error switch
+        {
+            "timeout" => new TimeoutException("Boot write timed out"),
+            "cancelled" => new OperationCanceledException("Boot write cancelled"),
+            _ => new IOException("Cannot write HID feature report (Win32 31)")
+        };
+        var result = await fake.Flash(plan);
+        Assert.True(result.ProgramVerified);
+        Assert.Contains("Bootloader command completion uncertain:", result.Log, StringComparison.Ordinal);
+        Assert.Contains("Verify successful !", result.Log, StringComparison.Ordinal);
+        Assert.True(fake.JournalBeforeBoot);
+        Assert.Equal(1, fake.Commands);
+        Assert.Equal(1, fake.Programs);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("wrong-port")]
+    [InlineData("multiple")]
+    [InlineData("no-driver")]
+    public async Task UncertainBootWriteNeverBypassesPortOrDriverChecks(string failure)
+    {
+        using var fake = new FakeFirmware();
+        var plan = await fake.Prepare();
+        fake.BootFailure = failure;
+        fake.BootWriteFailure = new IOException("Write completion uncertain");
+        await Assert.ThrowsAsync<IOException>(() => fake.Flash(plan));
+        Assert.Equal(0, fake.Programs);
+        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task BootloaderDriverIsPreparedOnceAndIdentityIsCheckedAgainBeforeProgramming()
+    {
+        using var fake = new FakeFirmware();
+        var plan = await fake.Prepare();
+        fake.BootFailure = "no-driver";
+        fake.RepairDriver = true;
+        Assert.True((await fake.Flash(plan)).ProgramVerified);
+        Assert.Equal(1, fake.DriverPreparations);
+        fake.Result = new(1, "", "retry required");
+        fake.BootFailure = "no-driver";
+        fake.DriverRepairChangesPort = true;
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.RetryAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(2, fake.DriverPreparations);
+        Assert.Equal(1, fake.Programs);
+    }
+
+    [Fact]
+    public async Task RetryRepairsTheRecordedBootloaderWithoutSendingAnotherBootCommand()
+    {
+        using var fake = new FakeFirmware();
+        var plan = await fake.Prepare();
+        fake.BootFailure = "no-driver";
+        await Assert.ThrowsAsync<IOException>(() => fake.Flash(plan));
+        Assert.Equal(1, fake.DriverPreparations);
+        fake.RepairDriver = true;
+        var result = await fake.Updater.RetryAsync(new InlineProgress(_ => { }), CancellationToken.None);
+        Assert.True(result.ProgramVerified);
+        Assert.Equal(1, fake.Commands);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(2, fake.DriverPreparations);
     }
 
     [Fact]
@@ -234,9 +456,11 @@ public sealed class FirmwareUpdateTests
         await fake.Flash(plan); fake.Reconnect();
         fake.Calibration = new(new(100, 2000), new(200, 20000), new(100, 2000));
         var changed = await fake.Updater.CheckConnectionAsync(false, CancellationToken.None);
-        Assert.True(changed.CanAccept && !changed.Complete);
+        Assert.False(changed.CanAccept || changed.Complete);
         Assert.True(File.Exists(fake.Updater.JournalPath));
-        Assert.True((await fake.Updater.CheckConnectionAsync(true, CancellationToken.None)).Complete);
+        Assert.False((await fake.Updater.CheckConnectionAsync(true, CancellationToken.None)).Complete);
+        await fake.Updater.RestoreCalibrationBackupAsync(CancellationToken.None);
+        Assert.True((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
 
         fake.Serial = "PE001600";
         plan = await fake.Prepare(); fake.Result = new(1, "", "tool failed");
@@ -306,6 +530,7 @@ public sealed class FirmwareUpdateTests
         internal static readonly PedalCalibration InitialCalibration = new(new(400, 8000), new(3_400_000, 4_500_000), new(400, 8000));
         internal static readonly FirmwareToolResult Success = new(0, "Upgrade successful !\r\nVerify successful !\r\n", "");
         internal string Serial { get; set; } = "PE001600";
+        internal string ConnectionPort { get; set; } = "port-1";
         internal PedalCalibration Calibration { get; set; } = InitialCalibration;
         internal bool ToolFailure { get; set; }
         internal bool OtherDfu { get; set; }
@@ -314,7 +539,17 @@ public sealed class FirmwareUpdateTests
         internal int Commands { get; private set; }
         internal int Programs { get; private set; }
         internal bool JournalBeforeBoot { get; private set; }
+        internal Exception? BootWriteFailure { get; set; }
+        internal bool RepairDriver { get; set; }
+        internal bool DriverRepairChangesPort { get; set; }
+        internal int DriverPreparations { get; private set; }
+        internal int CalibrationWrites { get; private set; }
+        internal int CalibrationSaves { get; private set; }
         internal Task<FirmwareToolResult>? ProgramBarrier { get; set; }
+        internal bool AutoReconnectAfterProgram { get; set; }
+        internal PedalCalibration? AfterFlashCalibration { get; set; }
+        internal bool FailCalibrationSave { get; set; }
+        internal int TransientConnectFailures { get; set; }
         internal FirmwareToolResult Result { get; set; } = Success;
         internal string ImagePath => Path.Combine(directory, "image.dfu");
         internal string ToolPath => Path.Combine(directory, "DfuSeCommand.exe");
@@ -324,14 +559,32 @@ public sealed class FirmwareUpdateTests
         {
             Directory.CreateDirectory(directory); File.WriteAllBytes(ImagePath, Bytes); File.WriteAllText(ToolPath, "test tool");
             Updater = new(Path.Combine(directory, "updates"), new(
-                _ => Task.FromResult(new FirmwareConnection(new(Device, Serial, this, this), new("usb-pedals", "port-1"), Calibration)),
+                _ =>
+                {
+                    if (Programs > 0 && !InBootloader && TransientConnectFailures > 0)
+                    { TransientConnectFailures--; return Task.FromException<FirmwareConnection>(new IOException("USB still reconnecting")); }
+                    return Task.FromResult(new FirmwareConnection(new(Device, Serial, this, this), new("usb-pedals", ConnectionPort), Calibration));
+                },
                 () => OtherDfu ? [new("other", "port-2")] : !InBootloader || BootFailure == "missing" ? []
                     : BootFailure == "multiple" ? [new("boot", "port-1"), new("other", "port-2")]
                     : [new("boot", BootFailure == "wrong-port" ? "port-2" : "port-1", BootFailure != "no-driver")],
                 (_, _) => ToolFailure ? Task.FromException(new IOException("Missing ST tool")) : Task.CompletedTask,
-                (_, _, _) => { Programs++; return ProgramBarrier ?? Task.FromResult(Result); },
+                async (_, _, _) =>
+                {
+                    Programs++;
+                    var result = await (ProgramBarrier ?? Task.FromResult(Result));
+                    if (AutoReconnectAfterProgram) { Reconnect(); Calibration = AfterFlashCalibration ?? Calibration; }
+                    return result;
+                },
                 (_, _) => Task.CompletedTask,
-                bytes => new("017", Convert.ToHexString(SHA256.HashData(bytes)), bytes.Length, 0x0800C000, bytes.Length)));
+                bytes => new("017", Convert.ToHexString(SHA256.HashData(bytes)), bytes.Length, 0x0800C000, bytes.Length),
+                device =>
+                {
+                    Assert.Equal("port-1", device.LocationPath);
+                    DriverPreparations++;
+                    if (RepairDriver) { BootFailure = DriverRepairChangesPort ? "wrong-port" : ""; }
+                    return Task.CompletedTask;
+                }));
         }
         internal Task<FirmwarePlan> Prepare() => Updater.PrepareAsync(ImagePath, ToolPath, CancellationToken.None);
         internal Task<FirmwareUpdateRecord> Flash(FirmwarePlan plan) => Updater.FlashAsync(plan, new InlineProgress(_ => { }), CancellationToken.None);
@@ -339,9 +592,13 @@ public sealed class FirmwareUpdateTests
         public Task<byte[]> ReadAsync(HidDeviceInfo device, byte id, CancellationToken token) => Task.FromResult(PedalCalibrationReport.Encode(Calibration));
         public Task WriteAsync(HidDeviceInfo device, ReadOnlyMemory<byte> bytes, CancellationToken token)
         {
+            if (bytes.Span[0] == PedalCalibrationReport.ReportId)
+            { Calibration = PedalCalibrationReport.Decode(bytes.Span); CalibrationWrites++; return Task.CompletedTask; }
+            if (bytes.Span.SequenceEqual(PedalCommandReport.Encode(PedalDeviceCommand.SaveConfiguration)))
+            { CalibrationSaves++; return FailCalibrationSave ? Task.FromException(new IOException("Save completion uncertain")) : Task.CompletedTask; }
             Assert.Equal(PedalCommandReport.Encode(PedalDeviceCommand.EnterBootloader), bytes.ToArray());
             Commands++; JournalBeforeBoot = File.Exists(Updater.JournalPath); InBootloader = true;
-            return BootFailure == "write-uncertain" ? Task.FromException(new IOException("Write completion uncertain")) : Task.CompletedTask;
+            return BootWriteFailure is not null ? Task.FromException(BootWriteFailure) : Task.CompletedTask;
         }
         public void Dispose() => Directory.Delete(directory, true);
     }
@@ -350,6 +607,98 @@ public sealed class FirmwareUpdateTests
 [Collection("WPF UI")]
 public sealed class FirmwareUpdateUiTests
 {
+    [Fact]
+    public Task UnconfirmedProgrammingHasAnInlineRecoveryActionWithoutAModalConfirmation() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware();
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater });
+        fake.Result = new(1, "", "programming result unknown");
+        await main.UpdateFirmwareAsync(fake.ImagePath); fake.Reconnect();
+        await main.CheckFirmwareAsync();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.True(model.Firmware.Blocked && model.Firmware.CanUseDetected);
+        var accepted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var dialog = new FirmwareUpdateWindow(model.Firmware, main.Resources, () => Task.CompletedTask,
+            accept: async () => { await main.CheckUpdatedFirmwareAsync(true); accepted.SetResult(); })
+        { Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            dialog.Show(); dialog.UpdateLayout();
+            var button = Assert.IsType<Button>(dialog.FindName("UseDetectedControllerButton"));
+            Assert.True(button.IsVisible && button.IsEnabled);
+            model.Firmware.Running = true;
+            Assert.False(button.IsEnabled);
+            model.Firmware.Running = false;
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await accepted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(model.Firmware.Blocked);
+            Assert.Contains("Byte readback was not verified", model.Firmware.Status, StringComparison.Ordinal);
+        }
+        finally { dialog.Close(); }
+    });
+
+    [Fact]
+    public Task FirmwareBackupRejectsTemporaryBoundsWithPendingHardwareRecovery() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware();
+        var plan = await fake.Prepare();
+        var folder = Path.Combine(fake.Updater.DirectoryPath, "raw-recovery");
+        var snapshot = new HardwareRecoverySnapshot(1, DateTimeOffset.UtcNow, plan.Device, plan.Calibration,
+            PedalHardwareSettings.Defaults, null, SerialNumber: plan.SerialNumber);
+        await new HardwareRecoveryStore(Path.Combine(folder, "raw.json")).WriteAsync(snapshot, CancellationToken.None);
+        fake.Calibration = PedalHardwareSettings.Defaults;
+        var recovery = new StartupHardwareRecovery(folder, (_, _) => Task.FromResult(new RecoveryControllerConnection(plan.Device, plan.SerialNumber, fake, fake)));
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater, Recovery = recovery });
+        var destination = Path.Combine(fake.Updater.DirectoryPath, "backup.json");
+        await main.BackupFirmwareCalibrationAsync(destination);
+        Assert.False(File.Exists(destination));
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.Commands);
+        Assert.Contains("Temporary raw-input bounds", Assert.IsType<DashboardViewModel>(main.DataContext).Firmware.Status, StringComparison.Ordinal);
+    });
+
+    [Fact]
+    public Task FirmwareDialogAutomaticallyRestoresChecksAndFinishesWithOneOkButton() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults };
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater },
+            profileLibrary: new(Path.Combine(fake.Updater.DirectoryPath, "profiles")));
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        model.Firmware.SelectedImage = new(fake.ImagePath, "017", "test.dfu");
+        var flashed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var dialog = new FirmwareUpdateWindow(model.Firmware, main.Resources,
+            async () => { await main.UpdateFirmwareAsync(fake.ImagePath); flashed.SetResult(); })
+        { Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            dialog.Show(); dialog.UpdateLayout();
+            var flash = Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton"));
+            flash.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await flashed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal(FirmwareUpdateTests.FakeFirmware.InitialCalibration, fake.Calibration);
+            Assert.Equal(1, fake.Programs);
+            Assert.False(model.Firmware.Blocked);
+            Assert.False(model.Firmware.CanAccept);
+            Assert.True(model.Firmware.Completed);
+            Assert.Equal("OK", flash.Content);
+            Assert.Contains("Pedals are ready", model.Firmware.Status, StringComparison.Ordinal);
+            Assert.Equal(Color.FromRgb(0x78, 0xE3, 0xC6), Assert.IsType<SolidColorBrush>(Assert.IsType<TextBlock>(dialog.FindName("FirmwareStatusLabel")).Foreground).Color);
+            Assert.False(Assert.IsType<Button>(dialog.FindName("RestoreFirmwareCalibrationButton")).IsVisible);
+            Assert.False(Assert.IsType<Button>(dialog.FindName("ReviewFirmwareButton")).IsVisible);
+            dialog.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsAssignableFrom<FrameworkElement>(dialog.Content), "firmware-complete.png");
+            flash.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(dialog.IsVisible);
+            Assert.Equal(1, fake.Programs);
+        }
+        finally { dialog.Close(); }
+    });
+
     [Fact]
     public Task FirmwareDialogRunsPreflightAndFlashAndStartupPendingUpdateBlocksLiveInput() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
