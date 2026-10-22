@@ -17,21 +17,25 @@ internal sealed class CaptureDisplay
 
     public CaptureDisplay(TextWriter output, TextWriter errors)
     {
-        worker = Task.Run(async () =>
+        // TextWriter can block synchronously even through its async API.
+        worker = Task.Factory.StartNew(() =>
         {
             try
             {
-                await errors.WriteLineAsync("Firmware-calibrated device axes; ADC RAW is unavailable. No device writes.").ConfigureAwait(false);
-                await foreach (var message in messages.Reader.ReadAllAsync().ConfigureAwait(false))
+                errors.WriteLineAsync("Firmware-calibrated device axes; ADC RAW is unavailable. No device writes.").GetAwaiter().GetResult();
+                while (messages.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
                 {
-                    await (message.IsError ? errors : output).WriteLineAsync(message.Text).ConfigureAwait(false);
+                    while (messages.Reader.TryRead(out var message))
+                    {
+                        (message.IsError ? errors : output).WriteLineAsync(message.Text).GetAwaiter().GetResult();
+                    }
                 }
             }
             catch (Exception exception) when (exception is IOException or ObjectDisposedException)
             {
                 // Loss of a display must not terminate an otherwise valid recording.
             }
-        });
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
     public void Publish(string text, bool isError = false) => messages.Writer.TryWrite((text, isError));
