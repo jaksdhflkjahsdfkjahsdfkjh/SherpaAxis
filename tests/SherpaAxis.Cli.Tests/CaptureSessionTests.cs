@@ -42,6 +42,29 @@ public sealed class CaptureSessionTests
     }
 
     [Fact]
+    public async Task TerminalWritesStayOffTheSharedPoolEvenAfterAnAsynchronousWrite()
+    {
+        using var terminal = new AsyncTerminalWriter();
+        var display = new CaptureDisplay(terminal, terminal);
+        try
+        {
+            var first = await terminal.Writes.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(first.OnThreadPool);
+            display.Publish("latest input");
+            terminal.ReleaseFirst.TrySetResult();
+            var next = await terminal.Writes.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal("latest input", next.Text);
+            Assert.False(next.OnThreadPool);
+        }
+        finally
+        {
+            terminal.ReleaseFirst.TrySetResult();
+            await display.CompleteAsync();
+            await display.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [Fact]
     public async Task UnpausingTheDisplayShowsTheLatestStateWithoutReplayingAStaleBacklog()
     {
         using var terminal = new BlockingTerminalWriter();
@@ -278,6 +301,22 @@ public sealed class CaptureSessionTests
             Started.TrySetResult();
             await release.Task.WaitAsync(cancellationToken);
             Lines.Add(buffer.ToString());
+        }
+    }
+
+    private sealed class AsyncTerminalWriter : TextWriter
+    {
+        private bool first = true;
+        public override Encoding Encoding => Encoding.UTF8;
+        public Channel<(string? Text, bool OnThreadPool)> Writes { get; } = Channel.CreateUnbounded<(string?, bool)>();
+        public TaskCompletionSource ReleaseFirst { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override Task WriteLineAsync(string? value)
+        {
+            Writes.Writer.TryWrite((value, Thread.CurrentThread.IsThreadPoolThread));
+            if (!first) { return Task.CompletedTask; }
+            first = false;
+            return ReleaseFirst.Task;
         }
     }
 
