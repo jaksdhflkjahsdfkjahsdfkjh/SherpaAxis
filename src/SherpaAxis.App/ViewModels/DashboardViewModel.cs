@@ -6,7 +6,11 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed partial class DashboardViewModel : ObservableObject
 {
-    public static string VersionLabel { get; } = $"v{typeof(DashboardViewModel).Assembly.GetName().Version!.ToString(3)}";
+    private static readonly Version ApplicationVersion = typeof(DashboardViewModel).Assembly.GetName().Version!;
+    public static string VersionLabel { get; } = $"v{ApplicationVersion.ToString(ApplicationVersion.Build == 0 ? 2 : 3)}";
+    public static string WindowTitle { get; } = $"SherpaAxis — Pedals Utility · {VersionLabel}";
+    public static Uri IssuesUri => ApplicationLinks.Issues;
+    public AppUpdateViewModel Updates { get; } = new();
     public GettingStartedViewModel Tour { get; } = new();
     private readonly DashboardEngine engine;
     private readonly Dictionary<PedalAxis, AxisEditor> editors = [];

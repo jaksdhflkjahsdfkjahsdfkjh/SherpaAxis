@@ -45,15 +45,37 @@ mode and profile handlers as the window. A named mutex prevents duplicate instan
 it by replacement. Recovery transactions determine when a durable write is required.
 
 Desktop services are grouped by responsibility under Desktop, Diagnostics,
-Firmware, Hardware, Input, Output, Persistence, Recording and Runtime. Dashboard
+Firmware, Hardware, Input, Output, Persistence, Recording, Runtime and Updates. Dashboard
 view-model and window workflow partials keep editing, graphs and device operations separate.
 
 Diagnostic support ZIPs contain bounded, redacted logs and status. They exclude
 continuous input, profile contents, hardware backups and firmware payloads.
 
+Application update checks use the public GitHub latest-release API, with no account
+token or telemetry. Stable numeric tags are compared with the assembly version.
+One automatic check runs at each app startup, independently of pedal acquisition
+and virtual output; there is no recurring timer. Settings provides a manual check
+and an opt-out that takes effect at the next startup. Each check requests fresh
+metadata. `%LOCALAPPDATA%\SherpaAxis\updates.json` deduplicates tray notices across
+restarts without caching release results. Requests have an
+eight-second deadline and are cancelled at shutdown. Network failures stay in the
+Updates section. Release links are constructed for this repository; downloaded
+metadata cannot redirect the user to a different host. The app never downloads or
+executes an installer itself.
+
+To notify users, publish a public, stable GitHub Release with a numeric tag such as
+`v1.0.1` and attach `Setup.exe`. A commit, a tag alone, a draft or a prerelease does
+not trigger a notification. Update the project version before building that release.
+Users need network access to GitHub; a private or unpublished repository returns no
+public release. Windows notification preferences may suppress the tray balloon;
+the footer link remains available.
+
 ## Input and native configuration
 
-FEEL-VR Pedals One uses VID `0483`, PID `A2EA`. The joystick collection is
+SherpaAxis recognizes the FEEL-VR Pedals One controller reporting VID `0483`, PID
+`A2EA`. These are product identifiers shared by matching controllers, not an
+individual pedal set's serial number. Other FEEL-VR models or revisions may use
+different identifiers and are not covered by that match. The joystick collection is
 usage page 1, usage 4. Report 1 is nine bytes: unsigned little-endian throttle
 (16 bits), brake (32 bits), clutch (16 bits). Valid logical maxima are 16,384
 for throttle/clutch and 16,777,216 for brake. These are firmware-calibrated

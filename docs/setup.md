@@ -123,6 +123,10 @@ SYSTEM task. Native SDK startup inspection has a separate opt-in regression
 check that reads device metadata and verifies one hidden SDK window under
 concurrent calls. The full input/output hardware test remains opt-in.
 
-The generated setup executable is unsigned until a publisher signing certificate
-is supplied. Fresh-machine installation, Windows restart behavior and physical
-hardware acceptance remain release checks.
+The generated setup executable is unsigned; publisher signing is deferred.
+On October 22, 2026, the maintainer reported successful clean-PC installation,
+reboot and uninstall testing; physical firmware flashing with automatic calibration
+restoration and pedal-output checks; longer racing/standby/reconnect drift tests;
+and upgrades preserving profiles, auto-load, bindings, language and startup
+preferences. These results cover the tested environment, not every Windows or
+controller revision.

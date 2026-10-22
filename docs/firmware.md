@@ -108,13 +108,14 @@ or retry the recorded bootloader operation.
 Logs remain after resolution; only the blocking journal is cleared. No automatic
 retry, downgrade or HTTP firmware download is performed.
 
-Automated tests use fake transports, bootloaders and tool processes. A physical
-017 reflash reached DfuSe's successful download result and the pedals restarted
-automatically. The requested upload verification then failed; this is not a
-byte-verified flash. Original calibration was restored, saved and read back on
-that controller. The automatic restoration/check workflow, older-firmware upgrades,
-full input acceptance and fresh-machine driver setup still need coordinated
-hardware testing before public release.
+Automated tests use fake transports, bootloaders and tool processes. On October 22,
+2026, the maintainer reported successful physical firmware flashing with automatic
+calibration restoration and pedal-output checks, clean-PC installation with reboot
+and uninstall, longer racing/standby/reconnect drift tests, and upgrades preserving
+profiles, auto-load, bindings, language and startup preferences. These are reported
+manual acceptance results; additional Windows builds and controllers are not
+implied. Firmware byte readback is not performed. Upgrades from older firmware
+remain a separate hardware test from reflashing a controller already on 017.
 
 ## Physical acceptance test
 

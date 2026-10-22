@@ -43,7 +43,9 @@ public partial class MainWindow
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
         await UpdateInputVisibilityAsync();
         await ResumeLiveAfterRecoveryAsync();
+        var firstLaunch = !launchInitialized;
         launchInitialized = true;
+        if (firstLaunch) { _ = CheckForAppUpdatesAsync(manual: false); }
         _ = CheckDeviceDiagnosticsAsync();
     }
     private async Task InitializeRuntimeAsync()
@@ -173,6 +175,7 @@ public partial class MainWindow
     private async void TrayCommandRequested(TrayCommand command)
     {
         if (command == TrayCommand.Exit) { RequestExit(); return; }
+        if (command == TrayCommand.ViewUpdate) { OpenAppRelease(); return; }
         RestoreFromTray();
         if (command == TrayCommand.Tune) { await RequestPanelModeAsync(SidePanelMode.Tuning); }
         else if (command == TrayCommand.Calibrate) { await RequestPanelModeAsync(SidePanelMode.Calibration); }

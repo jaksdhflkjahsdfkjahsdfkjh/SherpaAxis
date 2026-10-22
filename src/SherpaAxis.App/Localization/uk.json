@@ -838,5 +838,20 @@
   "A supported pedal bootloader and bundled DfuSe driver are required.": "Потрібні підтримуваний завантажувач педалей і включений драйвер DfuSe.",
   "The bootloader no longer uniquely matches the original pedal USB port. No driver was changed.": "Завантажувач більше не відповідає однозначно початковому USB-порту педалей. Драйвер не змінено.",
   "Cannot prepare the pedal DfuSe driver: {0}": "Не вдалося підготувати драйвер DfuSe педалей: {0}",
-  "Hold Fix drift or your bound control with your foot completely off for at least one stable second. Keep holding until correction finishes; release to stop. Correction is temporary until saved. Stability alone cannot rule out steady foot pressure.": "Приберіть ногу й утримуйте «Виправити дрейф» або призначену кнопку щонайменше одну стабільну секунду. Тримайте до завершення корекції; відпустіть для зупинки. Корекція тимчасова до збереження. Стабільність сама по собі не виключає постійного тиску ноги."
+  "Hold Fix drift or your bound control with your foot completely off for at least one stable second. Keep holding until correction finishes; release to stop. Correction is temporary until saved. Stability alone cannot rule out steady foot pressure.": "Приберіть ногу й утримуйте «Виправити дрейф» або призначену кнопку щонайменше одну стабільну секунду. Тримайте до завершення корекції; відпустіть для зупинки. Корекція тимчасова до збереження. Стабільність сама по собі не виключає постійного тиску ноги.",
+  "Report a bug": "Повідомити про помилку",
+  "Updates": "Оновлення",
+  "Check for updates at startup": "Перевіряти оновлення під час запуску",
+  "Checks GitHub when the app starts. No pedal data or profiles are sent. Installation is manual.": "Перевіряє GitHub під час запуску програми. Дані педалей і профілі не надсилаються. Встановлення вручну.",
+  "Check now": "Перевірити зараз",
+  "View release": "Переглянути випуск",
+  "Checks GitHub for stable releases. Downloads and installation are manual.": "Перевіряє стабільні випуски на GitHub. Завантаження та встановлення вручну.",
+  "Checking for updates…": "Перевірка оновлень…",
+  "Update available: {0}": "Доступне оновлення: {0}",
+  "A newer version is available: {0}.": "Доступна новіша версія: {0}.",
+  "No public release found. The repository may be private or have no published releases.": "Публічного випуску не знайдено. Репозиторій може бути приватним або не мати опублікованих випусків.",
+  "You're up to date ({0}).": "Встановлено актуальну версію ({0}).",
+  "Could not check for updates. Check your connection and try again later.": "Не вдалося перевірити оновлення. Перевірте з’єднання та спробуйте пізніше.",
+  "SherpaAxis update available": "Доступне оновлення SherpaAxis",
+  "{0} is available. Click to view the release.": "Доступна версія {0}. Натисніть, щоб переглянути випуск."
 }

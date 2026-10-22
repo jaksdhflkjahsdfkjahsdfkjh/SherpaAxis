@@ -19,13 +19,30 @@ namespace SherpaAxis.App.Tests;
 public sealed class UiRefinementTests
 {
     [Fact]
-    public Task HeaderShowsTheBuiltApplicationVersion() => HardwarePedalUiTests.OnUiAsync(async () =>
+    public Task FooterAndWindowTitleShowTheReleaseVersionAndBugReportLink() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         await using var main = new MainWindow(new DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
         var label = Assert.IsType<TextBlock>(main.FindName("AppVersionLabel"));
-        Assert.Equal("v" + typeof(MainWindow).Assembly.GetName().Version!.ToString(3), label.Text);
-        main.ShowInTaskbar = false; main.Opacity = 0; main.Show(); main.UpdateLayout();
-        CapturePreview(Assert.IsAssignableFrom<FrameworkElement>(label.Parent), "version-label.png");
+        var footer = Assert.IsType<Border>(main.FindName("FooterBar"));
+        var link = Assert.IsType<System.Windows.Documents.Hyperlink>(main.FindName("BugReportLink"));
+        Assert.Equal("v1.0", label.Text);
+        Assert.Equal("https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues", link.NavigateUri.AbsoluteUri);
+        Assert.Contains(label, Descendants(footer));
+        try
+        {
+            Localizer.Instance.Language = "en";
+            Assert.Equal("SherpaAxis — Pedals Utility · v1.0", main.Title);
+            Assert.Equal("Report a bug", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
+            main.ShowInTaskbar = false; main.Opacity = 0; main.Show(); main.UpdateLayout();
+            CapturePreview(footer, "release-footer-en.png");
+            Localizer.Instance.Language = "uk";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal("SherpaAxis — утиліта педалей · v1.0", main.Title);
+            Assert.Equal("Повідомити про помилку", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
+            main.UpdateLayout();
+            CapturePreview(footer, "release-footer-uk.png");
+        }
+        finally { Localizer.Instance.Language = "en"; }
     });
 
     [Theory]

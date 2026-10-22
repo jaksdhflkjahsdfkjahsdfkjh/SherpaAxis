@@ -4,7 +4,7 @@
         xmlns:loc="clr-namespace:SherpaAxis.App.Localization"
         xmlns:controls="clr-namespace:SherpaAxis.App.Controls"
         xmlns:vm="clr-namespace:SherpaAxis.App.ViewModels"
-        Title="{loc:Text T10B0E18366A1}" Icon="Assets/SherpaAxis.ico" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
+        Title="{loc:Translate Value={Binding Source={x:Static vm:DashboardViewModel.WindowTitle}}}" Icon="Assets/SherpaAxis.ico" Width="1340" Height="940" MinWidth="1100" MinHeight="760"
         WindowState="Maximized" WindowStartupLocation="CenterScreen" Background="#0B1220" Foreground="#E8EFF8"
         FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True" Closing="WindowClosing" Deactivated="WindowDeactivated">
     <Window.Resources>
@@ -201,12 +201,7 @@
                 <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
             <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold"/>
-                    <Border Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" Padding="7,3" Margin="12,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="AppVersionLabel" Text="{x:Static vm:DashboardViewModel.VersionLabel}" Foreground="#95A9C1" FontSize="11"/>
-                    </Border>
-                </StackPanel>
+                <TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold"/>
                 <TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1"/>
             </StackPanel>
         </DockPanel>
@@ -519,6 +514,16 @@
                             <Button x:Name="GettingStartedButton" Content="{loc:Text T831D0F72D242}" Click="GettingStartedClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text T9133A7C768BD}"/>
                             <Button x:Name="SetupGuideButton" Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TC4EF8BC944C0}"/>
                             </StackPanel>
+                            <TextBlock Text="{loc:Text T22E2BADA8F1C}" Style="{StaticResource Section}"/>
+                            <CheckBox x:Name="CheckForUpdatesSetting" Content="{loc:Text T6D4834F783A8}" IsChecked="{Binding CheckForUpdates}" Click="PreferenceChanged"/>
+                            <TextBlock Text="{loc:Text T916D54C3D2C3}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                            <StackPanel x:Name="AppUpdatesPanel" DataContext="{Binding DataContext.Updates, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,14">
+                                <Button x:Name="CheckAppUpdatesButton" Content="{loc:Text T2937CFFB37AB}" Click="CheckAppUpdatesClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="AppUpdateStatus" Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                                <Button x:Name="ViewAppReleaseButton" Content="{loc:Text TDB51F7282B31}" Click="OpenAppReleaseClick" HorizontalAlignment="Stretch" Margin="0,8,0,0">
+                                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasUpdate}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                                </Button>
+                            </StackPanel>
                             <CheckBox x:Name="HidePhysicalPedalsSetting" Content="{loc:Text TF2A7D02C9C28}" IsChecked="{Binding HidePhysicalPedals}" Click="PreferenceChanged" ToolTip="{loc:Text T9AD475023259}"/>
                             <TextBlock Text="{loc:Translate Value={Binding InputVisibilityStatus}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
                             <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text T2140CBD331E9}"/>
@@ -546,8 +551,24 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="2" Padding="0,3" Margin="0,10,0,0">
+        <Border x:Name="FooterBar" Grid.Row="2" Padding="0,3" Margin="0,10,0,0">
             <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <TextBlock VerticalAlignment="Center" FontSize="11" Margin="0,0,16,0">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Updates.HasUpdate}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                        <Hyperlink x:Name="AppUpdateLink" NavigateUri="{Binding Updates.ReleasePage}" RequestNavigate="AppReleaseNavigate" Foreground="#78E3C6">
+                            <Run Text="{loc:Translate Value={Binding Updates.LinkLabel}}"/>
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock VerticalAlignment="Center" FontSize="11">
+                        <Hyperlink x:Name="BugReportLink" NavigateUri="{x:Static vm:DashboardViewModel.IssuesUri}" RequestNavigate="ReportBugNavigate" Foreground="#78E3C6" ToolTip="{x:Static vm:DashboardViewModel.IssuesUri}">
+                            <Run Text="{loc:Text TF75E0BD8FF23}"/>
+                        </Hyperlink>
+                    </TextBlock>
+                    <Border Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" Padding="7,3" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="AppVersionLabel" Text="{x:Static vm:DashboardViewModel.VersionLabel}" Foreground="#95A9C1" FontSize="11"/>
+                    </Border>
+                </StackPanel>
                 <Button x:Name="UndoDeleteProfileButton" DockPanel.Dock="Right" Content="{loc:Text TBFF260A6B20D}" Click="UndoDeleteProfileClick" Padding="10,3" FontSize="11" IsEnabled="{Binding CanTune}">
                     <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding CanUndoDelete}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
                 </Button>
