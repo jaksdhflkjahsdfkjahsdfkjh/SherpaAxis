@@ -6,6 +6,7 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed partial class DashboardViewModel : ObservableObject
 {
+    public GettingStartedViewModel Tour { get; } = new();
     private readonly DashboardEngine engine;
     private readonly Dictionary<PedalAxis, AxisEditor> editors = [];
     private PedalProfile applied = DashboardEngine.DefaultProfile();

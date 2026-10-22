@@ -23,10 +23,12 @@ public partial class MainWindow
     private Task? visibilityOperation;
     private bool savePreferencesAgain;
     private bool preferencesLoaded;
+    private bool launchInitialized;
     private bool exitRequested;
     private bool hidingToTray;
     private WindowState restoreState = WindowState.Maximized;
-    internal bool ShouldStartHidden => preferences.StartInTray && tray is not null && !viewModel.Recovery.IsBlocked && !viewModel.Firmware.Blocked && !viewModel.HasRecoverableDrafts && !viewModel.VendorControlRunning;
+    internal bool ShouldStartHidden => preferences.StartInTray && tray is not null && !viewModel.Recovery.IsBlocked && !viewModel.Firmware.Blocked && !viewModel.HasRecoverableDrafts && !viewModel.VendorControlRunning && !ShouldOfferTour;
+    internal bool ShouldOfferTour => launchInitialized && !preferences.TourDismissed && !viewModel.Recovery.IsBlocked && !viewModel.Firmware.Blocked && !viewModel.HasRecoverableDrafts && !viewModel.VendorControlRunning;
     internal bool IsDisposed => disposed;
 
     private async void DesktopLoaded(object sender, RoutedEventArgs e) { Loaded -= DesktopLoaded; await InitializeDesktopAsync(); }
@@ -41,6 +43,7 @@ public partial class MainWindow
         if (viewModel.Firmware.Blocked) { SetPanelMode(SidePanelMode.Settings); }
         await UpdateInputVisibilityAsync();
         await ResumeLiveAfterRecoveryAsync();
+        launchInitialized = true;
         _ = CheckDeviceDiagnosticsAsync();
     }
     private async Task InitializeRuntimeAsync()
@@ -195,6 +198,7 @@ public partial class MainWindow
         hidingToTray = true;
         try
         {
+            if (viewModel.Tour.IsOpen) { await FinishTourAsync(restorePanel: false); }
             if (hardwareSession is not null || WantsCalibration || modeOperation is { IsCompleted: false })
             {
                 await RequestPanelModeAsync(SidePanelMode.Tuning);

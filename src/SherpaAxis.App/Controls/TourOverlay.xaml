@@ -1,0 +1,39 @@
+<UserControl x:Class="SherpaAxis.App.Controls.TourOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:SherpaAxis.App.Localization"
+             xmlns:controls="clr-namespace:SherpaAxis.App.Controls">
+    <Grid>
+        <controls:TourSpotlight x:Name="Spotlight" IsHitTestVisible="False"/>
+        <Canvas>
+            <Border x:Name="TourCard" Background="#111E30" BorderBrush="#45D6BB" BorderThickness="1" CornerRadius="10" Padding="18" Width="360">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="0,0,0,12">
+                        <DockPanel>
+                            <Button x:Name="TourSkipButton" DockPanel.Dock="Right" Content="{loc:Text T5AC614DEE51B}" Click="SkipClick" Padding="6,4" Margin="8,0,0,0" FontSize="11" Background="Transparent" BorderThickness="0" Foreground="#B4C4D8"/>
+                            <TextBlock x:Name="TourStepLabel" Text="{loc:Translate Value={Binding StepLabel}}" Foreground="#78E3C6" VerticalAlignment="Center" FontSize="12"/>
+                        </DockPanel>
+                        <TextBlock x:Name="TourTitle" Text="{loc:Translate Value={Binding Current.Title}}" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,5" AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Text="{loc:Translate Value={Binding Current.Location}}" Foreground="#78E3C6" FontSize="12" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ScrollViewer x:Name="TourBody" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="{loc:Translate Value={Binding Current.Description}}" TextWrapping="Wrap" LineHeight="21" Foreground="#D1DDED" FontSize="13"/>
+                            <Border Background="#182C3D" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                <TextBlock Text="{loc:Translate Value={Binding Current.Tip}}" TextWrapping="Wrap" LineHeight="20" Foreground="#B8CDDF" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                        <TextBlock Text="{loc:Translate Value={Binding InteractionHint}}" TextWrapping="Wrap" Foreground="#78E3C6" FontSize="11" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="TourBackButton" Content="{loc:Text T76900F1BFD16}" Click="BackClick" IsEnabled="{Binding CanGoBack}" MinWidth="80" Padding="12,8"/>
+                            <Button x:Name="TourNextButton" Content="{loc:Translate Value={Binding NextLabel}}" Click="NextClick" Style="{DynamicResource Primary}" MinWidth="90" Padding="12,8" Margin="0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Canvas>
+    </Grid>
+</UserControl>

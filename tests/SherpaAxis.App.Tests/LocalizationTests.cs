@@ -50,6 +50,8 @@ public sealed class LocalizationTests
             Assert.StartsWith("Install SherpaAxis", text.Text, StringComparison.Ordinal);
             Assert.Contains("Setup includes firmware 017, ST DfuSe and its USB driver.", text.Text, StringComparison.Ordinal);
             Assert.Contains("choose Flash", text.Text, StringComparison.Ordinal);
+            Assert.Contains("Setup checks for it before installing drivers", text.Text, StringComparison.Ordinal);
+            Assert.Contains("Auto waits for five consistent press/release cycles", text.Text, StringComparison.Ordinal);
             Assert.DoesNotMatch(@"\AT[0-9A-F]{12}\z", text.Text);
             Localizer.Instance.Language = "uk";
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
@@ -57,6 +59,8 @@ public sealed class LocalizationTests
             Assert.StartsWith("Установіть SherpaAxis", text.Text, StringComparison.Ordinal);
             Assert.Contains("Інсталятор містить прошивку 017, ST DfuSe та USB-драйвер.", text.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("Native calibration supports", text.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("Close FEEL-VR Control completely", text.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("For drift correction", text.Text, StringComparison.Ordinal);
         }
         finally { guide.Close(); Localizer.Instance.Language = "en"; }
     });

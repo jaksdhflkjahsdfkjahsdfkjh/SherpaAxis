@@ -76,16 +76,20 @@ public partial class MainWindow
         var dialog = new Window
         {
             Owner = this,
-            Width = 620,
-            Height = 510,
+            Width = Math.Min(740, SystemParameters.WorkArea.Width),
+            Height = Math.Min(650, SystemParameters.WorkArea.Height),
+            MinWidth = Math.Min(480, SystemParameters.WorkArea.Width),
+            MinHeight = Math.Min(360, SystemParameters.WorkArea.Height),
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = Background,
-            Foreground = Foreground
+            Foreground = Foreground,
+            FontFamily = FontFamily
         };
+        dialog.Resources.MergedDictionaries.Add(Resources);
         Localization.Localizer.Bind(dialog, Window.TitleProperty, "Device setup guide");
-        var text = new System.Windows.Controls.TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(24), FontSize = 14 };
+        var text = new System.Windows.Controls.TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(24), FontSize = 14, LineHeight = 24 };
         Localization.Localizer.Bind(text, System.Windows.Controls.TextBlock.TextProperty,
-            "Install SherpaAxis with its installer to install vJoy and its SDK together. Complete any Windows restart requested by the driver installer.\n\nAutomatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.\n\nIn your game, bind X to throttle, Y to brake and Z to clutch from the selected vJoy device. SherpaAxis must stay running to send processed pedal input; minimizing to the tray keeps output running, while Exit stops it. HidHide prevents duplicate physical-pedal input while SherpaAxis runs. Keep the physical HID driver installed. Use Settings to turn physical-pedal hiding off. Close SherpaAxis before using the physical pedals directly.\n\nNative calibration supports PE0 firmware 017. Setup includes firmware 017, ST DfuSe and its USB driver. In Settings → Firmware update, choose Update firmware, select the bundled image and choose Flash. After programming and verification, reconnect the pedals and choose Check firmware. Open update logs shows retained logs and automatic calibration backups. Backup calibration saves a separate settings backup. Newer firmware is not downgraded.\n\nResolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
+            "Install SherpaAxis with its installer to install vJoy and its SDK together. Complete any Windows restart requested by the driver installer.\n\nAutomatic setup creates a free vJoy device with X, Y and Z axes. Existing configurations are preserved. SherpaAxis remembers the selected ID so game bindings stay stable. If that device is busy later, close its other feeder.\n\nIn your game, bind X to throttle, Y to brake and Z to clutch from the selected vJoy device. SherpaAxis must stay running to send processed pedal input; minimizing to the tray keeps output running, while Exit stops it. HidHide prevents duplicate physical-pedal input while SherpaAxis runs. Keep the physical HID driver installed. Use Settings to turn physical-pedal hiding off. Close SherpaAxis before using the physical pedals directly.\n\nNative calibration supports PE0 firmware 017. Setup includes firmware 017, ST DfuSe and its USB driver. In Settings → Firmware update, choose Update firmware, select the bundled image and choose Flash. After programming and verification, reconnect the pedals and choose Check firmware. Open update logs shows retained logs and automatic calibration backups. Backup calibration saves a separate settings backup. Newer firmware is not downgraded.\n\nClose FEEL-VR Control completely, including its tray instance, before installation or calibration. Setup checks for it before installing drivers; close it and choose Retry to continue. SherpaAxis also shows a warning while it is running.\n\nFor drift correction, calibrate once in SherpaAxis to retain the original raw range. Auto waits for five consistent press/release cycles. Fix drift and By button require one stable second with your foot completely off. Save corrected calibration writes an accepted correction to the controller; otherwise it is temporary.\n\nResolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
         dialog.Content = new System.Windows.Controls.ScrollViewer { Content = text, VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto };
         dialog.SourceInitialized += (_, _) => WindowTheme.Apply(dialog);
         return dialog;
