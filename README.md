@@ -80,8 +80,10 @@ Tuning. First calibrate each affected pedal once in SherpaAxis so it can retain
 the original raw range separately from the hardware deadzone margins; correction
 is blocked if that reference is missing. **Auto** waits for five consistent press/release cycles and only corrects
 downward drift during stable release. **By button** checks a stable second while
-you hold your binding with your foot off. **Fix drift** performs that check
-without a binding and supports drift in either direction. Correction moves both
+you hold your binding with your foot off. Hold **Fix drift** for the same check
+without a binding and keep holding until correction finishes; release to stop.
+Manual correction supports drift in either
+direction. Correction moves both
 range endpoints together, preserving sensitivity, hardware margins and profile deadzones. It is
 temporary until you explicitly choose **Save corrected calibration**; the original
 hardware calibration is backed up first. If readings disagree, no new correction

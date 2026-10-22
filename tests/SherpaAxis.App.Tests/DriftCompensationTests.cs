@@ -361,6 +361,34 @@ public sealed class DriftCompensationTests
         Assert.Contains("Drift fixed", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ReleasedBindingDoesNotResetTheIndependentManualCapture()
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        using var buttons = new ButtonStateBuffer();
+        double time = 0;
+        Sample(engine, ref time, Hardware.Brake.Minimum - 300000);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        for (var sample = 0; sample < 400; sample++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, Hardware.Brake.Minimum - 300000); }
+        Assert.Equal(-300000, engine.DriftState(PedalAxis.Brake).Offset, 5);
+        Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
+    }
+
+    [Fact]
+    public void ReleasingManualHoldBeforeAStableSecondCancelsTheCapture()
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        double time = 0;
+        Sample(engine, ref time, Hardware.Brake.Minimum - 300000);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        Hold(engine, ref time, Hardware.Brake.Minimum - 300000, 50);
+        engine.CancelFixDrift(PedalAxis.Brake);
+        Hold(engine, ref time, Hardware.Brake.Minimum - 300000, 400);
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+    }
+
     private static DashboardEngine Configured(BaselineCorrectionMode mode)
     {
         var engine = new DashboardEngine();

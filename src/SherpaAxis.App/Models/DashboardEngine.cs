@@ -280,6 +280,7 @@ public sealed partial class DashboardEngine
                 var down = buttons.IsDown(button);
                 if (!down)
                 {
+                    if (value.ManualCapture || value.ManualAdjusting) { continue; }
                     if (value.BindingWasDown && !value.ManualCapture && !value.ManualAdjusting)
                     {
                         value.DriftStatus = value.BaselineApproved && value.Session.BaselineCorrection == value.Session.TargetCorrection
