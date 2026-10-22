@@ -39,8 +39,12 @@ does not edit games' configuration or hide physical devices.
 
 Settings → Firmware update now supports the reviewed PE0017 vendor image through
 bundled ST DfuSe tools, with file validation, controller/USB-port checks,
-hardware-settings backup, durable recovery journal, programming verification and
-reconnect checks. Setup includes DfuSe and stages its signed USB driver. It does
+hardware-settings backup, durable recovery journal, programming-result and
+reconnect checks. PE0 restarts after download, so byte readback is not performed.
+After Flash the app waits for reconnection, restores and saves the pre-update
+calibration when needed, then checks controller identity, firmware, USB port and
+calibration. Output resumes only after these checks pass; the dialog ends with
+OK. Setup includes DfuSe and stages its signed USB driver. It does
 not download firmware through the vendor's old HTTP endpoint or downgrade newer
 firmware. See [firmware updates](firmware.md) for operation, recovery and the
 outstanding physical acceptance test. No firmware is flashed during startup/setup.

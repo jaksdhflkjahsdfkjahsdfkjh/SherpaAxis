@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services.Input;
 using SherpaAxis.App.ViewModels;
@@ -56,5 +57,19 @@ public sealed class UiRefinementTests
         engine.Begin();
         engine.SetSensorCalibration(new("test-controller", bounds,
             new Dictionary<PedalAxis, HardwareCalibrationRange> { [PedalAxis.Brake] = bounds.Brake }));
+    }
+    internal static void CapturePreview(FrameworkElement element, string name)
+    {
+        if (Environment.GetEnvironmentVariable("SHERPAAXIS_UI_CAPTURE_DIR") is not { Length: > 0 } folder) { return; }
+        System.IO.Directory.CreateDirectory(folder);
+        var visual = new DrawingVisual();
+        using (var drawing = visual.RenderOpen())
+        { drawing.DrawRectangle(new VisualBrush(element), null, new Rect(0, 0, element.ActualWidth, element.ActualHeight)); }
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using var file = System.IO.File.Create(System.IO.Path.Combine(folder, name));
+        encoder.Save(file);
     }
 }

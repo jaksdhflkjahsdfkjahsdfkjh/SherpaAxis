@@ -14,6 +14,7 @@
     <Resource Include="Assets/SherpaAxis.ico" />
     <Resource Include="Assets/FilterExamples/**/*.png" />
     <EmbeddedResource Include="Localization/uk.json" />
+    <EmbeddedResource Include="../../vendor/dfuse/sha256.json" LogicalName="SherpaAxis.App.DfuSeHashes.json" />
     <Content Include="../../firmware/*.dfu" Link="Firmwares/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../vendor/dfuse/**/*" Link="Tools/DfuSe/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <ProjectReference Include="../SherpaAxis.Bridge/SherpaAxis.Bridge.csproj" />

@@ -1,7 +1,10 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
+using System.Text.Json;
 using SherpaAxis.Devices;
 using SherpaAxis.FeelVR;
 
@@ -9,7 +12,8 @@ namespace SherpaAxis.App.Services.Firmware;
 
 public static class WindowsFirmwareServices
 {
-    public static FirmwareUpdateServices Create() => new(ConnectAsync, Bootloaders, CheckToolAsync, ProgramAsync);
+    private static readonly IReadOnlyDictionary<string, string> ToolHashes = ReadToolHashes();
+    public static FirmwareUpdateServices Create() => new(ConnectAsync, Bootloaders, CheckToolAsync, ProgramAsync, PrepareBootloader: PrepareBootloaderAsync);
     public static string FirmwareDirectory => Path.Combine(AppContext.BaseDirectory, "Firmwares");
     public static string DefaultImagePath => Path.Combine(FirmwareDirectory, "PE0017.dfu");
     public static string FindTool() => Path.Combine(AppContext.BaseDirectory, "Tools", "DfuSe", "DfuSeCommand.exe");
@@ -47,13 +51,7 @@ public static class WindowsFirmwareServices
     private static async Task CheckToolAsync(string path, CancellationToken token)
     {
         EnsureToolsClosed();
-        if (!Path.IsPathFullyQualified(path) || !string.Equals(Path.GetFileName(path), "DfuSeCommand.exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
-        { throw new IOException("The bundled DfuSe tool is missing. Run SherpaAxis Setup again."); }
-        var version = FileVersionInfo.GetVersionInfo(path);
-        if (version.CompanyName?.Contains("STMicroelectronics", StringComparison.OrdinalIgnoreCase) != true)
-        { throw new IOException("The selected program is not identified as the STMicroelectronics DfuSe command tool."); }
-        foreach (var name in new[] { "STDFU.dll", "STDFUPRT.dll", "STDFUFiles.dll", "STTubeDevice30.dll", "mfc120.dll", "msvcp120.dll", "msvcr120.dll" })
-        { if (!File.Exists(Path.Combine(Path.GetDirectoryName(path)!, name))) { throw new IOException("The bundled DfuSe files are incomplete. Run SherpaAxis Setup again."); } }
+        await ValidateToolFilesAsync(path, token).ConfigureAwait(false);
         var start = CreateStart(path); start.ArgumentList.Add("-?");
         using var process = Start(start);
         var output = process.StandardOutput.ReadToEndAsync(token);
@@ -63,15 +61,66 @@ public static class WindowsFirmwareServices
         catch (OperationCanceledException)
         { try { process.Kill(true); } catch (InvalidOperationException) { } throw new IOException("DfuSe help did not respond. No controller command was sent."); }
         var text = await output.ConfigureAwait(false); _ = await error.ConfigureAwait(false);
-        if (!text.Contains("DfuSe command line", StringComparison.OrdinalIgnoreCase) || !text.Contains("--v", StringComparison.Ordinal)
-            || !text.Contains("--de", StringComparison.Ordinal) || !text.Contains("--fn", StringComparison.Ordinal))
-        { throw new IOException("This DfuSe tool does not expose the required programming and verification options."); }
+        if (!text.Contains("DfuSe command line", StringComparison.OrdinalIgnoreCase) || !text.Contains("-d", StringComparison.Ordinal)
+            || !text.Contains("--de", StringComparison.Ordinal) || !text.Contains("--al", StringComparison.Ordinal) || !text.Contains("--fn", StringComparison.Ordinal))
+        { throw new IOException("This DfuSe tool does not expose the required programming options."); }
+    }
+
+    internal static async Task ValidateToolFilesAsync(string path, CancellationToken token, bool includeDriver = false)
+    {
+        if (!Path.IsPathFullyQualified(path) || !string.Equals(Path.GetFileName(path), "DfuSeCommand.exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+        { throw new IOException("The bundled DfuSe tool is missing. Run SherpaAxis Setup again."); }
+        foreach (var (name, expectedHash) in ToolHashes)
+        {
+            if (Path.GetExtension(name) is not (".exe" or ".dll") && !(includeDriver && name.StartsWith("Driver/", StringComparison.Ordinal))) { continue; }
+            var file = Path.Combine(Path.GetDirectoryName(path)!, name);
+            if (!File.Exists(file)) { throw new IOException($"The bundled DfuSe file {name} is missing. Run SherpaAxis Setup again."); }
+            await using var stream = File.OpenRead(file);
+            if (Convert.ToHexString(await SHA256.HashDataAsync(stream, token).ConfigureAwait(false)) != expectedHash)
+            { throw new IOException($"The bundled DfuSe file {name} does not match the reviewed release. Run SherpaAxis Setup again."); }
+        }
+    }
+
+    private static Dictionary<string, string> ReadToolHashes()
+    {
+        using var stream = typeof(WindowsFirmwareServices).Assembly.GetManifestResourceStream("SherpaAxis.App.DfuSeHashes.json")!;
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
+    }
+
+    internal static async Task<bool> ConfigureBootloaderDriverAsync(UsbDeviceLocation device)
+    {
+        EnsureToolsClosed();
+        await ValidateToolFilesAsync(FindTool(), CancellationToken.None, includeDriver: true).ConfigureAwait(false);
+        return WindowsDfuDriver.Bind(device, Path.Combine(AppContext.BaseDirectory, "Tools", "DfuSe", "Driver", "STtube.inf"));
+    }
+
+    private static async Task PrepareBootloaderAsync(UsbDeviceLocation device)
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        if (new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
+        {
+            if (await ConfigureBootloaderDriverAsync(device).ConfigureAwait(false))
+            { throw new IOException("The DfuSe driver requires a Windows restart. Keep the update record and choose Retry flash after restarting and reconnecting at the original USB port."); }
+            return;
+        }
+        var start = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe")) { UseShellExecute = true, Verb = "runas" };
+        foreach (var argument in new[] { "--configure-dfuse", device.InstanceId, device.LocationPath }) { start.ArgumentList.Add(argument); }
+        using var process = StartElevated(start);
+        await process.WaitForExitAsync().ConfigureAwait(false);
+        if (process.ExitCode != 0)
+        { throw new IOException(process.ExitCode == 3010 ? "The DfuSe driver requires a Windows restart. Keep the update record and choose Retry flash after restarting and reconnecting at the original USB port." : "The DfuSe USB driver could not be prepared. Review the diagnostic log and choose Retry flash after repairing the driver."); }
+    }
+
+    private static Process StartElevated(ProcessStartInfo start)
+    {
+        try { return Process.Start(start) ?? throw new IOException("Could not start DfuSe driver preparation."); }
+        catch (Win32Exception failure) { throw new IOException("DfuSe driver preparation needs Windows administrator approval. The update remains pending.", failure); }
     }
 
     public static ProcessStartInfo CreateProgrammingStart(string tool, string image)
     {
         var start = CreateStart(tool);
-        foreach (var arg in new[] { "-c", "--de", "0", "--al", "0", "-d", "--v", "--fn", image }) { start.ArgumentList.Add(arg); }
+        foreach (var arg in new[] { "-c", "--de", "0", "--al", "0", "-d", "--fn", image }) { start.ArgumentList.Add(arg); }
         return start;
     }
     private static ProcessStartInfo CreateStart(string path) => new(path)
@@ -101,7 +150,7 @@ public static class WindowsFirmwareServices
         // Never kill a programming process on a timer or window cancellation.
         await completion.ConfigureAwait(false);
         await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
-        return new(process.ExitCode, output.ToString(), error.ToString());
+        return new(process.ExitCode, output.ToString(), error.ToString(), ReadbackRequested: false);
     }
 
     private static void EnsureToolsClosed()
@@ -130,7 +179,7 @@ public static class WindowsFirmwareServices
                 recent = "";
             }
             if (recent.Length > 2048) { recent = recent[^2048..]; }
-            progress.Report("DfuSe is programming or verifying… Keep the pedals connected.");
+            progress.Report("DfuSe is programming firmware… Keep the pedals connected.");
         }
     }
 }

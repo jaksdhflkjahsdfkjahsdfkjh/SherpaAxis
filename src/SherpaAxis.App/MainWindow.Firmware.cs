@@ -29,6 +29,7 @@ public partial class MainWindow
         try
         {
             var model = viewModel.Firmware;
+            model.Completed = false;
             var pending = await desktop.Firmware.ReadPendingAsync(lifetime.Token);
             model.Blocked = pending is not null;
             if (pending is not null)
@@ -45,7 +46,12 @@ public partial class MainWindow
                 model.Status = catalog.Images.Count == 0 ? "No supported firmware was found in the Firmwares folder. Run SherpaAxis Setup again." : "Ready to update the connected pedal controller.";
                 if (catalog.RejectedFiles.Count != 0) { model.Status += "\n" + Localizer.Translate("Unsupported or unreadable firmware files were skipped:") + " " + string.Join(", ", catalog.RejectedFiles); }
             }
-            if (!closing) { new FirmwareUpdateWindow(model, Resources, () => UpdateFirmwareAsync(model.SelectedImage?.Path, model.Blocked)) { Owner = this }.ShowDialog(); }
+            if (!closing)
+            {
+                new FirmwareUpdateWindow(model, Resources, () => UpdateFirmwareAsync(model.SelectedImage?.Path, model.Blocked),
+                CheckFirmwareAsync, RestoreFirmwareCalibrationWithReviewAsync, () => CheckUpdatedFirmwareAsync(true))
+                { Owner = this }.ShowDialog();
+            }
         }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
@@ -63,11 +69,12 @@ public partial class MainWindow
         if (desktop.Firmware is null || hardwareSession is not null || viewModel.Recovery.IsBlocked)
         { viewModel.Firmware.Status = "Finish hardware calibration and recovery before updating firmware."; return; }
         viewModel.Firmware.Running = true;
+        viewModel.Firmware.Completed = false;
         viewModel.Firmware.CanAccept = false;
-        var progress = new Progress<string>(message => viewModel.Firmware.Status = message);
+        var progress = new Progress<string>(message => { if (viewModel.Firmware.Running && !viewModel.Firmware.Completed) { viewModel.Firmware.Status = message; } });
         try
         {
-            await (runtime?.PauseAsync() ?? Task.CompletedTask);
+            await PauseForFirmwareAsync();
             if (retry) { await desktop.Firmware.RetryAsync(progress, lifetime.Token); }
             else
             {
@@ -76,7 +83,11 @@ public partial class MainWindow
                 var plan = await Task.Run(() => desktop.Firmware.PrepareAsync(imagePath, WindowsFirmwareServices.FindTool(), lifetime.Token));
                 await desktop.Firmware.FlashAsync(plan, progress, lifetime.Token);
             }
-            viewModel.Firmware.Status = "Programming verified. Unplug and reconnect the pedals, then choose Check firmware.";
+            await desktop.Firmware.CompleteUpdateAsync(progress, lifetime.Token);
+            await CheckStartupRecoveryAsync();
+            if (viewModel.Recovery.IsBlocked) { throw new IOException("Controller recovery needs attention before output can resume."); }
+            viewModel.Firmware.Completed = true;
+            viewModel.Firmware.Status = "Firmware update complete. Firmware 017 and original calibration checked. Pedals are ready.";
         }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
@@ -90,18 +101,53 @@ public partial class MainWindow
         }
     });
 
-    private async void CheckFirmwareClick(object sender, RoutedEventArgs e)
+    private async void CheckFirmwareClick(object sender, RoutedEventArgs e) => await CheckFirmwareAsync();
+
+    internal async Task CheckFirmwareAsync()
     {
-        if (viewModel.Firmware.Blocked)
-        {
-            await CheckUpdatedFirmwareAsync(false);
-            if (viewModel.Firmware.CanAccept && MessageBox.Show(this,
-                Localizer.Translate(viewModel.Firmware.Status) + "\n\n" + Localizer.Translate("Accept the detected firmware and current hardware calibration? This releases virtual output. An interrupted programming result is not a verified flash; retained backups and logs remain available."),
-                Localizer.Translate("Accept detected controller"), MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel) == MessageBoxResult.OK)
-            { await CheckUpdatedFirmwareAsync(true); }
-        }
+        if (viewModel.Firmware.Blocked) { await CheckUpdatedFirmwareAsync(false); }
         else { await InspectFirmwareAsync(); }
     }
+
+    private async Task PauseForFirmwareAsync()
+    {
+        await (runtime?.PauseAsync() ?? Task.CompletedTask);
+        await CheckStartupRecoveryAsync();
+        if (viewModel.Recovery.IsBlocked)
+        { throw new IOException("Restore the original hardware calibration before using firmware tools. Temporary raw-input bounds must not be backed up or flashed."); }
+    }
+
+    private async Task RestoreFirmwareCalibrationWithReviewAsync()
+    {
+        if (desktop.Firmware is null || viewModel.Firmware.Running) { return; }
+        try
+        {
+            var pending = await desktop.Firmware.ReadPendingAsync(lifetime.Token);
+            if (pending is null) { return; }
+            var bounds = pending.Plan.Calibration;
+            var message = Localizer.Translate("Restore and save the original calibration from before this firmware update? Keep your feet off all pedals. The current controller calibration will be backed up first.")
+                + $"\n\nThrottle: {bounds.Throttle.Minimum} → {bounds.Throttle.Maximum}\nBrake: {bounds.Brake.Minimum} → {bounds.Brake.Maximum}\nClutch: {bounds.Clutch.Minimum} → {bounds.Clutch.Maximum}";
+            if (MessageBox.Show(OwnedWindows.OfType<FirmwareUpdateWindow>().FirstOrDefault() ?? (Window)this, message,
+                Localizer.Translate("Restore calibration backup"), MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) { return; }
+            await RestoreFirmwareCalibrationAsync();
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        { desktop.Log?.Write("firmware", "Calibration backup needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
+    }
+
+    internal Task RestoreFirmwareCalibrationAsync() => RunAsync(async () =>
+    {
+        if (desktop.Firmware is null || hardwareSession is not null || viewModel.Recovery.IsBlocked) { return; }
+        viewModel.Firmware.Running = true;
+        try
+        {
+            await PauseForFirmwareAsync();
+            viewModel.Firmware.Status = await Task.Run(() => desktop.Firmware.RestoreCalibrationBackupAsync(lifetime.Token));
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        { desktop.Log?.Write("firmware", "Calibration restoration needs attention.", failure); viewModel.Firmware.Status = failure.Message; }
+        finally { viewModel.Firmware.Running = false; }
+    });
 
     internal Task InspectFirmwareAsync() => RunAsync(async () =>
     {
@@ -109,7 +155,7 @@ public partial class MainWindow
         viewModel.Firmware.Running = true;
         try
         {
-            await (runtime?.PauseAsync() ?? Task.CompletedTask);
+            await PauseForFirmwareAsync();
             viewModel.Firmware.Status = await Task.Run(() => desktop.Firmware.CheckFirmwareAsync(lifetime.Token));
         }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
@@ -137,7 +183,7 @@ public partial class MainWindow
         viewModel.Firmware.Running = true;
         try
         {
-            await (runtime?.PauseAsync() ?? Task.CompletedTask);
+            await PauseForFirmwareAsync();
             var backup = await Task.Run(() => desktop.Firmware.BackupCalibrationAsync(lifetime.Token));
             await new HardwareRecoveryStore(path).WriteAsync(backup, lifetime.Token);
             viewModel.Firmware.Status = $"Hardware backup saved: {path}. Controller settings were not changed.";
@@ -151,12 +197,18 @@ public partial class MainWindow
     {
         if (desktop.Firmware is null || hardwareSession is not null) { return; }
         viewModel.Firmware.Running = true;
+        viewModel.Firmware.Completed = false;
         try
         {
-            await (runtime?.PauseAsync() ?? Task.CompletedTask);
-            var result = await Task.Run(() => desktop.Firmware.CheckConnectionAsync(accept, lifetime.Token));
+            await PauseForFirmwareAsync();
+            var pending = await desktop.Firmware.ReadPendingAsync(lifetime.Token);
+            var progress = new Progress<string>(message => { if (viewModel.Firmware.Running && !viewModel.Firmware.Completed) { viewModel.Firmware.Status = message; } });
+            var result = await Task.Run(() => !accept && pending is { } record && (record.DownloadCompleted || record.ProgramVerified)
+                ? desktop.Firmware.CompleteUpdateAsync(progress, lifetime.Token)
+                : desktop.Firmware.CheckConnectionAsync(accept, lifetime.Token));
             viewModel.Firmware.Blocked = !result.Complete; viewModel.Firmware.CanAccept = result.CanAccept;
             viewModel.Firmware.Status = result.Detail;
+            viewModel.Firmware.Completed = result.Complete;
             if (result.Complete) { await CheckStartupRecoveryAsync(); await CheckDeviceDiagnosticsAsync(); }
         }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
