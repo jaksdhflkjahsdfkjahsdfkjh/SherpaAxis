@@ -231,10 +231,12 @@ public sealed class SettingsAndTrayTests
     internal sealed class FakeTray : IApplicationTray
     {
         internal bool Disposed { get; private set; }
+        internal List<string> UpdateNotifications { get; } = [];
         public event Action<TrayCommand>? CommandRequested;
         public event Action<ProfileTab>? ProfileRequested;
         internal void Command(TrayCommand command) => CommandRequested?.Invoke(command);
         internal void Profile(ProfileTab profile) => ProfileRequested?.Invoke(profile);
+        public void NotifyUpdate(string version) => UpdateNotifications.Add(version);
         public void Dispose() { Disposed = true; }
     }
 }

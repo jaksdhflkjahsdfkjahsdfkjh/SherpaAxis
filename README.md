@@ -90,7 +90,14 @@ hardware calibration is backed up first. If readings disagree, no new correction
 is applied. Keep your foot completely off for manual checks: stability alone
 cannot distinguish a released pedal from steady foot pressure.
 
-To update, exit SherpaAxis from the tray and run the newer `Setup.exe`. Your
+SherpaAxis checks GitHub once at each app startup for a newer stable release.
+It does not repeat checks while running. An update link appears in the footer;
+when the app is hidden, it also sends a tray notification. Open **Settings → Updates**
+to **Check now** or disable automatic checks. Checks send no pedal data or profiles;
+they contact GitHub for public release metadata. Downloads and installation are manual.
+
+To update, open the release link, download its `Setup.exe`, exit SherpaAxis from the
+tray, close FEEL-VR Control and games, then run Setup. Your
 profiles and settings are retained. Enable **Start with Windows** in Settings
 if you want the app to launch when you sign in.
 
@@ -114,6 +121,13 @@ This checks the connected controller and calibration; firmware byte readback is
 not performed.
 See the [firmware guide](docs/firmware.md) for recovery details. Setup prepares the
 USB driver; it does not flash pedal firmware.
+
+## Bug reports
+
+Report problems through [GitHub Issues](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues).
+Include the SherpaAxis version, Windows version, controller firmware, steps to
+reproduce the problem, and what you expected to happen. Settings → Export diagnostic
+report provides a ZIP you can review and attach to the issue.
 
 ## License
 

@@ -98,6 +98,11 @@ public partial class MainWindow
     private void VJoyConfigurationClick(object sender, RoutedEventArgs e) => OpenDiagnosticTool(
         Path.Combine(Path.GetDirectoryName(VJoyController.DefaultLibraryPath)!, "vJoyConf.exe"));
     private void SetupGuideClick(object sender, RoutedEventArgs e) => CreateSetupGuideWindow().ShowDialog();
+    private void ReportBugNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        e.Handled = true;
+        OpenDiagnosticTool(ViewModels.DashboardViewModel.IssuesUri.AbsoluteUri);
+    }
     internal Window CreateSetupGuideWindow()
     {
         var dialog = new Window

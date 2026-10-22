@@ -29,10 +29,17 @@ public sealed class ApplicationTray : IApplicationTray
         menu.Opening += (_, _) => RebuildMenu();
         icon = new Forms.NotifyIcon { Icon = image, Text = Localization.Localizer.Translate("SherpaAxis · Pedals Utility"), ContextMenuStrip = menu, Visible = true };
         icon.DoubleClick += (_, _) => CommandRequested?.Invoke(TrayCommand.Show);
+        icon.BalloonTipClicked += (_, _) => CommandRequested?.Invoke(TrayCommand.ViewUpdate);
         PropertyChangedEventManager.AddHandler(Localization.Localizer.Instance, LanguageChanged, nameof(Localization.Localizer.Language));
     }
 
     private void LanguageChanged(object? sender, PropertyChangedEventArgs e) => icon.Text = Localization.Localizer.Translate("SherpaAxis · Pedals Utility");
+    public void NotifyUpdate(string version)
+    {
+        if (disposed) { return; }
+        icon.ShowBalloonTip(5000, Localization.Localizer.Translate("SherpaAxis update available"),
+            Localization.Localizer.Translate($"{version} is available. Click to view the release."), Forms.ToolTipIcon.Info);
+    }
 
     internal void RebuildMenu()
     {
