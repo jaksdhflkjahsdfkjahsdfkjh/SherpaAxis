@@ -54,6 +54,7 @@ public partial class App : Application, IDisposable
         MainWindow = window;
         await window.InitializeForLaunchAsync();
         if (!window.IsDisposed && !window.ShouldStartHidden) { window.Show(); }
+        if (!window.IsDisposed && window.ShouldOfferTour) { await window.ShowGettingStartedAsync(); }
     }
     protected override void OnExit(ExitEventArgs e)
     {

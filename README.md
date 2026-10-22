@@ -15,6 +15,11 @@ and choose one profile to load automatically at startup. The Calibration panel
 sets the controller's pedal bounds and provides hardware backup and restoration.
 The interface is available in English and Ukrainian.
 
+A short interactive tour highlights the real controls on first launch. You can
+try them while following the tour; tuning changes apply to your current profile.
+Replay it from **Settings → Help → Getting started**, or open **Setup guide** there
+for device and game setup instructions.
+
 ## Installation
 
 Requirements: Windows 10 22H2 or Windows 11 (64-bit Intel/AMD) and FEEL-VR

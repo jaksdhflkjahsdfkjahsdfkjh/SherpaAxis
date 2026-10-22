@@ -152,6 +152,8 @@
         </Style>
         <Style TargetType="Expander">
             <Setter Property="Foreground" Value="#E8EFF8"/><Setter Property="Margin" Value="0,14,0,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
                 <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}"><StackPanel>
                     <ToggleButton Foreground="{TemplateBinding Foreground}" x:Name="HeaderToggle" AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Stretch" Cursor="Hand" FocusVisualStyle="{StaticResource FocusRing}">
@@ -163,7 +165,7 @@
                         </ControlTemplate></ToggleButton.Template>
                         <ContentPresenter ContentSource="Header"/>
                     </ToggleButton>
-                    <ContentPresenter x:Name="ExpandedContent" ContentSource="Content" Visibility="Collapsed" Margin="0,10,0,0"/>
+                    <ContentPresenter x:Name="ExpandedContent" ContentSource="Content" Visibility="Collapsed" Margin="0,10,0,0" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                 </StackPanel></Border>
                 <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandedContent" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
@@ -185,7 +187,7 @@
         </Style>
         </ResourceDictionary>
     </Window.Resources>
-    <Grid Margin="22,16,22,14">
+    <Grid x:Name="DashboardRoot" Margin="22,16,22,14">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto" MinHeight="34"/></Grid.RowDefinitions>
         <DockPanel Height="70" Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Right" Width="500" HorizontalAlignment="Right">
@@ -304,7 +306,7 @@
                                 </Button>
                             </DataTemplate></ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Border Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                        <Border x:Name="SignalGraphSection" Grid.Row="1" Background="#111D2E" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8" Padding="14,12">
                             <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <DockPanel LastChildFill="True">
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,0,0,6">
@@ -393,7 +395,7 @@
                             <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text TE4EF64224DD3}"/>
 
                                 </StackPanel></Expander>
-                                <StackPanel Margin="0,22,0,0">
+                                <StackPanel x:Name="FilteringPanel" Margin="0,22,0,0">
                                 <DockPanel Margin="0,0,0,12">
                                     <Button Content="ⓘ" Click="FilterHelpClick" DockPanel.Dock="Right" Width="28" Height="26" Padding="0" Margin="8,0,0,0" AutomationProperties.Name="{loc:Text T3B6A22C38EF9}" ToolTip="{loc:Text T11B0F1B3B6A6}"/>
                                     <TextBlock Text="{loc:Text TDA12AB901FF9}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center"/>
@@ -416,6 +418,7 @@
                                     </StackPanel>
                                 </Expander>
                                 </StackPanel>
+                                <StackPanel x:Name="DriftCorrectionPanel">
                                 <TextBlock Text="{loc:Text T088FEADCE7BB}" Style="{StaticResource Section}"/>
                                 <controls:StableComboBox x:Name="BaselineModeSelector" ItemsSource="{x:Static vm:DashboardViewModel.CorrectionModes}" SelectedItem="{Binding SelectedCorrectionMode, Mode=OneWay}" SelectionChanged="CorrectionModeChanged" AutomationProperties.Name="{loc:Text T088FEADCE7BB}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text T9E0C2CBD2343}"/>
                                 <TextBlock Text="{loc:Translate Value={Binding CorrectionModeHint}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
@@ -444,6 +447,7 @@
                                     </Button>
                                 </Grid>
                                 <TextBlock Text="{loc:Translate Value={Binding CorrectionInfo}}" FontSize="11" Foreground="#95A9C1" Margin="0,10,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
                     </DockPanel>
@@ -491,13 +495,17 @@
                                         <TextBlock Text="{loc:Translate Value={Binding Status}}" TextWrapping="Wrap" Foreground="#FFCE83" FontSize="11" AutomationProperties.LiveSetting="Polite"/>
                                     </StackPanel>
                                 </Expander>
-                                <Expander Header="{loc:Text T91D6882FB172}">
+                                <Expander x:Name="SetupToolsExpander" Header="{loc:Text T91D6882FB172}">
                                     <StackPanel>
-                                        <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" HorizontalAlignment="Stretch" Margin="0,8,0,8"/>
-                                        <Button Content="{loc:Text T9BAC4ED3CD46}" Click="ControllerTestClick" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
-                                        <Button Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" HorizontalAlignment="Stretch"/>
+                                        <Button Content="{loc:Text T6BA6B3414B78}" Click="VJoyConfigurationClick" Style="{StaticResource DeviceToolButton}" Margin="0,8,0,8"/>
+                                        <Button Content="{loc:Text T9BAC4ED3CD46}" Click="ControllerTestClick" Style="{StaticResource DeviceToolButton}"/>
                                     </StackPanel>
                                 </Expander>
+                            </StackPanel>
+                            <StackPanel x:Name="HelpPanel">
+                            <TextBlock Text="{loc:Text TB79CAC926E0B}" Style="{StaticResource Section}"/>
+                            <Button x:Name="GettingStartedButton" Content="{loc:Text T831D0F72D242}" Click="GettingStartedClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text T9133A7C768BD}"/>
+                            <Button x:Name="SetupGuideButton" Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TC4EF8BC944C0}"/>
                             </StackPanel>
                             <CheckBox x:Name="HidePhysicalPedalsSetting" Content="{loc:Text TF2A7D02C9C28}" IsChecked="{Binding HidePhysicalPedals}" Click="PreferenceChanged" ToolTip="{loc:Text T9AD475023259}"/>
                             <TextBlock Text="{loc:Translate Value={Binding InputVisibilityStatus}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12"/>
@@ -534,5 +542,6 @@
             <TextBlock Text="{loc:Translate Value={Binding Message}}" ToolTip="{loc:Translate Value={Binding Message}}" Foreground="#95A9C1" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" AutomationProperties.Name="{loc:Text TCCDE872DAA06}" AutomationProperties.LiveSetting="Polite"/>
             </DockPanel>
         </Border>
+        <controls:TourOverlay x:Name="TourLayer" Grid.RowSpan="3" Panel.ZIndex="100" Visibility="Collapsed" DataContext="{Binding Tour}" NextRequested="TourNextClick" BackRequested="TourBackClick" DismissRequested="TourDismissClick"/>
     </Grid>
 </Window>

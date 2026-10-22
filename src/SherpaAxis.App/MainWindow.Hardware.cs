@@ -30,6 +30,8 @@ public partial class MainWindow
     internal async Task RequestPanelModeAsync(SidePanelMode mode)
     {
         if (closing || !viewModel.CanEdit) { return; }
+        if (viewModel.Tour.IsOpen && !tourNavigating && mode != viewModel.Tour.Current.Panel)
+        { await FinishTourAsync(restorePanel: false); }
         if (mode == SidePanelMode.Calibration && viewModel.Recovery.IsBlocked)
         { viewModel.ShowMessage("Resolve the interrupted calibration before opening a new hardware session."); return; }
         if (modeOperation is not { IsCompleted: false } && mode == viewModel.PanelMode
