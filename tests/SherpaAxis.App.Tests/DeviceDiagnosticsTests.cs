@@ -241,6 +241,93 @@ public sealed class DeviceDiagnosticsTests
 public sealed class DeviceDiagnosticsUiTests
 {
     [Fact]
+    public Task SettingsSwitchesReuseControlsGraphAndChecksUntilExplicitRefresh() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var reads = 0;
+        var diagnostics = new DeviceDiagnostics(_ =>
+        { Interlocked.Increment(ref reads); return Task.FromResult<HidDeviceIdentity?>(new("FEEL-VR", "Pedals", "PE001700")); },
+            () => [new(2, VJoyDeviceState.Free, true, true)], () => 2);
+        await using var main = new MainWindow(new(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services with { Diagnostics = diagnostics });
+        await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(1, reads);
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        var checks = model.Diagnostics.Checks.ToArray();
+        var tuning = main.FindName("TuningSidePanel");
+        var settings = main.FindName("SettingsSidePanel");
+        var graph = main.FindName("MainSignalPlot");
+        var histories = model.DisplayHistories;
+        var transitions = 0;
+        model.PropertyChanged += (_, e) =>
+        { if (e.PropertyName == nameof(DashboardViewModel.IsSwitchingMode)) { transitions++; } };
+        for (var cycle = 0; cycle < 5; cycle++)
+        {
+            await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Tuning);
+            await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+            await main.EnsureDeviceDiagnosticsAsync();
+            Assert.Same(tuning, main.FindName("TuningSidePanel"));
+            Assert.Same(settings, main.FindName("SettingsSidePanel"));
+            Assert.Same(graph, main.FindName("MainSignalPlot"));
+            Assert.Same(histories, model.DisplayHistories);
+            Assert.False(model.Diagnostics.Busy);
+            Assert.Equal(checks, model.Diagnostics.Checks);
+        }
+        Assert.Equal(1, reads);
+        Assert.Equal(0, transitions);
+        Assert.IsType<System.Windows.Controls.Button>(main.FindName("CheckDeviceStatusButton"))
+            .RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(2, reads);
+        model.Recovery.Fail("Restoration failed");
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(3, reads);
+        Assert.True(Assert.Single(model.Diagnostics.Checks, check => check.Title == "Calibration recovery").NeedsAttention);
+        model.Recovery.Apply([]);
+        model.Firmware.Blocked = true;
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(4, reads);
+        Assert.False(Assert.Single(model.Diagnostics.Checks, check => check.Title == "Calibration recovery").NeedsAttention);
+        Assert.True(Assert.Single(model.Diagnostics.Checks, check => check.Title == "Firmware update").NeedsAttention);
+        model.Firmware.Blocked = false;
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(5, reads);
+        Assert.DoesNotContain(model.Diagnostics.Checks, check => check.Title == "Firmware update");
+    });
+
+    [Fact]
+    public Task SettingsCacheSharesInFlightChecksAndRefreshesWhenVendorControlChanges() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var reads = 0;
+        var running = false;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var identity = new TaskCompletionSource<HidDeviceIdentity?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var diagnostics = new DeviceDiagnostics(_ => { Interlocked.Increment(ref reads); entered.TrySetResult(); return identity.Task; },
+            () => [new(2, VJoyDeviceState.Free, true, true)], () => 2, () => running);
+        await using var main = new MainWindow(new(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services with
+        { Diagnostics = diagnostics, VendorControlRunning = () => running });
+        var initial = main.EnsureDeviceDiagnosticsAsync();
+        await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+        Assert.Same(initial, main.EnsureDeviceDiagnosticsAsync());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        running = true;
+        main.RefreshVendorControlStatus();
+        identity.SetResult(new("FEEL-VR", "Pedals", "PE001700"));
+        await initial;
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.Equal(2, reads);
+        Assert.True(Assert.Single(model.Diagnostics.Checks, check => check.Title == "FEEL-VR Control").NeedsAttention);
+        await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Tuning);
+        await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(2, reads);
+        running = false;
+        main.RefreshVendorControlStatus();
+        await main.EnsureDeviceDiagnosticsAsync();
+        Assert.Equal(3, reads);
+        Assert.False(Assert.Single(model.Diagnostics.Checks, check => check.Title == "FEEL-VR Control").NeedsAttention);
+    });
+
+    [Fact]
     public Task VendorConflictIsVisibleAtStartupAndAcrossPanelsAndClearsAfterClosing() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var running = true;

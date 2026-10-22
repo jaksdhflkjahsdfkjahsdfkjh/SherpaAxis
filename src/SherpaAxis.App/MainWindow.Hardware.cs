@@ -42,6 +42,12 @@ public partial class MainWindow
             connectionCancellation?.Cancel();
         }
         if (modeOperation is { IsCompleted: false }) { return; }
+        if (hardwareSession is null && !viewModel.IsCalibrationMode && mode != SidePanelMode.Calibration)
+        {
+            SetPanelMode(mode);
+            if (mode == SidePanelMode.Settings) { _ = EnsureDeviceDiagnosticsAsync(); }
+            return;
+        }
         var operation = ProcessPanelModeAsync();
         modeOperation = operation;
         try { await operation; }
@@ -104,7 +110,7 @@ public partial class MainWindow
                     if (hadSession) { await CheckStartupRecoveryAsync(); }
                     await ResumeLiveAfterRecoveryAsync();
                     SetPanelMode(requestedPanel);
-                    if (requestedPanel == SidePanelMode.Settings) { _ = CheckDeviceDiagnosticsAsync(); }
+                    if (requestedPanel == SidePanelMode.Settings) { _ = EnsureDeviceDiagnosticsAsync(); }
                     if (hadSession && runtime is null) { engine.End("Stopped"); }
                     break;
                 }
@@ -131,13 +137,18 @@ public partial class MainWindow
     {
         if (viewModel.PanelMode == mode) { return; }
         var graphSourceChanged = viewModel.IsCalibrationMode != (mode == SidePanelMode.Calibration);
+        viewModel.CommitDisplayTransition();
         viewModel.PanelMode = mode;
         // Hidden panels retain their layout; the graph and cards change source in this same dispatcher turn.
         TuningSidePanel.Visibility = mode == SidePanelMode.Tuning ? Visibility.Visible : Visibility.Hidden;
         CalibrationSidePanel.Visibility = mode == SidePanelMode.Calibration ? Visibility.Visible : Visibility.Hidden;
         SettingsSidePanel.Visibility = mode == SidePanelMode.Settings ? Visibility.Visible : Visibility.Hidden;
-        if (graphSourceChanged) { viewModel.GraphPaused = false; MainSignalPlot.ResetZoom(); }
-        viewModel.Refresh(force: true);
+        if (graphSourceChanged)
+        {
+            viewModel.GraphPaused = false;
+            MainSignalPlot.ResetZoom();
+            viewModel.Refresh(force: true);
+        }
     }
 
     private async Task ConnectCalibrationAsync(CancellationToken token)

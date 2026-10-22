@@ -13,6 +13,8 @@ namespace SherpaAxis.App;
 public partial class MainWindow
 {
     private Task? diagnosticsCheck;
+    private bool diagnosticsAgain;
+    private bool diagnosedRecoveryBlocked, diagnosedFirmwareBlocked;
     private int diagnosedConnection;
     private bool diagnosedReceiving;
     private long vendorControlCheckedAt;
@@ -37,16 +39,42 @@ public partial class MainWindow
     internal Task CheckDeviceDiagnosticsAsync()
     {
         if (closing || desktop.Diagnostics is null) { return Task.CompletedTask; }
-        return diagnosticsCheck is { IsCompleted: false } ? diagnosticsCheck : diagnosticsCheck = CheckDeviceDiagnosticsCoreAsync();
+        if (diagnosticsCheck is { IsCompleted: false })
+        {
+            diagnosticsAgain = true;
+            return diagnosticsCheck;
+        }
+        return diagnosticsCheck = RefreshDeviceDiagnosticsAsync();
     }
-    private async Task CheckDeviceDiagnosticsCoreAsync()
+    internal Task EnsureDeviceDiagnosticsAsync()
+    {
+        if (diagnosticsCheck is null || diagnosticsCheck.IsCompleted &&
+            (diagnosedRecoveryBlocked != viewModel.Recovery.IsBlocked || diagnosedFirmwareBlocked != viewModel.Firmware.Blocked))
+        { return CheckDeviceDiagnosticsAsync(); }
+        return diagnosticsCheck;
+    }
+    private async Task RefreshDeviceDiagnosticsAsync()
     {
         viewModel.Diagnostics.Busy = true;
         viewModel.Diagnostics.Status = "Checking device and virtual output…";
         try
         {
+            do
+            {
+                diagnosticsAgain = false;
+                await CheckDeviceDiagnosticsCoreAsync();
+            } while (diagnosticsAgain && !closing);
+        }
+        finally { viewModel.Diagnostics.Busy = false; }
+    }
+    private async Task CheckDeviceDiagnosticsCoreAsync()
+    {
+        try
+        {
             var result = await Task.Run(() => desktop.Diagnostics!.CheckAsync(lifetime.Token, () => engine.OwnedControllerIdentity), lifetime.Token);
-            if (closing) { return; }
+            if (closing || diagnosticsAgain) { return; }
+            diagnosedRecoveryBlocked = viewModel.Recovery.IsBlocked;
+            diagnosedFirmwareBlocked = viewModel.Firmware.Blocked;
             viewModel.Diagnostics.Apply(result);
             foreach (var check in result.Checks.Where(check => check.NeedsAttention)) { desktop.Log?.Write("device-check", check.Title + ": " + check.Detail); }
             if (viewModel.Recovery.IsBlocked)
@@ -64,7 +92,6 @@ public partial class MainWindow
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("diagnostics", "An operation needs attention.", failure); if (!closing) { viewModel.Diagnostics.Status = $"Device checks failed: {failure.Message}"; } }
-        finally { viewModel.Diagnostics.Busy = false; }
     }
     private async void CheckDiagnosticsClick(object sender, RoutedEventArgs e) { await UpdateInputVisibilityAsync(); await CheckDeviceDiagnosticsAsync(); }
     private void ControllerTestClick(object sender, RoutedEventArgs e) => OpenDiagnosticTool("control.exe", "joy.cpl");

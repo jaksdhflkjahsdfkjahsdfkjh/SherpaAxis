@@ -8,7 +8,7 @@ public sealed class DeviceDiagnosticsViewModel : ObservableObject
     public ObservableCollection<DeviceCheck> Checks { get; } = [];
     private bool busy;
     private bool firmwareWarning;
-    private string status = "Checks run automatically when Settings opens.";
+    private string status = "Checks run automatically at startup and when devices change.";
     public bool Busy { get => busy; set { if (Set(ref busy, value)) { Changed(nameof(CanCheck)); } } }
     public bool CanCheck => !Busy;
     public bool FirmwareWarning { get => firmwareWarning; set => Set(ref firmwareWarning, value); }
