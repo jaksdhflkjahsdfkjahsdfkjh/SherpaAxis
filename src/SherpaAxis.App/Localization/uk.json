@@ -502,7 +502,7 @@
   "Pedal axes": "Осі педалей",
   "Virtual output setup": "Налаштування віртуального виходу",
   "Calibration recovery": "Відновлення калібрування",
-  "Checks run automatically when Settings opens.": "Перевірки виконуються автоматично після відкриття налаштувань.",
+  "Checks run automatically at startup and when devices change.": "Перевірки виконуються автоматично під час запуску та коли змінюється стан пристроїв.",
   "Checking device and virtual output…": "Перевірка пристрою та віртуального виходу…",
   "Setup needs attention. See the checks above.": "Налаштування потребує уваги. Перегляньте результати перевірок вище.",
   "Checks complete.": "Перевірки завершено.",

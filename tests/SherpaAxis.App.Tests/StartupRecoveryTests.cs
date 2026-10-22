@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using SherpaAxis.App.Models;
 using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.App.ViewModels;
@@ -17,6 +18,87 @@ public sealed class StartupRecoveryTests
 {
     private static readonly PedalCalibration Original = new(new(100, 1000), new(200, 2000), new(300, 3000));
     private static readonly PedalCalibration Temporary = Original.WithRange(PedalChannel.Brake, PedalHardwareSettings.Defaults.Brake);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RoutineChecksStayQuietAndExistingProblemsRemainVisibleDuringRetries(bool failedScan)
+    {
+        var model = new StartupRecoveryViewModel();
+        model.Checking();
+        Assert.True(model.IsBlocked && model.Busy);
+        Assert.False(model.NeedsAttention);
+        model.Apply([]);
+        Assert.False(model.IsBlocked || model.Busy || model.NeedsAttention);
+
+        model.Checking();
+        if (failedScan) { model.Fail("Controller unavailable"); }
+        else { model.Apply([new("pending.json", null, "Interrupted calibration", false, false)]); }
+        Assert.True(model.IsBlocked && model.NeedsAttention);
+        Assert.False(model.Busy);
+        model.Checking();
+        Assert.True(model.IsBlocked && model.Busy && model.NeedsAttention);
+        model.Apply([]);
+        Assert.False(model.IsBlocked || model.Busy || model.NeedsAttention);
+        model.Checking();
+        Assert.True(model.IsBlocked && model.Busy);
+        Assert.False(model.NeedsAttention);
+    }
+
+    [Fact]
+    public Task RoutineRecoveryChecksNeverOpenTheBannerOrMoveTheGraphDuringCalibrationSwitches() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fixture = new Fixture();
+        fixture.Device.State = Original;
+        MainWindow? window = null;
+        Rect? graphBounds = null;
+        var checks = 0;
+        void CheckLayout()
+        {
+            var main = Assert.IsType<MainWindow>(window);
+            var content = Assert.IsAssignableFrom<FrameworkElement>(main.Content);
+            content.Measure(new Size(1340, 900));
+            content.Arrange(new Rect(0, 0, 1340, 900));
+            content.UpdateLayout();
+            Assert.Equal(Visibility.Collapsed, Assert.IsType<Border>(main.FindName("StartupRecoveryPanel")).Visibility);
+            var graph = Assert.IsType<Controls.SignalPlot>(main.FindName("MainSignalPlot"));
+            var bounds = new Rect(graph.TranslatePoint(new Point(), content), new Size(graph.ActualWidth, graph.ActualHeight));
+            graphBounds ??= bounds;
+            Assert.Equal(graphBounds.Value, bounds);
+        }
+        var service = new StartupHardwareRecovery(fixture.Directory, async (_, _) =>
+        {
+            checks++;
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var recovery = Assert.IsType<DashboardViewModel>(window!.DataContext).Recovery;
+            Assert.True(recovery.IsBlocked && recovery.Busy);
+            CheckLayout();
+            return new(fixture.Device.Collection, fixture.Device.Serial, fixture.Device, fixture.Device, new Transport(() => { }));
+        });
+        await using var main = new MainWindow(new DashboardEngine(), (channel, theme, _) =>
+        {
+            var configuration = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, fixture.Device.Collection, Original),
+                fixture.Device, fixture.Device, new HardwareRecoveryStore(fixture.Path), TimeSpan.FromSeconds(1));
+            return Task.FromResult(new HardwareCalibrationSession(configuration, new(configuration, token => Input(() => { }, token), theme, selectedChannel: channel)));
+        }, new SettingsAndTrayTests.FakeDesktop().Services with { Recovery = service });
+        window = main;
+        await main.InitializeForLaunchAsync();
+        CheckLayout();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        for (var cycle = 0; cycle < 3; cycle++)
+        {
+            await fixture.Journal();
+            await main.RequestPanelModeAsync(SidePanelMode.Calibration);
+            Assert.True(model.IsCalibrationMode);
+            CheckLayout();
+            await fixture.Journal();
+            await main.RequestPanelModeAsync(SidePanelMode.Tuning);
+            Assert.False(model.IsCalibrationMode || model.Recovery.IsBlocked || model.Recovery.NeedsAttention);
+            CheckLayout();
+        }
+        Assert.Equal(6, checks);
+        Assert.Empty(fixture.Device.Writes);
+    });
 
     [Fact]
     public async Task EmptyFolderAndManualBackupsDoNotOpenHardwareOrBlockStartup()

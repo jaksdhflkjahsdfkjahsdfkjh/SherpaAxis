@@ -80,7 +80,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.OutputInfo = viewModel.Firmware.Blocked || viewModel.Firmware.Running ? "Virtual output paused · firmware update needs review"
             : viewModel.Recovery.IsBlocked ? "Virtual output paused · hardware recovery required" : runtime?.Status ?? "Waiting for live input";
         viewModel.Refresh();
-        if (!viewModel.IsCalibrationMode && (viewModel.InputConnection != diagnosedConnection || viewModel.IsReceiving != diagnosedReceiving))
+        if (!viewModel.IsCalibrationMode && !viewModel.IsSwitchingMode && (viewModel.InputConnection != diagnosedConnection || viewModel.IsReceiving != diagnosedReceiving))
         {
             diagnosedConnection = viewModel.InputConnection;
             diagnosedReceiving = viewModel.IsReceiving;

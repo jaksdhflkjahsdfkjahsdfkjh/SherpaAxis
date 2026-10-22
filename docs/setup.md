@@ -10,8 +10,10 @@ Settings → Device and output status checks controller identity, the matching
 vJoy 2.2.2 driver/runtime SDK, a dedicated virtual device and its X/Y/Z ranges,
 and the startup calibration-recovery gate. These checks read identity/descriptors;
 they do not calibrate, save controller settings, acquire a virtual device or send
-pedal reports. Checks start in the background at launch, when the live connection
-changes and when Settings opens. They can be repeated with Check again.
+pedal reports. Checks start in the background at launch and when the live connection
+or FEEL-VR Control status changes. Settings reuses the latest results; switching
+tabs does not repeat these checks. Use Check again to refresh them after external
+driver or vJoy configuration changes. Automatic setup also refreshes the results.
 
 The first successful automatic acquisition picks the lowest free pedal-only ID
 from 1–16 and stores it per user in `virtual-device.txt`. A busy device 1 does not

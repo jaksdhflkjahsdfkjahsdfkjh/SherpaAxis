@@ -30,6 +30,13 @@ Restoration must complete before output resumes. Persistent Save is a separate c
 `PedalRuntime` owns live input and automatic virtual output independently of graph
 refresh. Device checks inspect metadata without acquiring or feeding a virtual device.
 
+The side panels retain their controls and layout between switches. Tuning and
+Settings switch without restarting input, resetting the graph or rerunning device
+diagnostics. Diagnostics refresh on device events, setup operations and explicit
+requests. Calibration reuses its controls but opens a fresh hardware transaction;
+controller identity, current bounds and recovery checks are never cached across
+sessions. Leaving calibration verifies restoration before resuming output.
+
 `DesktopServices` supplies application dependencies; tests inject substitutes.
 Desktop preferences are separate from pedal profiles. Tray actions use the same
 mode and profile handlers as the window. A named mutex prevents duplicate instances.

@@ -6,6 +6,7 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed partial class DashboardViewModel : ObservableObject
 {
+    public static string VersionLabel { get; } = $"v{typeof(DashboardViewModel).Assembly.GetName().Version!.ToString(3)}";
     public GettingStartedViewModel Tour { get; } = new();
     private readonly DashboardEngine engine;
     private readonly Dictionary<PedalAxis, AxisEditor> editors = [];
@@ -30,6 +31,8 @@ public sealed partial class DashboardViewModel : ObservableObject
     public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); } } }
     private SidePanelMode panelMode;
     private bool isSwitchingMode;
+    private sealed record DisplaySnapshot(string Mode, string Legend, IReadOnlyList<PedalHistory> Histories, string SampleInfo);
+    private DisplaySnapshot? transitionDisplay;
     private HardwarePedalViewModel? hardwareDisplay;
     public SidePanelMode PanelMode
     {
@@ -50,13 +53,25 @@ public sealed partial class DashboardViewModel : ObservableObject
     private bool vendorControlRunning;
     public bool VendorControlRunning { get => vendorControlRunning; set => Set(ref vendorControlRunning, value); }
     public int InputConnection { get; private set; }
-    public bool IsSwitchingMode { get => isSwitchingMode; set { if (Set(ref isSwitchingMode, value)) { Changed(nameof(CanTune)); } } }
+    public bool IsSwitchingMode
+    {
+        get => isSwitchingMode;
+        set
+        {
+            if (value == isSwitchingMode) { return; }
+            transitionDisplay = value ? new(DisplayGraphMode, DisplayGraphLegend, DisplayHistories, DisplaySampleInfo) : null;
+            Set(ref isSwitchingMode, value);
+            Changed(nameof(CanTune));
+            if (!value) { NotifyDisplay(); }
+        }
+    }
+    internal void CommitDisplayTransition() => transitionDisplay = null;
     public bool CanTune => CanEdit && !IsCalibrationMode && !IsSwitchingMode;
     public HardwarePedalViewModel? HardwareDisplay { get => hardwareDisplay; set { if (Set(ref hardwareDisplay, value)) { value?.SetGraphWindow(GraphWindow); NotifyDisplay(); } } }
-    public string DisplayGraphMode => IsCalibrationMode ? "Device counts" : GraphMode;
-    public string DisplayGraphLegend => IsCalibrationMode ? HardwareDisplay?.GraphLegend ?? "Calibration · connect a controller to view live counts" : GraphLegend;
-    public IReadOnlyList<PedalHistory> DisplayHistories => IsCalibrationMode ? HardwareDisplay?.Histories ?? HardwarePedalViewModel.EmptyHistories : PedalHistories;
-    public string DisplaySampleInfo => IsCalibrationMode ? HardwareDisplay?.StateInfo ?? "Waiting for controller" : SampleInfo;
+    public string DisplayGraphMode => transitionDisplay?.Mode ?? (IsCalibrationMode ? "Device counts" : GraphMode);
+    public string DisplayGraphLegend => transitionDisplay?.Legend ?? (IsCalibrationMode ? HardwareDisplay?.GraphLegend ?? "Calibration · connect a controller to view live counts" : GraphLegend);
+    public IReadOnlyList<PedalHistory> DisplayHistories => transitionDisplay?.Histories ?? (IsCalibrationMode ? HardwareDisplay?.Histories ?? HardwarePedalViewModel.EmptyHistories : PedalHistories);
+    public string DisplaySampleInfo => transitionDisplay?.SampleInfo ?? (IsCalibrationMode ? HardwareDisplay?.StateInfo ?? "Waiting for controller" : SampleInfo);
     private string outputInfo = "Waiting for live input";
     public string OutputInfo { get => outputInfo; set => Set(ref outputInfo, value); }
     public bool PlotCounts

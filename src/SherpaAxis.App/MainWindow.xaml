@@ -36,6 +36,10 @@
                             <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.6" /></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.45" /></Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#E8EFF8" /></Trigger>
+                            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}}" Value="False"/>
+                                <Condition Binding="{Binding DataContext.IsSwitchingMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                            </MultiDataTrigger.Conditions><Setter TargetName="Surface" Property="Opacity" Value="1"/></MultiDataTrigger>
 
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -196,12 +200,20 @@
                 <TextBlock Text="{loc:Translate Value={Binding OutputInfo}}" ToolTip="{loc:Translate Value={Binding OutputInfo}}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-            <StackPanel><TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold"/><TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1"/></StackPanel>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold"/>
+                    <Border Background="#18273C" BorderBrush="#34465F" BorderThickness="1" CornerRadius="5" Padding="7,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="AppVersionLabel" Text="{x:Static vm:DashboardViewModel.VersionLabel}" Foreground="#95A9C1" FontSize="11"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1"/>
+            </StackPanel>
         </DockPanel>
         <Grid Grid.Row="1" TextElement.Foreground="#E8EFF8">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <Border x:Name="StartupRecoveryPanel" DataContext="{Binding Recovery}" Background="#202334" BorderBrush="#B18445" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,12">
-                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsBlocked}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding NeedsAttention}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
                 <StackPanel>
                     <TextBlock Text="{loc:Translate Value={Binding Status}}" FontWeight="SemiBold" Foreground="#FFCE83" TextWrapping="Wrap"/>
                     <controls:StableComboBox x:Name="RecoveryRecordSelector" ItemsSource="{Binding Records}" SelectedItem="{Binding Selected}" DisplayMemberPath="Label" ItemTemplate="{x:Null}" IsEnabled="{Binding CanCheck}" Margin="0,8,0,0" AutomationProperties.Name="{loc:Text T224FC5C90846}" ToolTip="{loc:Text TD298BD946E57}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}">
@@ -352,20 +364,20 @@
                 </ScrollViewer>
                 <Border Grid.Column="2" Background="{StaticResource EditorSurface}" BorderBrush="#24354C" BorderThickness="1" CornerRadius="8">
                     <DockPanel>
-                        <WrapPanel DockPanel.Dock="Top" Margin="14,12,14,0">
-                            <Button x:Name="TuningModeButton" Content="{loc:Text T2ABEEFBA61DF}" Click="TuningModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TABF5D860F9C3}">
+                        <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0"><UniformGrid x:Name="PanelModeTabs" Columns="3">
+                            <Button x:Name="TuningModeButton" FontSize="12" Padding="8,9" MinHeight="38" HorizontalContentAlignment="Center" Margin="0,0,6,0" Content="{loc:Text T2ABEEFBA61DF}" Click="TuningModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TABF5D860F9C3}">
                                 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsTuningMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
-                            <Button x:Name="CalibrationModeButton" Content="{loc:Text T252526ECD431}" Click="CalibrationModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T65E82C65BA0C}">
+                            <Button x:Name="CalibrationModeButton" FontSize="12" Padding="8,9" MinHeight="38" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text T252526ECD431}" Click="CalibrationModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T65E82C65BA0C}">
                                 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsCalibrationMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
-                            <Button x:Name="SettingsModeButton" Content="{loc:Text T74A883A037BC}" Click="SettingsModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TD67536EC8677}">
+                            <Button x:Name="SettingsModeButton" FontSize="12" Padding="8,9" MinHeight="38" HorizontalContentAlignment="Center" Margin="6,0,0,0" Content="{loc:Text T74A883A037BC}" Click="SettingsModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TD67536EC8677}">
                                 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding IsSettingsMode}" Value="True"><Setter Property="Background" Value="#45D6BB"/><Setter Property="Foreground" Value="#092A29"/><Setter Property="BorderBrush" Value="#45D6BB"/></DataTrigger></Style.Triggers></Style></Button.Style>
                             </Button>
-                            <TextBlock Text="{loc:Text TB7B9FBF8DF28}" Width="290" TextAlignment="Right" Foreground="#95A9C1" FontSize="10" VerticalAlignment="Center" Margin="0,0,0,0">
+                            </UniformGrid><TextBlock Text="{loc:Text TB7B9FBF8DF28}" TextAlignment="Right" Foreground="#95A9C1" FontSize="10" VerticalAlignment="Center" Margin="0,0,0,0">
                                 <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Hidden"/><Style.Triggers><DataTrigger Binding="{Binding IsSwitchingMode}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                             </TextBlock>
-                        </WrapPanel>
+                        </StackPanel>
                         <Grid>
                     <DockPanel x:Name="TuningSidePanel" IsEnabled="{Binding CanTune}" TextBox.TextChanged="TuningValuesChanged" CheckBox.Checked="TuningValuesChanged" CheckBox.Unchecked="TuningValuesChanged" ComboBox.SelectionChanged="TuningValuesChanged">
                         <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">

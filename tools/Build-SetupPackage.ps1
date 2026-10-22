@@ -2,7 +2,7 @@
 param(
     [string]$VJoyInstaller,
     [string]$CompilerPath,
-    [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')][string]$Version = '0.1.0'
+    [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')][string]$Version = ([xml](Get-Content -LiteralPath (Join-Path $PSScriptRoot '../Directory.Build.props') -Raw)).Project.PropertyGroup.Version
 )
 
 $ErrorActionPreference = 'Stop'

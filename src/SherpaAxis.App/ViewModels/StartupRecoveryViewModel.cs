@@ -7,10 +7,11 @@ public sealed class StartupRecoveryViewModel : ObservableObject
 {
     public ObservableCollection<PendingHardwareRecovery> Records { get; } = [];
     private PendingHardwareRecovery? selected;
-    private bool busy, blocked;
+    private bool busy, blocked, needsAttention;
     private string status = "";
     public PendingHardwareRecovery? Selected { get => selected; set { if (Set(ref selected, value)) { Notify(); } } }
     public bool IsBlocked { get => blocked; private set => Set(ref blocked, value); }
+    public bool NeedsAttention { get => needsAttention; private set => Set(ref needsAttention, value); }
     public bool Busy { get => busy; set { if (Set(ref busy, value)) { Notify(); } } }
     public bool CanCheck => !Busy;
     public bool CanRestore => !Busy && Selected?.CanRestore == true;
@@ -26,10 +27,11 @@ public sealed class StartupRecoveryViewModel : ObservableObject
         Records.Clear(); foreach (var item in records) { Records.Add(item); }
         Selected = Records.FirstOrDefault(item => item.Path == path) ?? Records.FirstOrDefault();
         IsBlocked = Records.Count > 0;
+        NeedsAttention = IsBlocked;
         Status = IsBlocked ? "Interrupted calibration needs attention. Pedal input and virtual output are paused." : "Hardware recovery check completed.";
         Busy = false; Notify();
     }
-    public void Fail(string detail) { IsBlocked = true; Busy = false; Status = $"Recovery check could not finish: {detail}"; Notify(); }
+    public void Fail(string detail) { IsBlocked = true; NeedsAttention = true; Busy = false; Status = $"Recovery check could not finish: {detail}"; Notify(); }
     private void Notify()
     {
         foreach (var property in new[] { nameof(CanCheck), nameof(CanRestore), nameof(CanSave), nameof(ShowSave), nameof(Detail), nameof(FilePath) }) { Changed(property); }
