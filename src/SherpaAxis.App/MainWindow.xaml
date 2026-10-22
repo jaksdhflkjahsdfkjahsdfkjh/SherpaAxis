@@ -439,7 +439,7 @@
                                 <TextBlock Text="{loc:Translate Value={Binding SensorRangeInfo}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 <Grid x:Name="DriftActionsRow" Margin="0,10,0,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                    <Button x:Name="FixDriftButton" Click="FixDriftClick" FontSize="12" Padding="8,9" Margin="0,0,6,0" MinHeight="42" HorizontalContentAlignment="Center" ToolTip="{loc:Text T26141DB1C046}" AutomationProperties.Name="{loc:Text TC42CD3546587}">
+                                    <Button x:Name="FixDriftButton" PreviewMouseLeftButtonDown="FixDriftMouseDown" PreviewMouseLeftButtonUp="FixDriftMouseUp" LostMouseCapture="FixDriftCaptureLost" LostKeyboardFocus="FixDriftFocusLost" PreviewKeyDown="FixDriftKeyDown" PreviewKeyUp="FixDriftKeyUp" FontSize="12" Padding="8,9" Margin="0,0,6,0" MinHeight="42" HorizontalContentAlignment="Center" ToolTip="{loc:Text TBD96D3085B42}" AutomationProperties.Name="{loc:Text TC42CD3546587}">
                                         <TextBlock Text="{loc:Text TC42CD3546587}" TextWrapping="Wrap" TextAlignment="Center"/>
                                     </Button>
                                     <Button x:Name="SaveCorrectedCalibrationButton" Grid.Column="1" Click="SaveCorrectedCalibrationClick" IsEnabled="{Binding CanSaveCorrectedCalibration}" FontSize="12" Padding="8,9" Margin="0" MinHeight="42" HorizontalContentAlignment="Center" ToolTip="{loc:Text TBE7F73D5C950}" AutomationProperties.Name="{loc:Text T0BF582B00944}">

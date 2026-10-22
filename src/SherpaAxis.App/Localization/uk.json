@@ -773,5 +773,8 @@
   "You tried this area. Continue when ready.": "Ви спробували ці елементи. Продовжуйте, коли будете готові.",
   "Try the highlighted controls, or choose Next to continue.": "Спробуйте підсвічені елементи або натисніть «Далі».",
   "Review these controls, then choose Next. The tour does not start hardware actions.": "Ознайомтеся з цими елементами й натисніть «Далі». Огляд не запускає дій із контролером.",
-  "Finish calibration or recovery before starting the tour.": "Перед початком огляду завершіть калібрування або відновлення."
+  "Finish calibration or recovery before starting the tour.": "Перед початком огляду завершіть калібрування або відновлення.",
+  "Hold with your foot off for at least one stable second. Keep holding until drift is fixed; release to stop.": "Приберіть ногу й утримуйте кнопку щонайменше одну стабільну секунду. Тримайте до завершення виправлення дрейфу; відпустіть для зупинки.",
+  "Drift check cancelled; no new correction": "Перевірку дрейфу скасовано; нову корекцію не застосовано",
+  "Hold Fix drift or your bound control with your foot completely off for at least one stable second. Keep holding until correction finishes; release to stop. Correction is temporary until saved. Stability alone cannot rule out steady foot pressure.": "Приберіть ногу й утримуйте «Виправити дрейф» або призначену кнопку щонайменше одну стабільну секунду. Тримайте до завершення корекції; відпустіть для зупинки. Корекція тимчасова до збереження. Стабільність сама по собі не виключає постійного тиску ноги."
 }

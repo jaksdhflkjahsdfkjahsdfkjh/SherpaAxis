@@ -55,6 +55,22 @@ public sealed partial class DashboardEngine
         }
     }
 
+    public void CancelFixDrift(PedalAxis axis)
+    {
+        lock (sync)
+        {
+            if (fixRequested == axis) { fixRequested = null; }
+            var values = axes[axis];
+            if (!values.ManualCapture && !values.ManualAdjusting) { return; }
+            values.ManualCapture = values.ManualAdjusting = false;
+            values.ReleaseWindow.Reset();
+            values.ManualStarted = null;
+            values.DriftStatus = values.BaselineApproved && values.Session.BaselineCorrection == values.Session.TargetCorrection
+                ? "Drift fixed for this session. Save corrected calibration to keep it in the controller"
+                : "Drift check cancelled; no new correction";
+        }
+    }
+
     private bool ProcessDrift(PedalAxis axis, AxisState values, int raw, AxisProfile settings)
     {
         if (sensorCalibration is null || values.CarryCorrection is not null) { return false; }

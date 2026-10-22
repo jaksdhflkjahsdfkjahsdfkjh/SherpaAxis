@@ -117,7 +117,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.ShowMessage($"Read-only hardware snapshot · Throttle {Range(snapshot.Calibration.Throttle)} · Brake {Range(snapshot.Calibration.Brake)} · Clutch {Range(snapshot.Calibration.Clutch)}");
     });
 
-    private void StopHold() => engine.RevokeRelease();
+    private void StopHold() { EndDriftHold(); engine.RevokeRelease(); }
     private void WindowDeactivated(object? sender, EventArgs e) => StopHold();
     private void Run(Action action)
     {

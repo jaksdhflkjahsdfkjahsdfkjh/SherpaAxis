@@ -26,7 +26,7 @@ public sealed class GettingStartedViewModel : ObservableObject
             "Pause to inspect the graph, use the mouse wheel to zoom or drag across a time range to enlarge it. Reset zoom restores the view. These controls do not pause pedal output.", "SignalGraphSection"),
         new("Correct pedal drift", "Tuning · Pedal drift correction",
             "Calibrate the pedal once in SherpaAxis to retain its original raw range. Auto requires five consistent press/release cycles with stable releases. Mismatched cycles do not apply a new correction.",
-            "For Fix drift or By button, take your foot completely off for one stable second. Correction is temporary until you choose Save corrected calibration. Stability alone cannot rule out steady foot pressure.", "DriftCorrectionPanel"),
+            "Hold Fix drift or your bound control with your foot completely off for at least one stable second. Keep holding until correction finishes; release to stop. Correction is temporary until saved. Stability alone cannot rule out steady foot pressure.", "DriftCorrectionPanel"),
         new("Calibrate the controller", "Calibration · side panel",
             "This tab opens hardware calibration. The tour only highlights the button; it does not connect a calibration session or capture values. Finish the tour before calibrating.",
             "Calibrate with games and FEEL-VR Control closed. Device tools can back up and restore hardware calibration. Hardware calibration is separate from profile curves, filters and deadzones.", "CalibrationModeButton"),
