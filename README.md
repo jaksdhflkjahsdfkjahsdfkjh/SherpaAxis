@@ -1,133 +1,192 @@
+<div align="center">
+
 # SherpaAxis
 
-SherpaAxis is a Windows utility for FEEL-VR Pedals One. It combines hardware
-calibration, pedal tuning and virtual controller output in one application.
+**Tune how your FEEL-VR pedals feel in the game.**
 
-## What it helps with
+Adjust pedal response, smooth sensor noise and manage calibration from one Windows app.
 
-Adjust how each pedal responds, smooth input jitter and keep different setups
-for different cars or games. Each pedal has its own editable response curve,
-deadzones and filter settings. Live graphs let you compare the input, filtered
-signal and final output while tuning.
+[**Download Setup.exe**](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/releases/latest/download/Setup.exe) · [All releases](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/releases) · [Report a bug](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues)
 
-Save your settings as profiles, switch between them from the app or system tray,
-and choose one profile to load automatically at startup. The Calibration panel
-sets the controller's pedal bounds and provides hardware backup and restoration.
-The interface is available in English and Ukrainian.
+Windows 10 / 11 · x64 · FEEL-VR Pedals One · English & Ukrainian
 
-A short interactive tour highlights the real controls on first launch. You can
-try them while following the tour; tuning changes apply to your current profile.
-Replay it from **Settings → Help → Getting started**, or open **Setup guide** there
-for device and game setup instructions.
+</div>
 
-## Installation
+![SherpaAxis overview showing a pedal graph, profile controls, individual curves and tuning settings](docs/screenshots/app-overview.png)
 
-Requirements: Windows 10 22H2 or Windows 11 (64-bit Intel/AMD) and FEEL-VR
-Pedals One. Native hardware calibration supports the PE0 controller with firmware 017.
+*An example profile with recorded pedal input and a Progressive brake curve.
+Dashed grey is filtered input; orange is the output after the curve. The pedal
+card and the right edge of the graph show the same recorded moment.*
 
-Installation uses a single offline `Setup.exe`. It includes the .NET runtime and
-the vJoy driver, HidHide, ST DfuSe firmware tool and USB driver, and runtime libraries; you do not need to install developer tools
-or run scripts.
+## Your pedals, your response
 
-1. Close FEEL-VR CONTROL, including its tray instance, games and other vJoy feeders.
-2. Run `Setup.exe`, allow the administrator prompt and follow the wizard.
-3. Setup installs SherpaAxis into `C:\Program Files\SherpaAxis`, adds a Start menu
-   shortcut and offers an optional desktop shortcut. It installs vJoy when
-   missing and configures or reuses a dedicated virtual pedal device. Existing
-   vJoy device configurations are preserved.
-4. Restart Windows if requested. Device configuration finishes automatically
-   after the restart.
-5. Connect your pedals and open **SherpaAxis** from the Start menu. The app runs
-   with normal user permissions; live input and virtual output start automatically.
+Make the first part of the throttle easier to control, change how quickly the brake
+builds up, or adjust the clutch response. Throttle, brake and clutch each have their
+own curve, deadzones and filtering settings.
 
-In your game's controls, bind the selected vJoy device's **X** axis to throttle,
-**Y** to brake and **Z** to clutch. Remove duplicate bindings to the physical
-pedals. SherpaAxis remembers the virtual device so these bindings stay consistent.
+| What you want to do | How SherpaAxis helps |
+| --- | --- |
+| Change the feel of a pedal | Choose a response preset or shape the curve yourself. |
+| Reduce small input fluctuations | Try a filter and compare the result on the graph. |
+| Correct a changed resting value | Check for sensor drift and shift the calibrated range. |
+| Keep different setups ready | Save profiles for different cars or games and switch from the app or tray. |
+| Manage the controller | Calibrate the pedals, back up settings and update supported firmware. |
 
-**SherpaAxis must stay running to send processed pedal input to your game.**
-Minimizing it or keeping it in the system tray continues output. Choosing **Exit**
-stops output; the virtual controller may still be listed in Windows.
+### Shape each pedal's response
 
-When SherpaAxis uses the only configured vJoy device, Windows Game Controllers
-shows **FEEL-VR Pedals One (SherpaAxis)**. If other vJoy slots are configured,
-the shared name remains unchanged to preserve their names. Some games use the
-driver's product string and may still show **vJoy**. Reopen the controller list
-after starting SherpaAxis to refresh the displayed name.
+Start with a preset, then drag points to adjust it. Double-click to add a point;
+right-click to remove one. Changes apply automatically, so you can watch the output
+as you tune. Save the profile when you want to keep your changes.
 
-**Hide physical pedals from games** is enabled by default in Settings. HidHide
-hides only the FEEL-VR pedal joystick while SherpaAxis retains access to input
-and calibration. The physical Windows HID driver stays installed and must not
-be removed or disabled. Existing HidHide entries for other devices are preserved.
-SherpaAxis restores its visibility changes on exit or when this setting is turned
-off. For existing shared HidHide configurations, follow any status shown
-in Settings; an inverted application list or disabled shared configuration needs
-manual review. Close games before setup; reconnect the pedals if a game still
-sees both devices. Keep FEEL-VR Control closed while using SherpaAxis.
+![Individual throttle, brake and clutch curves with gentle progressive, progressive and S curve presets](docs/screenshots/pedal-curves.png)
 
-If virtual output is unavailable, open **Settings** and run **Automatic vJoy
-setup**. Close other vJoy feeders first. An incompatible existing vJoy driver
-requires repair; Setup preserves it rather than replacing it silently.
+*Three example curves: Gentle progressive throttle, Progressive brake and S curve clutch.
+The brake curve maps 50% input to 25% output, giving more input travel to control the lower output range.*
 
-Use **Tuning** for curves, filters and profile deadzones, **Calibration** for
-hardware calibration, and **Settings** for language, startup preferences and
-device checks. Tuning changes apply automatically. The saved/unsaved indicator
-shows whether they are stored in your profile. Save your profile to keep them
-after restart; enable **Auto-load** if you want
-it applied the next time the app starts.
+### See what filtering changes
 
-For sensor drift, close FEEL-VR CONTROL and choose a **Pedal drift correction** mode in
-Tuning. First calibrate each affected pedal once in SherpaAxis so it can retain
-the original raw range separately from the hardware deadzone margins; correction
-is blocked if that reference is missing. **Auto** waits for five consistent press/release cycles and only corrects
-downward drift during stable release. **By button** checks a stable second while
-you hold your binding with your foot off. Hold **Fix drift** for the same check
-without a binding and keep holding until correction finishes; release to stop.
-Manual correction supports drift in either
-direction. Correction moves both
-range endpoints together, preserving sensitivity, hardware margins and profile deadzones. It is
-temporary until you explicitly choose **Save corrected calibration**; the original
-hardware calibration is backed up first. If readings disagree, no new correction
-is applied. Keep your foot completely off for manual checks: stability alone
-cannot distinguish a released pedal from steady foot pressure.
+Filtering can smooth sensor noise and reject short spikes. Use the live graph to
+compare the original input, filtered signal and final output. Pause the graph and
+zoom with the mouse to inspect small differences.
 
-SherpaAxis checks GitHub once at each app startup for a newer stable release.
-It does not repeat checks while running. An update link appears in the footer;
-when the app is hidden, it also sends a tray notification. Open **Settings → Updates**
-to **Check now** or disable automatic checks. Checks send no pedal data or profiles;
-they contact GitHub for public release metadata. Downloads and installation are manual.
+![Median plus exponential filtering applied to a recorded brake press and release, comparing dashed grey input with orange filtered input](docs/screenshots/filtering-example.png)
 
-To update, open the release link, download its `Setup.exe`, exit SherpaAxis from the
-tray, close FEEL-VR Control and games, then run Setup. Your
-profiles and settings are retained. Enable **Start with Windows** in Settings
-if you want the app to launch when you sign in.
+*A real brake recording: dashed grey is the original input; orange is the filtered
+signal. This example uses a five-report median window followed by 8 ms exponential
+smoothing. Filtering also adds delay, so compare the result before choosing stronger settings.*
 
-To uninstall, open Windows **Settings → Apps**, select **SherpaAxis** and choose
-**Uninstall**. Your profiles and settings are retained. The shared vJoy driver
-stays installed for other applications that use it.
-HidHide also stays installed. SherpaAxis releases its own visibility entries and
-restores the previous controller display name during uninstall. After an abnormal
-termination, reopen SherpaAxis and exit normally to complete visibility cleanup.
+The filtering guide inside the app includes two recorded examples for each filter.
+Open it with the information button next to **Filtering**.
 
-For pedal firmware updates, open **Settings → Firmware update → Update firmware**,
-select a bundled firmware and choose **Flash**. Setup includes firmware 017 in
-`Firmwares` and the DfuSe tool in `Tools\DfuSe` inside the SherpaAxis installation.
-**Check firmware** provides a manual version check; **Backup calibration** saves a
-separate settings backup. **Open update logs** opens retained logs and automatic backups.
-After **Flash**, SherpaAxis waits for the pedals to restart, restores and saves
-the original calibration if needed, and checks the controller, USB port, firmware
-and calibration automatically. Click **OK** when the update finishes. If a step
-fails, output stays paused and the backup and logs remain available for recovery.
-This checks the connected controller and calibration; firmware byte readback is
-not performed.
-See the [firmware guide](docs/firmware.md) for recovery details. Setup prepares the
-USB driver; it does not flash pedal firmware.
+### Correct pedal drift
 
-## Bug reports
+If a pedal's resting sensor value changes over time, **Pedal drift correction** can
+shift both calibration endpoints together while preserving the range and deadzones.
 
-Report problems through [GitHub Issues](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues).
-Include the SherpaAxis version, Windows version, controller firmware, steps to
-reproduce the problem, and what you expected to happen. Settings → Export diagnostic
-report provides a ZIP you can review and attach to the issue.
+- **Auto** waits for five consistent press-and-release cycles before correcting downward drift.
+- **By button** checks for a stable release while you hold a keyboard key or wheel/gamepad button.
+- **Fix drift** provides the same manual check directly in the app. Keep your foot off and hold it for at least one stable second, until correction finishes.
+
+First calibrate the affected pedal in SherpaAxis so the app can retain its original
+raw range. If the checks disagree, no new correction is applied. Keep your foot
+completely off for manual checks: steady foot pressure can also look stable.
+Corrections last for the current session unless you choose **Save calibration**.
+The original hardware calibration is backed up before a corrected calibration is saved.
+
+### Save a setup for each car or game
+
+Create profiles, give them names and switch between them from the app or system tray.
+Enable **Auto-load** on the profile you want at startup; only one profile can have it
+enabled. Tuning changes apply immediately, and the saved/unsaved indicator tells you
+whether they are stored in your profile.
+
+## Get started
+
+You need **Windows 10 22H2 or Windows 11 on an x64 Intel/AMD PC** and **FEEL-VR Pedals One**.
+Native hardware calibration supports the **PE0 controller with firmware 017**;
+support for other FEEL-VR models or controller revisions is not established.
+
+1. [Download **Setup.exe** from the latest release](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/releases/latest/download/Setup.exe).
+2. Close **FEEL-VR Control**, including its tray instance, games and other vJoy feeders.
+3. Run Setup, allow the administrator prompt and follow the wizard. Restart Windows if requested.
+4. Connect the pedals and open **SherpaAxis** from the Start menu. Input and virtual output start automatically.
+5. Follow the interactive first-launch tour, then bind the selected virtual pedal device in your game's controls.
+
+| Game control | Virtual axis |
+| --- | --- |
+| Throttle | X |
+| Brake | Y |
+| Clutch | Z |
+
+Setup is a single offline installer. It includes the .NET runtime, vJoy, HidHide,
+the ST DfuSe firmware tool and its USB driver. You do not need developer tools or
+scripts. Existing vJoy device configurations are preserved.
+
+**Keep SherpaAxis running while playing.** The app sends processed pedal input to
+your game. Minimizing it or leaving it in the system tray continues output;
+choosing **Exit** stops output. Keep FEEL-VR Control closed while using SherpaAxis.
+
+The release also includes `SHA256SUMS.txt`. To check your download, run
+`Get-FileHash .\Setup.exe -Algorithm SHA256` in PowerShell and compare the result
+with that file.
+
+## Help and common questions
+
+Replay the tour from **Settings → Help → Getting started**, or open **Setup guide**
+there for device and game setup instructions.
+
+<details>
+<summary><strong>Which controller should I bind in the game?</strong></summary>
+
+Use the dedicated virtual pedal device selected by SherpaAxis. When it is the only
+configured vJoy device, Windows Game Controllers shows **FEEL-VR Pedals One
+(SherpaAxis)**. Some games may still call it **vJoy**. If you have other vJoy slots,
+the shared name stays unchanged. SherpaAxis remembers its virtual device to keep
+your bindings consistent.
+
+**Hide physical pedals from games** is enabled by default to help prevent duplicate
+input. Remove old game bindings to the physical pedals. Their Windows HID driver
+must stay installed so SherpaAxis can read them. If a game still sees both devices,
+close the game and reconnect the pedals. Existing HidHide configurations may need
+review; follow any status shown in Settings.
+
+</details>
+
+<details>
+<summary><strong>What if virtual output is unavailable?</strong></summary>
+
+Close other vJoy feeders, open **Settings** and run **Automatic vJoy setup**.
+Restart Windows if requested. An incompatible existing driver may need repair;
+Setup preserves it rather than replacing it silently.
+
+See the [installation and device guide](docs/setup.md) for more detail.
+
+</details>
+
+<details>
+<summary><strong>Can I back up calibration and update pedal firmware?</strong></summary>
+
+Use **Calibration → Device tools** for hardware calibration backups and restoration.
+In **Settings → Firmware update**, you can check firmware, back up calibration,
+open update logs or update the supported firmware.
+
+Choose **Update firmware**, select a bundled image and click **Flash**. Keep the
+pedals connected. SherpaAxis waits for them to restart, restores and saves the
+original calibration if needed, then checks the controller, USB port, firmware and
+calibration. Click **OK** when it finishes. If a step fails, output stays paused
+and the backup and logs remain available for recovery.
+
+Firmware byte readback is not performed. Setup prepares the tools and USB driver;
+it does not flash the pedals during installation. Read the [firmware guide](docs/firmware.md)
+for compatibility and recovery details.
+
+</details>
+
+<details>
+<summary><strong>How do updates and uninstalling work?</strong></summary>
+
+SherpaAxis checks for a newer stable GitHub release once at each app startup.
+An update link appears in the footer, with a tray notification when the app is
+hidden. **Settings → Updates** offers **Check now** and an option to disable startup
+checks. No pedal data or profiles are sent. Downloads and installation are manual.
+
+To update, download the newer `Setup.exe`, exit SherpaAxis from its tray menu,
+close FEEL-VR Control and games, then run Setup. Your profiles and settings are retained.
+
+To uninstall, use Windows **Settings → Apps → SherpaAxis → Uninstall**. Profiles
+and settings are retained. The shared vJoy and HidHide drivers stay installed;
+SherpaAxis releases its own visibility entries and restores the previous controller
+display name. After an abnormal termination, reopen the app and exit normally to
+complete visibility cleanup.
+
+</details>
+
+## Found a problem?
+
+[Open a GitHub issue](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues)
+with your app version, Windows version, pedal firmware and the steps to reproduce
+the problem. Include what you expected and what happened instead.
+**Settings → Export diagnostic report** creates a ZIP you can review and attach.
 
 ## License
 
