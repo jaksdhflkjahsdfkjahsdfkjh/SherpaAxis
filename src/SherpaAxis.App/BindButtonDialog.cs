@@ -11,9 +11,10 @@ namespace SherpaAxis.App;
 internal sealed class BindButtonDialog : Window
 {
     internal CorrectionButton? Binding { get; private set; }
-    internal BindButtonDialog(Window owner, IButtonStateSource source)
+    internal BindButtonDialog(Window owner, IButtonStateSource source, string title = "Bind baseline correction",
+        string hint = "Escape cancels. After binding, hold that control only while the pedal is fully released.")
     {
-        Owner = owner; Title = Localization.Localizer.Translate("Bind baseline correction"); Width = 440; Height = 220;
+        Owner = owner; Title = Localization.Localizer.Translate(title); Width = 440; Height = 240;
         ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
         Background = new SolidColorBrush(Color.FromRgb(17, 30, 48)); Foreground = Brushes.White;
@@ -22,7 +23,7 @@ internal sealed class BindButtonDialog : Window
         panel.Children.Add(new TextBlock { Text = Localization.Localizer.Translate("Press a keyboard key or wheel/gamepad button"), FontSize = 16, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock
         {
-            Text = Localization.Localizer.Translate("Escape cancels. After binding, hold that control only while the pedal is fully released."),
+            Text = Localization.Localizer.Translate(hint),
             FontSize = 12,
             Foreground = Brushes.LightSlateGray,
             TextWrapping = TextWrapping.Wrap,

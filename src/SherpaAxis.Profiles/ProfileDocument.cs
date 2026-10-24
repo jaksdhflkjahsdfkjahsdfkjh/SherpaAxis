@@ -21,6 +21,14 @@ internal sealed class AxisDocument
     public required double MaximumBaselineCorrection { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public CorrectionDocument? Correction { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BitePointDocument? BitePoint { get; init; }
+}
+
+internal sealed class BitePointDocument
+{
+    public required double Output { get; init; }
+    public CorrectionButton? Button { get; init; }
 }
 
 internal sealed class CorrectionDocument

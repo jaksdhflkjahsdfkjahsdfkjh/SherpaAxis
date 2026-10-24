@@ -21,7 +21,7 @@ internal static class RecordingFormat
     };
 
     public static string ProcessedHeader { get; } = "sequence,configuration_revision,elapsed_seconds,connection," +
-        string.Join(',', Axes.SelectMany(axis => Stages.Select(stage => axis + "_" + stage)));
+        string.Join(',', Axes.SelectMany(axis => Stages.Select(stage => axis + "_" + stage))) + ",clutch_final_output";
 
     public static string Input(RecordedSample sample) => FormattableString.Invariant(
         $"{sample.ElapsedSeconds:F7},{sample.Connection},{sample.Input.Throttle},{sample.Input.Brake},{sample.Input.Clutch}");
@@ -32,6 +32,7 @@ internal static class RecordingFormat
         Append(sample.Throttle);
         Append(sample.Brake);
         Append(sample.Clutch);
+        line.Append(CultureInfo.InvariantCulture, $",{sample.FinalClutchOutput ?? sample.Clutch.Processing.Output:R}");
         return line.ToString();
 
         void Append(AxisSessionResult result)

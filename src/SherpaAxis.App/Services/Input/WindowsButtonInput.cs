@@ -16,6 +16,7 @@ public sealed class WindowsButtonInput : IButtonStateSource
     private bool disposed;
     public event Action<CorrectionButton>? Pressed { add => state.Pressed += value; remove => state.Pressed -= value; }
     public bool IsDown(CorrectionButton button) => state.IsDown(button);
+    public long ConnectionRevision => state.ConnectionRevision;
     public WindowsButtonInput(HwndSource source)
     {
         this.source = source;
@@ -97,7 +98,7 @@ public sealed class WindowsButtonInput : IButtonStateSource
     {
         if (devices.Remove(device, out var hid)) { state.RemoveDevice(hid.Path); Marshal.FreeHGlobal(hid.Data); }
         if (keyboards.Remove(device, out var keys))
-        { foreach (var key in keys) { state.Set(new("keyboard", key), keyboards.Values.Any(set => set.Contains(key))); } }
+        { state.NotifyDeviceRemoved(); foreach (var key in keys) { state.Set(new("keyboard", key), keyboards.Values.Any(set => set.Contains(key))); } }
     }
     public void Dispose()
     {

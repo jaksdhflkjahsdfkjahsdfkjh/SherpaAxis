@@ -25,7 +25,7 @@ public sealed partial class DashboardViewModel
     public string GraphPauseText => GraphPaused ? "Resume graph" : "Pause graph";
     public string GraphPedal { get => graphPedal; set => Set(ref graphPedal, value); }
     public string GraphMode { get => graphMode; set { if (Set(ref graphMode, value)) { Changed(nameof(GraphLegend)); NotifyDisplay(); } } }
-    public string GraphLegend => GraphMode switch
+    public string GraphLegend => (GraphMode switch
     {
         "Input vs filtered" => "Dashed: input · Color: filtered · Before curve/deadzones · Applied settings",
         "Filtered vs curved" => "Dashed: filtered input · Color: output after deadzones and curve · Applied settings",
@@ -33,7 +33,7 @@ public sealed partial class DashboardViewModel
         "Device counts" => "Original device counts · Each pedal has its own scale · Applied settings",
         "Output" => "Final output after filter, deadzones and curve · Applied settings",
         _ => "Normalized signal before deadzones and curve · Applied settings"
-    };
+    }) + (bitePointState.Holding ? " · Clutch bite point hold active" : "");
     public bool GraphZoom { get => graphZoom; set => Set(ref graphZoom, value); }
     public double GraphWindow
     {

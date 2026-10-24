@@ -853,5 +853,21 @@
   "You're up to date ({0}).": "Встановлено актуальну версію ({0}).",
   "Could not check for updates. Check your connection and try again later.": "Не вдалося перевірити оновлення. Перевірте з’єднання та спробуйте пізніше.",
   "SherpaAxis update available": "Доступне оновлення SherpaAxis",
-  "{0} is available. Click to view the release.": "Доступна версія {0}. Натисніть, щоб переглянути випуск."
+  "{0} is available. Click to view the release.": "Доступна версія {0}. Натисніть, щоб переглянути випуск.",
+  "Clutch bite point": "Точка схоплювання зчеплення",
+  "Enabled": "Увімкнено",
+  "Bite point output (%)": "Вихід у точці схоплювання (%)",
+  "Bite point output": "Вихід у точці схоплювання",
+  "Double-tap to enable or disable. Hold for 250 ms to apply; release to return to the pedal. The pedal can always request more clutch.": "Двічі натисніть для ввімкнення або вимкнення. Утримуйте 250 мс для застосування; відпустіть для повернення до педалі. Натискання педалі сильніше завжди має пріоритет.",
+  "Clear bite point binding": "Прибрати призначення точки схоплювання",
+  "Bind clutch bite point": "Призначити кнопку точки схоплювання",
+  "Double-tap to enable or disable. While enabled, hold the same button to apply the bite point.": "Двічі натисніть для ввімкнення або вимкнення. Коли ввімкнено, утримуйте цю саму кнопку для застосування точки схоплювання.",
+  "Bind a button to use the clutch bite point.": "Призначте кнопку для точки схоплювання зчеплення.",
+  "Holding clutch at {0} minimum · press the pedal farther to override": "Утримання зчеплення щонайменше на {0} · сильніше натискання педалі має пріоритет",
+  "Enabled · hold the button to apply the bite point": "Увімкнено · утримуйте кнопку для точки схоплювання",
+  "Disabled · double-tap the button to enable": "Вимкнено · двічі натисніть кнопку для ввімкнення",
+  "Clutch bite point hold active": "Утримання точки схоплювання зчеплення активне",
+  "Bite point output must be between 0% and 100%.": "Вихід у точці схоплювання має бути від 0% до 100%.",
+  "Clutch bite point requires profile schema 4.": "Для точки схоплювання зчеплення потрібна версія формату профілю 4.",
+  "Bite point settings are supported only for the clutch.": "Налаштування точки схоплювання підтримуються лише для зчеплення."
 }

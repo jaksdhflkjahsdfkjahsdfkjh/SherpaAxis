@@ -70,6 +70,7 @@ public sealed partial class DashboardViewModel
         Changed(nameof(HasFilterDraft));
         Changed(nameof(SelectedCorrectionMode)); Changed(nameof(IsButtonCorrection)); Changed(nameof(CorrectionModeHint)); Changed(nameof(CorrectionBindingLabel)); Changed(nameof(HasCorrectionBinding));
         Changed(nameof(SelectedAutoLoad));
+        NotifyBitePointSettings();
     }
 
     public static IReadOnlyList<string> CorrectionModes { get; } = ["Off", "Auto", "By button"];
@@ -82,8 +83,7 @@ public sealed partial class DashboardViewModel
         BaselineCorrectionMode.ByButton => "Hold the bound control with your foot completely off the pedal. One stable second is required before correction starts. Release the control to stop adjustment. Fix drift provides the same check without a binding.",
         _ => "Baseline adjustment is off. Hardware calibration remains unchanged."
     };
-    public string CorrectionBindingLabel => Editor.CorrectionButton is not { } button ? "No button bound" : button.Kind == "keyboard"
-        ? "Key: " + System.Windows.Input.KeyInterop.KeyFromVirtualKey(button.Code) : $"Controller button {button.Code}";
+    public string CorrectionBindingLabel => ButtonLabel(Editor.CorrectionButton);
     public void SetCorrectionMode(string mode)
     {
         var selected = mode switch

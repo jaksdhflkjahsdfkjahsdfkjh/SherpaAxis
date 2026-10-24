@@ -6,7 +6,7 @@ namespace SherpaAxis.Profiles;
 
 public static class ProfileJson
 {
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
     public const int MaximumFileBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions Options = new()
@@ -30,7 +30,7 @@ public static class ProfileJson
         {
             var document = JsonSerializer.Deserialize<ProfileDocument>(json, Options)
                 ?? throw new InvalidDataException("Expected a profile object.");
-            if (document.SchemaVersion is not (1 or 2 or SchemaVersion))
+            if (document.SchemaVersion is not (1 or 2 or 3 or SchemaVersion))
             {
                 throw new InvalidDataException($"Unsupported profile schema version {document.SchemaVersion}; expected {SchemaVersion}.");
             }
@@ -49,6 +49,8 @@ public static class ProfileJson
                 }
                 if (document.SchemaVersion < 3 && settings.Correction is not null)
                 { throw new InvalidDataException("Correction modes require profile schema 3."); }
+                if (document.SchemaVersion < 4 && settings.BitePoint is not null)
+                { throw new InvalidDataException("Clutch bite point requires profile schema 4."); }
                 var mode = settings.Correction is { } correction
                     && Enum.TryParse<BaselineCorrectionMode>(correction.Mode, out var parsed) && Enum.IsDefined(parsed)
                     && parsed.ToString() == correction.Mode ? parsed
@@ -61,7 +63,7 @@ public static class ProfileJson
                     settings.Filter is { } filter ? ReadFilter(filter, document.SchemaVersion) : null,
                     settings.Session is { } session ? new AxisSessionSettings(session.MaximumCorrectionPerSecond,
                         session.MaximumCorrectionOutputPerSecond, session.ResetAfterSeconds) : null,
-                    mode, settings.Correction?.Button));
+                    mode, settings.Correction?.Button, settings.BitePoint is { } bite ? new(bite.Output, bite.Button) : null));
             }
 
             return new PedalProfile(document.Name, axes);
@@ -143,7 +145,8 @@ public static class ProfileJson
         } : null,
         MaximumBaselineCorrection = axis.MaximumBaselineCorrection,
         Correction = axis.CorrectionMode != BaselineCorrectionMode.Off || axis.CorrectionButton is not null
-            ? new() { Mode = axis.CorrectionMode.ToString(), Button = axis.CorrectionButton } : null
+            ? new() { Mode = axis.CorrectionMode.ToString(), Button = axis.CorrectionButton } : null,
+        BitePoint = axis.BitePoint is { } bite ? new() { Output = bite.Output, Button = bite.Button } : null
     };
 
     private static LowPassFilterSettings ReadFilter(FilterDocument filter, int version)

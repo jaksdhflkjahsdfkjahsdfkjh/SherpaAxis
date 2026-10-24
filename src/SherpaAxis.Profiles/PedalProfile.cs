@@ -25,6 +25,8 @@ public sealed class PedalProfile
         }
 
         Name = name;
+        if (copy.Any(pair => pair.Key != PedalAxis.Clutch && pair.Value.BitePoint is not null))
+        { throw new ArgumentException("Bite point settings are supported only for the clutch.", nameof(axes)); }
         Axes = new ReadOnlyDictionary<PedalAxis, AxisProfile>(copy);
     }
 

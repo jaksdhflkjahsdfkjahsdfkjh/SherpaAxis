@@ -31,13 +31,15 @@ public sealed record AxisEditor
     public string SessionGapMilliseconds { get; set; } = "100";
     public BaselineCorrectionMode CorrectionMode { get; set; }
     public CorrectionButton? CorrectionButton { get; set; }
+    public string BitePointOutput { get; set; } = "50";
+    public CorrectionButton? BitePointButton { get; set; }
 
     [JsonIgnore]
     internal bool HasRecoverableText => new[]
     {
         Minimum, Maximum, LowerDeadzone, UpperDeadzone, CurveKind, Exponent, Points,
         FilterMilliseconds, FilterGapMilliseconds, FilterKind, FilterWindowSamples, MaximumCorrection,
-        CorrectionRate, CorrectionOutputRate, SessionGapMilliseconds
+        CorrectionRate, CorrectionOutputRate, SessionGapMilliseconds, BitePointOutput
     }.All(value => value is not null && value.Length <= 128 * 1024);
 
     public AxisProfile BuildProfile()
@@ -65,7 +67,13 @@ public sealed record AxisEditor
         }
         return new(new(Number(Minimum, "Minimum"), Number(Maximum, "Maximum"), Inverted),
             new(Number(LowerDeadzone, "Lower deadzone") / 100, Number(UpperDeadzone, "Upper deadzone") / 100),
-            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap, kind, window), BuildSessionSettings(), CorrectionMode, CorrectionButton);
+            curve, Number(MaximumCorrection, "Maximum correction"), filter == 0 ? null : new(filter / 1000, gap, kind, window), BuildSessionSettings(), CorrectionMode, CorrectionButton, BuildBitePoint());
+    }
+
+    private ClutchBitePointSettings? BuildBitePoint()
+    {
+        var output = Number(BitePointOutput, "Bite point output") / 100;
+        return BitePointButton is not null || output != .5 ? new(output, BitePointButton) : null;
     }
 
     public ProfileCurve BuildCurve() => CurveKind switch
@@ -101,6 +109,8 @@ public sealed record AxisEditor
             MaximumCorrection = Format(profile.MaximumBaselineCorrection),
             CorrectionMode = profile.CorrectionMode,
             CorrectionButton = profile.CorrectionButton,
+            BitePointOutput = Format((profile.BitePoint?.Output ?? .5) * 100),
+            BitePointButton = profile.BitePoint?.Button,
             CorrectionRate = Format(profile.Session?.MaximumCorrectionPerSecond ?? 1000),
             CorrectionOutputRate = Format(profile.Session?.MaximumCorrectionOutputPerSecond ?? .05),
             SessionGapMilliseconds = Format((profile.Session?.ResetAfterSeconds ?? .1) * 1000)

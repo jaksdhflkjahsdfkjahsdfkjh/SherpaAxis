@@ -12,6 +12,29 @@ Curves support linear, positive power exponents and piecewise linear control
 points. Custom points require strictly increasing inputs, nondecreasing outputs
 and endpoints (0,0) and (1,1). Deadzones rescale the remaining interval to 0..1.
 
+## Clutch bite point
+
+The desktop app applies this launch assist after the clutch's normal filtering,
+deadzones and response curve. While the binding is held and the feature is enabled,
+final output is the greater of normal clutch output and the configured bite point.
+Pressing the pedal farther always takes priority. Throttle and brake are unaffected.
+No calibration or drift settings are changed, and toggles do not restart vJoy or
+reset processing history.
+
+In Tuning, select Clutch, set the output percentage and bind a keyboard or controller
+button. Double-tap the binding to enable or disable: each tap must be shorter than
+250 ms, and the second press must begin within 350 ms of the first release. A hold
+starts after 250 ms; releasing immediately restores normal pedal output. The second
+press can stay held to launch after enabling. Quick taps never apply the bite point.
+The Enabled checkbox provides the same session toggle.
+
+Profiles save the percentage and binding; the enabled state starts off when the app
+starts. Disconnects or stale input cancel the hold and pending taps but retain the
+session toggle. A held binding resumes after 250 ms once healthy input returns,
+without another binding, press or game-axis change. Replay never feeds this assist
+to a virtual controller. Recorded processing columns keep the normal curve output;
+`clutch_final_output` includes launch assistance, and events record toggle/hold changes.
+
 ## Baseline correction
 
 `ConfirmReleasedBaseline` requires an explicit caller decision. The offset is
