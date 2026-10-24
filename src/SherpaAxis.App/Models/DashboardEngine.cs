@@ -34,6 +34,7 @@ public sealed partial class DashboardEngine
     public DashboardEngine(TimeProvider? clock = null)
     {
         this.clock = clock ?? TimeProvider.System;
+        bitePoint = new(this.clock);
         Configure(DefaultProfile(), Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, _ => new AxisSessionSettings(1000, .05)));
     }
 
@@ -52,6 +53,26 @@ public sealed partial class DashboardEngine
         ArgumentNullException.ThrowIfNull(limits);
         lock (sync)
         {
+            var processing = ProcessingConfiguration(profile);
+            if (!completingCalibration && processingConfiguration is not null && processing.AsSpan().SequenceEqual(processingConfiguration)
+                && SameLimits(limits) && profile.Axes.TryGetValue(PedalAxis.Clutch, out var clutch)
+                && clutch.BitePoint != BiteSettings)
+            {
+                var oldBinding = BiteSettings?.Button;
+                activeProfile = new(profile.Name, activeProfile.Axes.ToDictionary(pair => pair.Key,
+                    pair => pair.Key == PedalAxis.Clutch ? pair.Value.WithBitePoint(clutch.BitePoint) : pair.Value));
+                if (clutch.BitePoint?.Button is null) { bitePoint.SetEnabled(false); }
+                if (clutch.BitePoint?.Button != oldBinding) { bitePoint.Release(); }
+                configuration = configuration! with
+                {
+                    Profile = JsonSerializer.Deserialize<JsonElement>(ProfileJson.Serialize(new(activeProfile.Name,
+                    activeProfile.Axes.ToDictionary(pair => pair.Key, pair => ProfileForInput(pair.Key, pair.Value)))))
+                };
+                configurationRevision++;
+                Event("configuration-applied", configuration);
+                PublishBitePointChange();
+                return;
+            }
             var inputProfiles = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => ProfileForInput(axis,
                 profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis)))));
             var inputLimits = limits.ToDictionary(pair => pair.Key, pair => sensorCalibration?.Map(pair.Key, pair.Value) ?? pair.Value);
@@ -89,6 +110,8 @@ public sealed partial class DashboardEngine
             activeProfile = new(profile.Name, Enum.GetValues<PedalAxis>().ToDictionary(axis => axis,
                 axis => profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis)))));
             activeLimits = new Dictionary<PedalAxis, AxisSessionSettings>(limits);
+            processingConfiguration = processing;
+            if (BiteSettings?.Button is null) { bitePoint.SetEnabled(false); }
             configurationRevision++;
             Event("configuration-applied", configuration);
         }
@@ -212,7 +235,7 @@ public sealed partial class DashboardEngine
                 if (!values.LastPlotAt.HasValue || elapsed - values.LastPlotAt.Value >= .02)
                 {
                     values.LastPlotAt = elapsed;
-                    values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, result.Processing.Output, raw, result.Processing.CorrectedNormalized));
+                    values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, FinalOutput(axis, result.Processing.Output), raw, result.Processing.CorrectedNormalized));
                     if (values.History.Count > historyCapacity)
                     {
                         values.History.Dequeue();
@@ -221,7 +244,8 @@ public sealed partial class DashboardEngine
             }
 
             recording?.RecordSample(new(elapsed, connection, configurationRevision, input,
-                axes[PedalAxis.Throttle].Current!.Value, axes[PedalAxis.Brake].Current!.Value, axes[PedalAxis.Clutch].Current!.Value));
+                axes[PedalAxis.Throttle].Current!.Value, axes[PedalAxis.Brake].Current!.Value, axes[PedalAxis.Clutch].Current!.Value,
+                FinalOutput(PedalAxis.Clutch, axes[PedalAxis.Clutch].Current!.Value.Processing.Output)));
             output?.Submit(CurrentOutput());
         }
     }
@@ -273,6 +297,7 @@ public sealed partial class DashboardEngine
         ArgumentNullException.ThrowIfNull(buttons);
         lock (sync)
         {
+            ProcessBitePointButton(buttons);
             foreach (var (axis, value) in axes)
             {
                 var settings = activeProfile.Axes[axis];
@@ -304,6 +329,7 @@ public sealed partial class DashboardEngine
     {
         lock (sync)
         {
+            bitePoint.Release();
             if (output is not null)
             {
                 output.Invalidate(reason);
@@ -314,7 +340,7 @@ public sealed partial class DashboardEngine
     }
 
     private PedalOutput CurrentOutput() => new(axes[PedalAxis.Throttle].Current!.Value.Processing.Output,
-        axes[PedalAxis.Brake].Current!.Value.Processing.Output, axes[PedalAxis.Clutch].Current!.Value.Processing.Output);
+        axes[PedalAxis.Brake].Current!.Value.Processing.Output, FinalOutput(PedalAxis.Clutch, axes[PedalAxis.Clutch].Current!.Value.Processing.Output));
 
     public CalibrationCapture StartCalibration(PedalAxis axis)
     {
@@ -360,7 +386,7 @@ public sealed partial class DashboardEngine
                 throw new InvalidOperationException("Captured range is smaller than the active manual-correction limit. Move through a wider range or cancel and reduce that limit.");
             }
             var calibrated = new AxisProfile(new(capture.Minimum, capture.Maximum), old.Deadzone, old.Curve,
-                old.MaximumBaselineCorrection, old.Filter, old.Session, old.CorrectionMode, old.CorrectionButton);
+                old.MaximumBaselineCorrection, old.Filter, old.Session, old.CorrectionMode, old.CorrectionButton, old.BitePoint);
             var replacements = activeProfile.Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
             replacements[axis] = calibrated;
             var profile = new PedalProfile(activeProfile.Name, replacements);
@@ -465,7 +491,8 @@ public sealed partial class DashboardEngine
                     ReleasePermissionRemainingMilliseconds = pair.Value.AuthorizedAt.HasValue
                         ? Math.Max(0, 150 - clock.GetElapsedTime(pair.Value.AuthorizedAt.Value).TotalMilliseconds) : 0
                 }),
-                LastSourceTime = sourceElapsed
+                LastSourceTime = sourceElapsed,
+                BitePoint = BitePointState
             });
         }
     }
@@ -498,7 +525,8 @@ public sealed partial class DashboardEngine
         {
             var frames = axes.Select(pair => new AxisFrame(pair.Key, pair.Value.Current, IsFresh(pair.Value),
                 double.IsFinite(pair.Value.Minimum) ? pair.Value.Minimum : null,
-                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null, pair.Value.History.ToArray())).ToArray();
+                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null, pair.Value.History.ToArray(),
+                pair.Value.Current is { } current ? FinalOutput(pair.Key, current.Processing.Output) : null)).ToArray();
             return new(state, detail, connection, count, elapsed, elapsed > firstTime ? (count - 1) / (elapsed - firstTime) : 0,
                 frames, frames.Single(frame => frame.Axis == selectedAxis).History!);
         }
@@ -509,6 +537,7 @@ public sealed partial class DashboardEngine
 
     private void ClearConnection()
     {
+        bitePoint.Release();
         InvalidateCalibration("Connection changed. Start calibration again.");
         SuspendOutput("connection changed");
         hardware = null;

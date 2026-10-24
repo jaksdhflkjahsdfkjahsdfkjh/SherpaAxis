@@ -1,7 +1,7 @@
 # Processing profiles
 
 `SherpaAxis.Profiles` stores immutable per-axis settings as UTF-8 JSON. New
-files use schema 3. Earlier schemas 1 through 2 remain readable.
+files use schema 4. Earlier schemas 1 through 3 remain readable.
 
 A profile has `schemaVersion`, a display `name` and an `axes` object keyed by
 `throttle`, `brake` or `clutch`. Axis entries store `calibration` (minimum,
@@ -20,6 +20,10 @@ and `resetAfterSeconds`. Schema 1 rejects these extra fields. Filter kinds:
 Schema 3 adds `correction` with `mode` (`Off`, `Auto`, `ByButton`) and an
 optional keyboard/controller `button` binding. Older schemas default to Off.
 Unknown modes and incompatible bindings are rejected.
+
+Schema 4 adds optional clutch-only `bitePoint` settings: normalized `output`
+from 0 to 1 and a keyboard/controller `button`. Earlier schemas have no bite
+point. The enabled toggle and active hold are session state and are never saved.
 
 ## Validation and persistence
 

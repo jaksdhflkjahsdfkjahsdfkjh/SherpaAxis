@@ -32,7 +32,7 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
         IsFresh = frame.IsFresh;
         InputLabel = sensorCounts ? "Sensor input: " : "Device input: ";
         Input = frame.Result?.Processing.Input.ToString("N0", CultureInfo.InvariantCulture) ?? "—";
-        OutputPercent = (frame.Result?.Processing.Output ?? 0) * 100;
+        OutputPercent = (frame.FinalOutput ?? frame.Result?.Processing.Output ?? 0) * 100;
         OutputText = frame.Result is null ? "—" : OutputPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
         Filtered = frame.Result is null ? "No samples" : FormattableString.Invariant($"Filtered  {frame.Result.Value.Processing.FilteredNormalized:P1}");
         Notify();

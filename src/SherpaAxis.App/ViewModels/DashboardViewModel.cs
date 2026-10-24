@@ -7,7 +7,7 @@ namespace SherpaAxis.App.ViewModels;
 public sealed partial class DashboardViewModel : ObservableObject
 {
     private static readonly Version ApplicationVersion = typeof(DashboardViewModel).Assembly.GetName().Version!;
-    public static string VersionLabel { get; } = $"v{ApplicationVersion.ToString(ApplicationVersion.Build == 0 ? 2 : 3)}";
+    public static string VersionLabel { get; } = $"v{ApplicationVersion.ToString(3)}";
     public static string WindowTitle { get; } = $"SherpaAxis — Pedals Utility · {VersionLabel}";
     public static Uri IssuesUri => ApplicationLinks.Issues;
     public AppUpdateViewModel Updates { get; } = new();
@@ -131,6 +131,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     {
         if (IsSwitchingMode && !force) { return; }
         RefreshDrift();
+        RefreshBitePoint();
         var frame = engine.Snapshot(selectedAxis);
         InputConnection = frame.Connection;
         RefreshCalibration();

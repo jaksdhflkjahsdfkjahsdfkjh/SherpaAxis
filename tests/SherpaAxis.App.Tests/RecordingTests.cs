@@ -347,7 +347,7 @@ public sealed class RecordingTests
             Assert.Null(status.Failure);
             Assert.StartsWith("0.1250000,1,", Lines(input)[1], StringComparison.Ordinal);
             Assert.Equal("0.5", Csv(processed)[0]["brake_output"]);
-            Assert.Equal(49, Lines(processed)[1].Split(',').Length);
+            Assert.Equal(50, Lines(processed)[1].Split(',').Length);
         }
         finally
         {

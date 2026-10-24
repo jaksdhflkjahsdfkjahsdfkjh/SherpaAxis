@@ -387,6 +387,25 @@
                         </StackPanel>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
+                            <StackPanel x:Name="ClutchBitePointPanel" Margin="0,0,0,12">
+                                <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsClutchSelected}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                <TextBlock Text="{loc:Text T19BD63034D43}" Style="{StaticResource Section}"/>
+                                <CheckBox x:Name="BitePointEnabledSetting" Content="{loc:Text T92C1CDFDF4CB}" IsChecked="{Binding BitePointEnabled, Mode=OneWay}" IsEnabled="{Binding HasBitePointBinding}" Click="BitePointEnabledClick" AutomationProperties.Name="{loc:Text T19BD63034D43}" ToolTip="{loc:Text TCDD9C67003E7}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}"/>
+                                <TextBlock Text="{loc:Text TAC6D74C29673}" Style="{StaticResource Label}"/>
+                                <TextBox x:Name="BitePointOutputInput" Text="{Binding Editor.BitePointOutput, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TAC6D74C29673}" ToolTip="{loc:Text TCDD9C67003E7}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}"/>
+                                <TextBlock Text="{loc:Text TCDD9C67003E7}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button x:Name="BindBitePointButton" Content="{loc:Text T56B9B63D2831}" Click="BindBitePointClick" FontSize="12" Padding="10,8" Margin="0,0,6,0"/>
+                                    <Border Grid.Column="1" Background="#0D1728" BorderBrush="#34465F" BorderThickness="1" CornerRadius="6" Padding="9,7">
+                                        <TextBlock x:Name="BitePointBindingValue" Text="{loc:Translate Value={Binding BitePointBindingLabel}}" Foreground="#78E3C6" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                    </Border>
+                                    <Button x:Name="ClearBitePointBindingButton" Grid.Column="2" Click="ClearBitePointBindingClick" IsEnabled="{Binding HasBitePointBinding}" Width="34" Height="34" Padding="0" Margin="6,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip="{loc:Text T3FC2D57DE20D}" AutomationProperties.Name="{loc:Text T3FC2D57DE20D}">
+                                        <Path Width="12" Height="12" Data="M 2,2 L 10,10 M 10,2 L 2,10" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
+                                </Grid>
+                                <TextBlock x:Name="BitePointStatusLabel" Text="{loc:Translate Value={Binding BitePointStatus}}" Foreground="#78E3C6" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite"/>
+                            </StackPanel>
                                 <TextBlock Text="{loc:Text T053ABD4F397E}" Style="{StaticResource Section}"/>
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel><TextBlock Text="{loc:Text T7E1D32220136}" Style="{StaticResource Label}" /><TextBox Text="{Binding Editor.LowerDeadzone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T076D94538A83}"  ToolTip="{loc:Text T5DBB8FF5CFEC}" AutomationProperties.HelpText="{loc:Text T5DBB8FF5CFEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True"/></StackPanel>

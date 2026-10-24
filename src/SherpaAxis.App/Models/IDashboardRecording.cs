@@ -14,7 +14,7 @@ public interface IDashboardRecording
 }
 
 public sealed record RecordedSample(double ElapsedSeconds, int Connection, long ConfigurationRevision,
-    PedalAxes Input, AxisSessionResult Throttle, AxisSessionResult Brake, AxisSessionResult Clutch);
+    PedalAxes Input, AxisSessionResult Throttle, AxisSessionResult Brake, AxisSessionResult Clutch, double? FinalClutchOutput = null);
 
 public sealed record RecordedEvent(string Kind, double ElapsedSeconds, long ConfigurationRevision, object? Details = null);
 

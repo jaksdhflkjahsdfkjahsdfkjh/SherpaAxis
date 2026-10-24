@@ -6,7 +6,8 @@ public sealed class AxisProfile
 {
     public AxisProfile(AxisCalibration calibration, AxisDeadzone? deadzone = null, ProfileCurve? curve = null,
         double maximumBaselineCorrection = 0, LowPassFilterSettings? filter = null, AxisSessionSettings? session = null,
-        BaselineCorrectionMode correctionMode = BaselineCorrectionMode.Off, CorrectionButton? correctionButton = null)
+        BaselineCorrectionMode correctionMode = BaselineCorrectionMode.Off, CorrectionButton? correctionButton = null,
+        ClutchBitePointSettings? bitePoint = null)
     {
         ArgumentNullException.ThrowIfNull(calibration);
         Calibration = calibration;
@@ -18,6 +19,7 @@ public sealed class AxisProfile
         if (!Enum.IsDefined(correctionMode)) { throw new ArgumentOutOfRangeException(nameof(correctionMode)); }
         CorrectionMode = correctionMode;
         CorrectionButton = correctionButton;
+        BitePoint = bitePoint;
         _ = CreateProcessor();
     }
 
@@ -29,6 +31,10 @@ public sealed class AxisProfile
     public AxisSessionSettings? Session { get; }
     public BaselineCorrectionMode CorrectionMode { get; }
     public CorrectionButton? CorrectionButton { get; }
+    public ClutchBitePointSettings? BitePoint { get; }
+
+    public AxisProfile WithBitePoint(ClutchBitePointSettings? settings) => new(Calibration, Deadzone, Curve,
+        MaximumBaselineCorrection, Filter, Session, CorrectionMode, CorrectionButton, settings);
 
     public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve.Curve, MaximumBaselineCorrection, Filter);
 
