@@ -80,13 +80,22 @@ game handles may require restarting the game or reconnecting the pedals.
 ```
 
 The script publishes a self-contained Windows x64 application, validates the
-signed upstream vJoy and HidHide installers and compiles `publish/Setup.exe` with Inno Setup
+signed upstream vJoy and HidHide installers and compiles `publish/v<version>/Setup.exe` with Inno Setup
 6.7.3. Firmware and DfuSe payload hashes and the USB driver's publisher signatures
 are checked before publishing. The build-only compiler is extracted from a pinned NuGet archive and its
 publisher signature is checked; no compiler is installed on the user's PC.
 Supply `-VJoyInstaller` to reuse a downloaded prerequisite, `-CompilerPath` to use
 an existing compiler, and `-Version` to set the application and setup version.
 Building does not install or configure drivers.
+
+Each version has its own folder, for example `publish/v1.1.1/`, containing
+`Setup.exe`, `SherpaAxis-win-x64.zip`, `SHA256SUMS.txt` and the self-contained
+application in `app/`. The checksums cover both downloadable files. Rebuilding
+the same version replaces its generated app files and artifacts; other versions
+remain available. Prerequisite downloads are cached in
+`research/tools/setup-prerequisites/` and validated on each build.
+The entire ignored `publish/` directory can be deleted and regenerated. Installed
+applications, profiles, settings and calibration backups are stored elsewhere.
 
 Run `Setup.exe` on Windows 10 22H2 or Windows 11 on x64 Intel/AMD hardware. Setup
 requests administrator approval, installs the app into Program Files, creates a

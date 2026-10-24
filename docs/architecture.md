@@ -64,8 +64,12 @@ metadata cannot redirect the user to a different host. The app never downloads o
 executes an installer itself.
 
 To notify users, publish a public, stable GitHub Release with a numeric tag such as
-`v1.0.1` and attach `Setup.exe`. A commit, a tag alone, a draft or a prerelease does
+`v1.2.0` and attach `Setup.exe`. A commit, a tag alone, a draft or a prerelease does
 not trigger a notification. Update the project version before building that release.
+New features increment the minor version and reset the patch (for example,
+1.1.1 → 1.2.0); fixes increment the patch (1.1.0 → 1.1.1). Set the version in
+`Directory.Build.props` and keep the installer's fallback version in sync.
+Rebuilding the same version does not increment it.
 Users need network access to GitHub; a private or unpublished repository returns no
 public release. Windows notification preferences may suppress the tray balloon;
 the footer link remains available.
