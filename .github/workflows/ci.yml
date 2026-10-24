@@ -17,13 +17,21 @@ jobs:
         with:
           global-json-file: global.json
       - run: ./tools/Verify.ps1
-      - run: dotnet publish src/SherpaAxis.Cli -c Release --no-restore --no-build -o publish
+      - name: Read release version
+        id: version
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - run: dotnet publish src/SherpaAxis.Cli -c Release --no-restore --no-build -o publish/v${{ steps.version.outputs.version }}/cli
       - name: Build Windows installer
         run: ./tools/Build-SetupPackage.ps1
       - name: Verify installer lifecycle
         run: ./tools/Test-SetupPackage.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: SherpaAxis-Windows-x64
-          path: publish/Setup.exe
+          name: SherpaAxis-v${{ steps.version.outputs.version }}-Windows-x64
+          path: |
+            publish/v${{ steps.version.outputs.version }}/Setup.exe
+            publish/v${{ steps.version.outputs.version }}/SherpaAxis-win-x64.zip
+            publish/v${{ steps.version.outputs.version }}/SHA256SUMS.txt
           if-no-files-found: error

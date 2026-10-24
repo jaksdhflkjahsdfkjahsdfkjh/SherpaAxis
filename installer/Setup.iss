@@ -2,10 +2,10 @@
   #define AppVersion "1.1.0"
 #endif
 #ifndef AppSource
-  #define AppSource "..\publish\setup-package\app"
+  #define AppSource "..\publish\v" + AppVersion + "\app"
 #endif
 #ifndef VJoyInstaller
-  #define VJoyInstaller "..\publish\setup-package\prerequisites\vJoySetup_v2.2.2.0_Win10_Win11.exe"
+  #define VJoyInstaller "..\research\tools\setup-prerequisites\vJoySetup_v2.2.2.0_Win10_Win11.exe"
 #endif
 #ifndef VJoyHash
   #define VJoyHash "EF569A3105CD301B89580F18F60C66B339E95296ACF2C0DFCAF4B4BBF8AB68FE"
@@ -14,10 +14,10 @@
   #define VJoyLibrary "{commonpf64}\vJoy\x64\vJoyInterface.dll"
 #endif
 #ifndef SetupOutput
-  #define SetupOutput "..\publish"
+  #define SetupOutput "..\publish\v" + AppVersion
 #endif
 #ifndef HidHideInstaller
-  #define HidHideInstaller "..\publish\setup-package\prerequisites\HidHide_1.5.230_x64.exe"
+  #define HidHideInstaller "..\research\tools\setup-prerequisites\HidHide_1.5.230_x64.exe"
 #endif
 #ifndef HidHideHash
   #define HidHideHash "F4BBBCB82E6258641B887C74BC81C4C5F66E4AA811808DFC304347687B7605F6"

@@ -23,9 +23,16 @@ foreach ($signedFile in @('Driver/sttube.cat', 'Driver/x64/STTub30.sys')) {
 if ((Get-FileHash -LiteralPath (Join-Path $repositoryDirectory 'firmware/PE0017.dfu') -Algorithm SHA256).Hash -ne '5D525D43D7EF434E61E0DD077379629C420F95CD863E6C607201752368157757') {
     throw 'Unexpected pedal firmware hash.'
 }
-$stageDirectory = Join-Path $repositoryDirectory 'publish/setup-package'
-$appDirectory = Join-Path $stageDirectory 'app'
-$prerequisiteDirectory = Join-Path $stageDirectory 'prerequisites'
+$publishDirectory = Join-Path $repositoryDirectory 'publish'
+$outputDirectory = Join-Path $publishDirectory "v$Version"
+$appDirectory = Join-Path $outputDirectory 'app'
+$prerequisiteDirectory = Join-Path $repositoryDirectory 'research/tools/setup-prerequisites'
+foreach ($generatedDirectory in @($publishDirectory, $outputDirectory, $appDirectory)) {
+    if ((Test-Path -LiteralPath $generatedDirectory) -and ((Get-Item -LiteralPath $generatedDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Build output must not be a filesystem link: $generatedDirectory"
+    }
+}
+New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $prerequisiteDirectory -Force | Out-Null
 $driverDestination = Join-Path $prerequisiteDirectory 'vJoySetup_v2.2.2.0_Win10_Win11.exe'
 if ($VJoyInstaller) {
@@ -74,8 +81,24 @@ if ($compilerSignature.Status -ne 'Valid' -or $compilerSignature.SignerCertifica
     throw 'Invalid Inno Setup compiler signature.'
 }
 
+if (Test-Path -LiteralPath $appDirectory) {
+    $resolvedAppDirectory = (Resolve-Path -LiteralPath $appDirectory).Path
+    if ([IO.Path]::GetDirectoryName($resolvedAppDirectory) -ne [IO.Path]::GetFullPath($outputDirectory) -or
+        (Get-ChildItem -LiteralPath $resolvedAppDirectory -Recurse -Force -Attributes ReparsePoint | Select-Object -First 1)) {
+        throw "Cannot clean application output outside its version folder or containing filesystem links: $resolvedAppDirectory"
+    }
+    Remove-Item -LiteralPath $resolvedAppDirectory -Recurse -Force
+}
 dotnet publish (Join-Path $repositoryDirectory 'src/SherpaAxis.App') -c Release -r win-x64 --self-contained true "-p:Version=$Version" -p:NuGetLockFilePath=obj/packages.setup.lock.json -o $appDirectory
 if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
-& $CompilerPath "/DAppVersion=$Version" "/DAppSource=$appDirectory" "/DVJoyInstaller=$driverDestination" "/DHidHideInstaller=$hidHideDestination" "/DSetupOutput=$(Join-Path $repositoryDirectory 'publish')" (Join-Path $repositoryDirectory 'installer/Setup.iss')
+& $CompilerPath "/DAppVersion=$Version" "/DAppSource=$appDirectory" "/DVJoyInstaller=$driverDestination" "/DHidHideInstaller=$hidHideDestination" "/DSetupOutput=$outputDirectory" (Join-Path $repositoryDirectory 'installer/Setup.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Setup compilation failed.' }
-Write-Output (Join-Path $repositoryDirectory 'publish/Setup.exe')
+$archive = Join-Path $outputDirectory 'SherpaAxis-win-x64.zip'
+Compress-Archive -Path (Join-Path $appDirectory '*') -DestinationPath $archive -Force
+$setup = Join-Path $outputDirectory 'Setup.exe'
+$checksums = foreach ($artifact in @($setup, $archive)) {
+    $hash = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $([IO.Path]::GetFileName($artifact))"
+}
+[IO.File]::WriteAllText((Join-Path $outputDirectory 'SHA256SUMS.txt'), ($checksums -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+Write-Output $outputDirectory
