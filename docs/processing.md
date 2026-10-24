@@ -76,6 +76,12 @@ the change and restored on mode exit, shutdown or recovery. No device Save comma
 is sent automatically. Close FEEL-VR Control and bind games only to SherpaAxis's
 vJoy device, because physical joystick reports change during raw monitoring.
 
+An interrupted raw-monitoring session can leave a `raw-*.json` recovery record
+even if no calibration was started. Startup checks the controller against that
+backup and pauses input/output if temporary bounds remain. Close FEEL-VR Control
+and games, then choose Restore original calibration. This restores the backed-up
+bounds with readback verification; it does not capture a new calibration or send Save.
+
 The controller's stored endpoints already include its hardware deadzone margins.
 They are used to reproduce firmware output, never as the original raw release
 reference. Completing hardware calibration in SherpaAxis retains the untrimmed
