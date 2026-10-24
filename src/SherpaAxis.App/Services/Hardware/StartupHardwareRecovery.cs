@@ -7,6 +7,8 @@ namespace SherpaAxis.App.Services.Hardware;
 public sealed record PendingHardwareRecovery(string Path, HardwareRecoverySnapshot? Snapshot, string Detail, bool CanRestore = false, bool CanSave = false)
 {
     public string Label => Snapshot is { } snapshot ? $"{snapshot.SerialNumber ?? "?"} · {snapshot.CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} · {System.IO.Path.GetFileName(Path)}" : System.IO.Path.GetFileName(Path);
+    public bool IsDriftMonitoring => IsDriftRecord(Path);
+    internal static bool IsDriftRecord(string path) => System.IO.Path.GetFileName(path).StartsWith("raw-", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>A held, identity-checked feature connection, injectable without opening hardware in tests.</summary>
@@ -63,6 +65,8 @@ public sealed class StartupHardwareRecovery(string directory,
                 var detail = !known ? "Controller settings differ from this recovery record. Automatic restoration is unavailable; keep the file for review."
                     : snapshot.SaveUncertain && actual == snapshot.Saved
                         ? "Original bounds are verified, but the previous device Save was uncertain. Save the restored calibration explicitly before resuming output."
+                        : PendingHardwareRecovery.IsDriftRecord(path)
+                            ? "Automatic drift monitoring was interrupted while the controller used temporary raw-input bounds. This does not mean you started a calibration. Close FEEL-VR Control and games, then restore the original calibration from the backup."
                         : "An interrupted calibration left temporary controller bounds. Close FEEL-VR Control and games, then restore the original calibration.";
                 pending.Add(new(path, snapshot, detail, known, snapshot.SaveUncertain && actual == snapshot.Saved));
             }

@@ -20,7 +20,7 @@ public sealed class StartupRecoveryViewModel : ObservableObject
     public string Detail => Selected?.Detail ?? "";
     public string FilePath => Selected?.Path ?? "";
     public string Status { get => status; set => Set(ref status, value); }
-    public void Checking() { IsBlocked = true; Busy = true; Status = "Checking interrupted calibration records… Virtual output is paused."; }
+    public void Checking() { IsBlocked = true; Busy = true; Status = "Checking pedal settings recovery records… Virtual output is paused."; }
     public void Apply(IReadOnlyList<PendingHardwareRecovery> records)
     {
         var path = Selected?.Path;
@@ -28,7 +28,9 @@ public sealed class StartupRecoveryViewModel : ObservableObject
         Selected = Records.FirstOrDefault(item => item.Path == path) ?? Records.FirstOrDefault();
         IsBlocked = Records.Count > 0;
         NeedsAttention = IsBlocked;
-        Status = IsBlocked ? "Interrupted calibration needs attention. Pedal input and virtual output are paused." : "Hardware recovery check completed.";
+        Status = !IsBlocked ? "Hardware recovery check completed."
+            : Records.All(record => record.IsDriftMonitoring) ? "Unfinished drift fix needs recovery. Pedal input and virtual output are paused."
+            : "Pedal settings need recovery. Pedal input and virtual output are paused.";
         Busy = false; Notify();
     }
     public void Fail(string detail) { IsBlocked = true; NeedsAttention = true; Busy = false; Status = $"Recovery check could not finish: {detail}"; Notify(); }

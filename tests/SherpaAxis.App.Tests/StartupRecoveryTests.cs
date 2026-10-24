@@ -127,6 +127,41 @@ public sealed class StartupRecoveryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task RawMonitoringRecoveryExplainsTheSessionWithoutClaimingUserCalibrationOrWritingDuringChecks(bool alreadyRestored)
+    {
+        using var fixture = new Fixture();
+        var path = System.IO.Path.Combine(fixture.Directory, $"raw-{Guid.NewGuid():N}.json");
+        fixture.Device.State = alreadyRestored ? Original : PedalHardwareSettings.Defaults;
+        await new HardwareRecoveryStore(path).WriteAsync(new(1, DateTimeOffset.UtcNow, fixture.Device.Collection,
+            Original, PedalHardwareSettings.Defaults, null, SerialNumber: fixture.Device.Serial), CancellationToken.None);
+        var pending = await fixture.Service.CheckAsync();
+        Assert.Empty(fixture.Device.Writes);
+        if (alreadyRestored)
+        {
+            Assert.Empty(pending);
+            Assert.False(File.Exists(path));
+        }
+        else
+        {
+            var record = Assert.Single(pending);
+            Assert.True(record.CanRestore);
+            Assert.Contains("Automatic drift monitoring was interrupted", record.Detail, StringComparison.Ordinal);
+            Assert.DoesNotContain("An interrupted calibration", record.Detail, StringComparison.Ordinal);
+            var model = new StartupRecoveryViewModel();
+            model.Apply(pending);
+            Assert.Equal("Unfinished drift fix needs recovery. Pedal input and virtual output are paused.", model.Status);
+            Assert.True(model.IsBlocked && model.NeedsAttention);
+            Assert.Equal(PedalHardwareSettings.Defaults, fixture.Device.State);
+            await fixture.Service.RestoreAsync(path);
+            Assert.Equal(Original, fixture.Device.State);
+            Assert.False(File.Exists(path));
+            Assert.Equal(3, Assert.Single(fixture.Device.Writes)[0]);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DirtyOrInterruptedWriteRestoresOnlyOnRequestAndNeverSendsSave(bool attempted)
     {
         using var fixture = new Fixture();
