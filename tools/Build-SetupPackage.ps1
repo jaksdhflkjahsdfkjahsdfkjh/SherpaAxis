@@ -93,8 +93,23 @@ dotnet publish (Join-Path $repositoryDirectory 'src/SherpaAxis.App') -c Release 
 if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
 & $CompilerPath "/DAppVersion=$Version" "/DAppSource=$appDirectory" "/DVJoyInstaller=$driverDestination" "/DHidHideInstaller=$hidHideDestination" "/DSetupOutput=$outputDirectory" (Join-Path $repositoryDirectory 'installer/Setup.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Setup compilation failed.' }
+$zipPrerequisites = Join-Path $appDirectory 'Prerequisites'
+$zipLicenses = Join-Path $appDirectory 'licenses'
+New-Item -ItemType Directory -Path $zipPrerequisites, $zipLicenses -Force | Out-Null
+Copy-Item -LiteralPath $driverDestination, $hidHideDestination -Destination $zipPrerequisites
+Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/vJoy-LICENSE.txt'), (Join-Path $repositoryDirectory 'installer/HidHide-LICENSE.txt') -Destination $zipLicenses
+Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'LICENSE') -Destination $appDirectory
+Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/Zip-README.txt') -Destination (Join-Path $appDirectory 'START-HERE.txt')
 $archive = Join-Path $outputDirectory 'SherpaAxis-win-x64.zip'
-Compress-Archive -Path (Join-Path $appDirectory '*') -DestinationPath $archive -Force
+$zipStream = [IO.File]::Open($archive, [IO.FileMode]::Create)
+$zip = [IO.Compression.ZipArchive]::new($zipStream, [IO.Compression.ZipArchiveMode]::Create)
+try {
+    foreach ($file in (Get-ChildItem -LiteralPath $appDirectory -Recurse -File | Sort-Object FullName)) {
+        $relativePath = [IO.Path]::GetRelativePath($appDirectory, $file.FullName).Replace('\', '/')
+        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, "SherpaAxis/$relativePath", [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+}
+finally { $zip.Dispose(); $zipStream.Dispose() }
 $setup = Join-Path $outputDirectory 'Setup.exe'
 $checksums = foreach ($artifact in @($setup, $archive)) {
     $hash = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash.ToLowerInvariant()

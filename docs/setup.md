@@ -97,6 +97,29 @@ remain available. Prerequisite downloads are cached in
 The entire ignored `publish/` directory can be deleted and regenerated. Installed
 applications, profiles, settings and calibration backups are stored elsewhere.
 
+The ZIP has one top-level `SherpaAxis/` folder, so "Extract here" keeps all app
+files together. Open that folder and run `SherpaAxis.App.exe`.
+It also contains the verified upstream vJoy and HidHide installers under
+`Prerequisites/`, DfuSe tools and its USB driver under `Tools/DfuSe/`, firmware,
+licenses and `START-HERE.txt` with setup instructions. These ZIP-only
+prerequisite copies are added after Setup compilation, so they are not duplicated
+inside the installed application. On first ZIP launch, a language chooser saves
+English or Ukrainian for both setup and the app without changing other preferences.
+Closing the chooser exits before installation. The following setup window
+requests administrator approval and installs missing components offline before
+normal pedal input starts. Payload hashes are checked against pinned values and
+the embedded DfuSe manifest. An elevated helper stages DfuSe with PnPUtil and runs
+the existing virtual-device configuration helper, preserving existing descriptors.
+
+The helper reports progress and results under `%ProgramData%\SherpaAxis\Prerequisites`.
+Driver installers have five-minute deadlines; driver staging and virtual-device
+setup have one-minute deadlines. A timeout does not kill a driver installation or
+start another copy. The recorded process ID and start time block retries while
+that installer remains alive. Restart requests stop the app launch; opening it
+after restarting completes virtual-device setup. The ZIP still contains the
+original installers for manual repair. Setup.exe installations use their existing
+installer flow and do not enter the ZIP bootstrap.
+
 Run `Setup.exe` on Windows 10 22H2 or Windows 11 on x64 Intel/AMD hardware. Setup
 requests administrator approval, installs the app into Program Files, creates a
 Start menu shortcut and registers a Windows uninstaller. The .NET runtime is

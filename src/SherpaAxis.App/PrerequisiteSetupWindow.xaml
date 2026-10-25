@@ -1,0 +1,19 @@
+<Window x:Class="SherpaAxis.App.PrerequisiteSetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Background="#0B1220" Foreground="#E8EFF8" FontFamily="Segoe UI"
+        Width="560" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+    <Window.Resources><ResourceDictionary Source="Themes/Setup.xaml"/></Window.Resources>
+    <StackPanel Margin="24">
+        <TextBlock x:Name="Heading" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
+        <TextBlock x:Name="Explanation" TextWrapping="Wrap" Foreground="#B4C4D8" Margin="0,0,0,18"/>
+        <ProgressBar x:Name="Progress" IsIndeterminate="True" Height="4" Foreground="#45D6BB" Background="#22344C" Margin="0,0,0,14"/>
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="#78E3C6" MinHeight="52"/>
+        <TextBlock x:Name="CloseHint" TextWrapping="Wrap" Foreground="#95A9C1" Margin="0,12,0,0"/>
+        <Grid Margin="0,20,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Button x:Name="LogsButton" Click="OpenLogsClick" HorizontalAlignment="Left"/>
+            <Button x:Name="RetryButton" Grid.Column="1" Click="RetryClick" IsEnabled="False"/>
+            <Button x:Name="ExitButton" Grid.Column="3" Click="ExitClick" IsEnabled="False"/>
+        </Grid>
+    </StackPanel>
+</Window>

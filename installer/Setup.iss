@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.1.4"
+  #define AppVersion "1.2.0"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"
@@ -202,7 +202,7 @@ begin
     Result := 'The bundled HidHide installer could not be verified. Download SherpaAxis Setup again.';
     Exit;
   end;
-  if not Exec(InstallerPath, '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  if not Exec(InstallerPath, '/exenoui /qn /norestart', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
   begin
     Result := 'Could not start HidHide installation: ' + SysErrorMessage(ExitCode);
     Exit;
