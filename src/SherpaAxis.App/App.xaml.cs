@@ -19,6 +19,13 @@ public partial class App : Application, IDisposable
         DispatcherUnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled-ui", "Unhandled UI exception.", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled", "Unhandled process exception.", args.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, args) => DiagnosticLog.Default.Write("unobserved-task", "Unobserved task exception.", args.Exception);
+        if (e.Args is ["--record-prerequisite-ownership"])
+        {
+            try { WindowsPrerequisiteOwnership.FinalizePending(); Shutdown(0); }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            { DiagnosticLog.Default.Write("driver-ownership", "Could not record installed drivers.", failure); Shutdown(1); }
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--prepare-zip")
         {
             try

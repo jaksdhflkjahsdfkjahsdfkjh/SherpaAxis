@@ -126,6 +126,44 @@ var
   DeferredSetupCreated: Boolean;
   InstallationCompleted: Boolean;
 
+function DriverPackageExists(InfName: String): Boolean;
+var
+  Found: TFindRec;
+begin
+#ifdef InstallerTest
+  Result := False;
+#else
+  Result := FindFirst(ExpandConstant('{sys}\DriverStore\FileRepository\') + InfName + '_*', Found);
+  if Result then FindClose(Found);
+#endif
+end;
+
+procedure RecordNewDriver(Component: String);
+#ifndef InstallerTest
+var
+  Found: TFindRec;
+  InfName, InfPath, Hash: String;
+#endif
+begin
+#ifndef InstallerTest
+  if Component = 'VJoy' then InfName := 'vjoy.inf'
+  else if Component = 'HidHide' then InfName := 'hidhide.inf'
+  else InfName := 'sttube.inf';
+  if not FindFirst(ExpandConstant('{sys}\DriverStore\FileRepository\') + InfName + '_*', Found) then Exit;
+  InfPath := ExpandConstant('{sys}\DriverStore\FileRepository\') + Found.Name + '\' + InfName;
+  FindClose(Found);
+  Hash := GetSHA256OfFile(InfPath);
+  if not RegWriteStringValue(HKLM64, 'SOFTWARE\SherpaAxis\Prerequisites', 'Pending' + Component + 'Hash', Hash) then
+    RaiseException('Could not record the installed driver fingerprint.');
+  if Component = 'VJoy' then
+    if not RegWriteStringValue(HKLM64, 'SOFTWARE\SherpaAxis\Prerequisites', 'PendingVJoyUninstallerHash',
+      GetSHA256OfFile(ExpandConstant('{commonpf64}\vJoy\unins000.exe'))) then
+      RaiseException('Could not record the vJoy uninstaller fingerprint.');
+  if not RegWriteDWordValue(HKLM64, 'SOFTWARE\SherpaAxis\Prerequisites', 'Pending' + Component, 1) then
+    RaiseException('Could not record the newly installed driver. Review the Setup log.');
+#endif
+end;
+
 procedure RemoveDeferredSetup;
 #ifndef InstallerTest
 var
@@ -191,9 +229,12 @@ function PrepareHidHide: String;
 var
   InstallerPath: String;
   ExitCode: Integer;
+  PreExisting: Boolean;
 begin
   Result := '';
   if HidHideAvailable then Exit;
+  PreExisting := DriverPackageExists('hidhide.inf') or RegKeyExists(HKLM64,
+    'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{01E0AB21-D1CC-42B4-9DFF-84FFE4F26DAF}');
   WizardForm.PreparingLabel.Caption := 'Installing HidHide duplicate-input protection...';
   ExtractTemporaryFile('HidHideSetup.exe');
   InstallerPath := ExpandConstant('{tmp}\HidHideSetup.exe');
@@ -214,6 +255,7 @@ begin
     Exit;
   end;
   RestartRequired := RestartRequired or (ExitCode = 3010);
+  if not PreExisting then RecordNewDriver('HidHide');
   if (ExitCode = 0) and not HidHideAvailable then
     Result := 'HidHide installation did not provide its configuration tool. Restart Windows and run Setup again.';
 end;
@@ -239,6 +281,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ExitCode: Integer;
   InstallerPath: String;
+  PreExisting: Boolean;
 begin
   Result := CheckVendorControl;
   if Result <> '' then Exit;
@@ -252,6 +295,9 @@ begin
 #endif
   if not (DriverInstalled or FileExists(ExpandConstant('{#VJoyLibrary}'))) then
   begin
+  PreExisting := DriverPackageExists('vjoy.inf') or
+    FileExists(ExpandConstant('{commonpf64}\vJoy\unins000.exe')) or
+    RegKeyExists(HKLM64, 'SYSTEM\CurrentControlSet\Services\vjoy');
   WizardForm.PreparingLabel.Caption := 'Installing the vJoy driver and runtime...';
   ExtractTemporaryFile('vJoySetup.exe');
   InstallerPath := ExpandConstant('{tmp}\vJoySetup.exe');
@@ -280,6 +326,7 @@ begin
     Exit;
   end;
   DriverInstalled := True;
+  if not PreExisting then RecordNewDriver('VJoy');
   end;
   Result := PrepareHidHide;
 end;
@@ -287,7 +334,9 @@ end;
 procedure ConfigureDfuDriver;
 var
   ExitCode: Integer;
+  PreExisting: Boolean;
 begin
+  PreExisting := DriverPackageExists('sttube.inf');
   WizardForm.StatusLabel.Caption := 'Preparing the pedal firmware USB driver...';
 #ifdef InstallerTest
   if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--configure-dfuse',
@@ -301,6 +350,7 @@ begin
   Log(Format('DfuSe driver staging returned %d', [ExitCode]));
   DfuConfigurationFailed := (ExitCode <> 0) and (ExitCode <> 3010);
   RestartRequired := RestartRequired or (ExitCode = 3010);
+  if not DfuConfigurationFailed and not PreExisting then RecordNewDriver('DfuSe');
 end;
 
 procedure ConfigureDevice;
@@ -331,6 +381,9 @@ begin
   else if not ConfigurationFailed then
     RemoveDeferredSetup;
   ConfigureDfuDriver;
+  if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--record-prerequisite-ownership',
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
+    Log('Driver ownership could not be finalized. Automatic driver removal will remain unavailable for unrecorded components.');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
