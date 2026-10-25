@@ -3,6 +3,7 @@ using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Firmware;
 using SherpaAxis.App.Services.Output;
+using SherpaAxis.App.Services.Setup;
 using SherpaAxis.Devices;
 
 namespace SherpaAxis.App;
@@ -18,6 +19,23 @@ public partial class App : Application, IDisposable
         DispatcherUnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled-ui", "Unhandled UI exception.", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) => DiagnosticLog.Default.Write("unhandled", "Unhandled process exception.", args.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, args) => DiagnosticLog.Default.Write("unobserved-task", "Unobserved task exception.", args.Exception);
+        if (e.Args.Length > 0 && e.Args[0] == "--prepare-zip")
+        {
+            try
+            {
+                if (e.Args.Length is < 2 or > 3 || !Guid.TryParse(e.Args[1], out var run)) { Shutdown(1); return; }
+                uint? selected = null;
+                if (e.Args.Length == 3)
+                {
+                    if (!uint.TryParse(e.Args[2], out var id) || id is < 1 or > 16) { Shutdown(1); return; }
+                    selected = id;
+                }
+                Shutdown(await WindowsPrerequisiteSetup.InstallAsync(run, selected));
+            }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            { DiagnosticLog.Default.Write("prerequisite-setup", "Could not prepare ZIP prerequisites.", failure); Shutdown(1); }
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--configure-dfuse")
         {
             try
@@ -63,6 +81,26 @@ public partial class App : Application, IDisposable
             if (!e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase)) { InstanceActivation.ShowRunningInstance(); }
             Shutdown();
             return;
+        }
+        if (WindowsPrerequisiteSetup.IsZipPackage && !WindowsPrerequisiteSetup.IsReady())
+        {
+            try
+            {
+                var preferences = await new Services.Persistence.ApplicationPreferencesStore(Services.Persistence.ApplicationPreferencesStore.DefaultPath).LoadAsync(CancellationToken.None);
+                Localization.Localizer.Instance.Language = preferences.Language;
+            }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            { DiagnosticLog.Default.Write("prerequisite-setup", "Could not read the setup language.", failure); }
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var language = new SetupLanguageWindow();
+            language.ShowDialog();
+            if (!language.Accepted) { Shutdown(); return; }
+            MainWindow = null;
+            var setup = new PrerequisiteSetupWindow();
+            setup.ShowDialog();
+            MainWindow = null;
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            if (!setup.Ready) { Shutdown(); return; }
         }
         var window = new MainWindow();
         MainWindow = window;

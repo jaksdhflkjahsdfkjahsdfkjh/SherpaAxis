@@ -102,6 +102,15 @@ Setup is a single offline installer. It includes the .NET runtime, vJoy, HidHide
 the ST DfuSe firmware tool and its USB driver. You do not need developer tools or
 scripts. Existing vJoy device configurations are preserved.
 
+You can also use **SherpaAxis-win-x64.zip**. Extract the archive into a permanent
+location, open the resulting **SherpaAxis** folder and run **SherpaAxis.App.exe**.
+"Extract here" keeps all app files together in that folder. Choose English or
+Ukrainian before first-run setup installs missing drivers from the bundled files
+and configures the virtual pedals. The chosen language is also used by the app.
+Approve the Windows administrator prompt and restart Windows if requested, then
+open the app again. No separate driver downloads or manual DLL selection are needed.
+**START-HERE.txt** includes setup and troubleshooting instructions.
+
 **Keep SherpaAxis running while playing.** The app sends processed pedal input to
 your game. Minimizing it or leaving it in the system tray continues output;
 choosing **Exit** stops output. Keep FEEL-VR Control closed while using SherpaAxis.

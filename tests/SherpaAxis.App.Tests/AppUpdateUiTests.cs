@@ -16,6 +16,11 @@ public sealed class AppUpdateUiTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-update-ui-" + Guid.NewGuid().ToString("N"));
     private AppUpdateChecker Checker(HttpClient client) => new(client, Path.Combine(directory, "updates.json"));
+    private static string NewerRelease(int offset = 1)
+    {
+        var current = typeof(MainWindow).Assembly.GetName().Version!;
+        return FormattableString.Invariant($"v{current.Major}.{current.Minor + offset}.0");
+    }
 
     [Fact]
     public Task StartupDoesNotWaitForUpdatesAndShutdownCancelsTheCheck() => HardwarePedalUiTests.OnUiAsync(async () =>
@@ -52,7 +57,7 @@ public sealed class AppUpdateUiTests : IDisposable
     [Fact]
     public Task AutoOptOutIsSavedAndManualCheckStillWorksWithOneHiddenTrayNotice() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
-        using var handler = new AppUpdateCheckerTests.StubHandler((_, _) => Task.FromResult(AppUpdateCheckerTests.Json(AppUpdateCheckerTests.ReleaseJson("v1.2"))));
+        using var handler = new AppUpdateCheckerTests.StubHandler((_, _) => Task.FromResult(AppUpdateCheckerTests.Json(AppUpdateCheckerTests.ReleaseJson(NewerRelease()))));
         using var client = new HttpClient(handler);
         var desktop = new SettingsAndTrayTests.FakeDesktop();
         desktop.Store.Value = new(CheckForUpdates: false, TourDismissed: true);
@@ -64,7 +69,7 @@ public sealed class AppUpdateUiTests : IDisposable
         await main.CheckForAppUpdatesAsync();
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
         Assert.True(model.Updates.HasUpdate);
-        Assert.Equal("v1.2", Assert.Single(desktop.Tray.UpdateNotifications));
+        Assert.Equal(NewerRelease(), Assert.Single(desktop.Tray.UpdateNotifications));
         Assert.False(main.IsVisible);
         await main.CheckForAppUpdatesAsync();
         Assert.Single(desktop.Tray.UpdateNotifications);
@@ -83,7 +88,7 @@ public sealed class AppUpdateUiTests : IDisposable
     public Task AutomaticCheckRunsOnlyAtStartupAndFetchesFreshMetadataOnTheNextLaunch() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var tag = "v1.2";
+        var tag = NewerRelease();
         using var handler = new AppUpdateCheckerTests.StubHandler(async (_, token) =>
         {
             await ready.Task.WaitAsync(token);
@@ -108,9 +113,9 @@ public sealed class AppUpdateUiTests : IDisposable
             await main.SavePreferencesAsync();
             await main.RequestPanelModeAsync(SidePanelMode.Tuning);
             Assert.Equal(1, handler.Requests);
-            Assert.Equal("v1.2", model.Updates.AvailableVersion);
+            Assert.Equal(NewerRelease(), model.Updates.AvailableVersion);
         }
-        tag = "v1.3";
+        tag = NewerRelease(2);
         await using var restarted = new MainWindow(new DashboardEngine(), desktopServices: desktop.Services with { Updates = Checker(client) });
         await restarted.InitializeForLaunchAsync();
         var dashboard = Assert.IsType<DashboardViewModel>(restarted.DataContext);
@@ -118,7 +123,7 @@ public sealed class AppUpdateUiTests : IDisposable
         while (dashboard.Updates.Busy && DateTime.UtcNow < deadline) { await Task.Delay(1); }
         Assert.False(dashboard.Updates.Busy);
         Assert.Equal(2, handler.Requests);
-        Assert.Equal("v1.3", dashboard.Updates.AvailableVersion);
+        Assert.Equal(NewerRelease(2), dashboard.Updates.AvailableVersion);
     });
 
     [Theory]
@@ -146,7 +151,7 @@ public sealed class AppUpdateUiTests : IDisposable
     [Fact]
     public Task AvailableReleaseIsLocalizedInSettingsAndFooterWithoutChangingTheirHeight() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
-        using var handler = new AppUpdateCheckerTests.StubHandler((_, _) => Task.FromResult(AppUpdateCheckerTests.Json(AppUpdateCheckerTests.ReleaseJson("v1.2.0"))));
+        using var handler = new AppUpdateCheckerTests.StubHandler((_, _) => Task.FromResult(AppUpdateCheckerTests.Json(AppUpdateCheckerTests.ReleaseJson(NewerRelease()))));
         using var client = new HttpClient(handler);
         var desktop = new SettingsAndTrayTests.FakeDesktop();
         desktop.Store.Value = new(CheckForUpdates: false, TourDismissed: true);
@@ -163,7 +168,7 @@ public sealed class AppUpdateUiTests : IDisposable
         await main.CheckForAppUpdatesAsync();
         Assert.Empty(desktop.Tray.UpdateNotifications);
         var link = Assert.IsType<Hyperlink>(main.FindName("AppUpdateLink"));
-        Assert.Equal($"https://github.com/{ApplicationLinks.Repository}/releases/tag/v1.2.0", link.NavigateUri.AbsoluteUri);
+        Assert.Equal($"https://github.com/{ApplicationLinks.Repository}/releases/tag/{NewerRelease()}", link.NavigateUri.AbsoluteUri);
         try
         {
             Localizer.Instance.Language = "en";
@@ -171,15 +176,15 @@ public sealed class AppUpdateUiTests : IDisposable
             main.UpdateLayout();
             Assert.Equal(Visibility.Visible, viewRelease.Visibility);
             Assert.Equal(height, footer.ActualHeight);
-            Assert.Equal("Update available: v1.2.0", Assert.IsType<Run>(link.Inlines.FirstInline).Text);
-            Assert.Equal("A newer version is available: v1.2.0.", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
+            Assert.Equal($"Update available: {NewerRelease()}", Assert.IsType<Run>(link.Inlines.FirstInline).Text);
+            Assert.Equal($"A newer version is available: {NewerRelease()}.", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
             UiRefinementTests.CapturePreview(footer, "update-footer-en.png");
             UiRefinementTests.CapturePreview(panel, "update-settings-en.png");
             Localizer.Instance.Language = "uk";
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
             main.UpdateLayout();
-            Assert.Equal("Доступне оновлення: v1.2.0", Assert.IsType<Run>(link.Inlines.FirstInline).Text);
-            Assert.Equal("Доступна новіша версія: v1.2.0.", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
+            Assert.Equal($"Доступне оновлення: {NewerRelease()}", Assert.IsType<Run>(link.Inlines.FirstInline).Text);
+            Assert.Equal($"Доступна новіша версія: {NewerRelease()}.", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
             UiRefinementTests.CapturePreview(footer, "update-footer-uk.png");
             UiRefinementTests.CapturePreview(panel, "update-settings-uk.png");
             var model = Assert.IsType<DashboardViewModel>(main.DataContext);
@@ -187,7 +192,7 @@ public sealed class AppUpdateUiTests : IDisposable
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
             Assert.False(model.Updates.HasUpdate);
             Assert.Equal(Visibility.Collapsed, viewRelease.Visibility);
-            Assert.Equal("Встановлено актуальну версію (v1.1.4).", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
+            Assert.Equal("Встановлено актуальну версію (v1.2.0).", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
         }
         finally { Localizer.Instance.Language = "en"; }
     });

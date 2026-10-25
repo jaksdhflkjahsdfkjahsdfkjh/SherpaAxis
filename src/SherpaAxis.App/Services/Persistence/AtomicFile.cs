@@ -20,7 +20,8 @@ internal static class AtomicFile
                 await stream.FlushAsync(token).ConfigureAwait(false);
             }
             token.ThrowIfCancellationRequested();
-            File.Move(temporary, destination, overwrite);
+            if (overwrite && File.Exists(destination)) { File.Replace(temporary, destination, null); }
+            else { File.Move(temporary, destination, overwrite); }
         }
         finally
         {
