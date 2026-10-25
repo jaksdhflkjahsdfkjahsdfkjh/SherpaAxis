@@ -23,6 +23,12 @@ public sealed class WindowsStartupRegistration(string executablePath) : IStartup
         if (enabled) { key.SetValue(ValueName, BuildCommand(executablePath), RegistryValueKind.String); }
         else { key.DeleteValue(ValueName, throwOnMissingValue: false); }
     }
+    internal void RemoveIfOwned()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        if (key?.GetValue(ValueName) is string command && command.Equals(BuildCommand(executablePath), StringComparison.OrdinalIgnoreCase))
+        { key.DeleteValue(ValueName, false); }
+    }
     internal static string BuildCommand(string executablePath)
     {
         if (!Path.IsPathFullyQualified(executablePath) || executablePath.Contains('"', StringComparison.Ordinal))

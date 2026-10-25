@@ -166,6 +166,7 @@ internal static class WindowsPrerequisiteSetup
 
         async Task<int> RunStep(PrerequisiteStep step, CancellationToken token)
         {
+            var preExisting = step == PrerequisiteStep.VirtualDevice || WindowsPrerequisiteOwnership.IsPresent(step);
             var start = CreateStartInfo(step, Root, LogDirectory, selected);
             using var child = Process.Start(start) ?? throw new IOException($"Could not start {step} setup.");
             status = status with { ActiveProcess = child.Id, ProcessStarted = child.StartTime.ToUniversalTime() };
@@ -181,6 +182,7 @@ internal static class WindowsPrerequisiteSetup
             await File.WriteAllTextAsync(Path.Combine(LogDirectory, step + ".log"), text, token).ConfigureAwait(false);
             status = status with { ActiveProcess = null, ProcessStarted = null };
             await StoreAsync(status).ConfigureAwait(false);
+            if (!preExisting && child.ExitCode is 0 or 3010) { WindowsPrerequisiteOwnership.RecordInstalled(step); }
             return child.ExitCode;
         }
     }
