@@ -33,6 +33,7 @@ public sealed record AxisEditor
     public CorrectionButton? CorrectionButton { get; set; }
     public string BitePointOutput { get; set; } = "50";
     public CorrectionButton? BitePointButton { get; set; }
+    public ClutchBitePointMode BitePointMode { get; set; }
 
     [JsonIgnore]
     internal bool HasRecoverableText => new[]
@@ -73,7 +74,7 @@ public sealed record AxisEditor
     private ClutchBitePointSettings? BuildBitePoint()
     {
         var output = Number(BitePointOutput, "Bite point output") / 100;
-        return BitePointButton is not null || output != .5 ? new(output, BitePointButton) : null;
+        return BitePointButton is not null || output != .5 || BitePointMode != ClutchBitePointMode.HoldMinimum ? new(output, BitePointButton, BitePointMode) : null;
     }
 
     public ProfileCurve BuildCurve() => CurveKind switch
@@ -111,6 +112,7 @@ public sealed record AxisEditor
             CorrectionButton = profile.CorrectionButton,
             BitePointOutput = Format((profile.BitePoint?.Output ?? .5) * 100),
             BitePointButton = profile.BitePoint?.Button,
+            BitePointMode = profile.BitePoint?.Mode ?? ClutchBitePointMode.HoldMinimum,
             CorrectionRate = Format(profile.Session?.MaximumCorrectionPerSecond ?? 1000),
             CorrectionOutputRate = Format(profile.Session?.MaximumCorrectionOutputPerSecond ?? .05),
             SessionGapMilliseconds = Format((profile.Session?.ResetAfterSeconds ?? .1) * 1000)

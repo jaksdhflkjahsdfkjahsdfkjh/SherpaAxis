@@ -29,6 +29,8 @@ internal sealed class BitePointDocument
 {
     public required double Output { get; init; }
     public CorrectionButton? Button { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Mode { get; init; }
 }
 
 internal sealed class CorrectionDocument

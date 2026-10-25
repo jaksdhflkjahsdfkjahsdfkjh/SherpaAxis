@@ -6,7 +6,7 @@ namespace SherpaAxis.Profiles;
 
 public static class ProfileJson
 {
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
     public const int MaximumFileBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions Options = new()
@@ -30,7 +30,7 @@ public static class ProfileJson
         {
             var document = JsonSerializer.Deserialize<ProfileDocument>(json, Options)
                 ?? throw new InvalidDataException("Expected a profile object.");
-            if (document.SchemaVersion is not (1 or 2 or 3 or SchemaVersion))
+            if (document.SchemaVersion is not (1 or 2 or 3 or 4 or SchemaVersion))
             {
                 throw new InvalidDataException($"Unsupported profile schema version {document.SchemaVersion}; expected {SchemaVersion}.");
             }
@@ -51,6 +51,8 @@ public static class ProfileJson
                 { throw new InvalidDataException("Correction modes require profile schema 3."); }
                 if (document.SchemaVersion < 4 && settings.BitePoint is not null)
                 { throw new InvalidDataException("Clutch bite point requires profile schema 4."); }
+                if (document.SchemaVersion < 5 && settings.BitePoint?.Mode is not null)
+                { throw new InvalidDataException("Clutch bite point modes require profile schema 5."); }
                 var mode = settings.Correction is { } correction
                     && Enum.TryParse<BaselineCorrectionMode>(correction.Mode, out var parsed) && Enum.IsDefined(parsed)
                     && parsed.ToString() == correction.Mode ? parsed
@@ -63,7 +65,7 @@ public static class ProfileJson
                     settings.Filter is { } filter ? ReadFilter(filter, document.SchemaVersion) : null,
                     settings.Session is { } session ? new AxisSessionSettings(session.MaximumCorrectionPerSecond,
                         session.MaximumCorrectionOutputPerSecond, session.ResetAfterSeconds) : null,
-                    mode, settings.Correction?.Button, settings.BitePoint is { } bite ? new(bite.Output, bite.Button) : null));
+                    mode, settings.Correction?.Button, settings.BitePoint is { } bite ? new(bite.Output, bite.Button, ReadBitePointMode(bite.Mode)) : null));
             }
 
             return new PedalProfile(document.Name, axes);
@@ -146,8 +148,12 @@ public static class ProfileJson
         MaximumBaselineCorrection = axis.MaximumBaselineCorrection,
         Correction = axis.CorrectionMode != BaselineCorrectionMode.Off || axis.CorrectionButton is not null
             ? new() { Mode = axis.CorrectionMode.ToString(), Button = axis.CorrectionButton } : null,
-        BitePoint = axis.BitePoint is { } bite ? new() { Output = bite.Output, Button = bite.Button } : null
+        BitePoint = axis.BitePoint is { } bite ? new() { Output = bite.Output, Button = bite.Button, Mode = bite.Mode.ToString() } : null
     };
+
+    private static ClutchBitePointMode ReadBitePointMode(string? mode) => mode is null ? ClutchBitePointMode.HoldMinimum
+        : Enum.TryParse<ClutchBitePointMode>(mode, out var parsed) && Enum.IsDefined(parsed) && parsed.ToString() == mode
+            ? parsed : throw new InvalidDataException("Unknown clutch bite point mode.");
 
     private static LowPassFilterSettings ReadFilter(FilterDocument filter, int version)
     {

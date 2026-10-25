@@ -200,6 +200,106 @@ public sealed class ClutchBitePointTests
         Assert.Contains("clutch-bite-point", recording.Events);
     }
 
+    [Fact]
+    public void FullRangeModeUsesTheConfiguredRangeImmediatelyOnReleaseWithoutPedalMovement()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Sample(16384);
+        Assert.Equal(1, rig.Sink.Last.Clutch);
+        rig.Engine.SetBitePointEnabled(true);
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+        rig.Buttons.Set(Rig.Button, true); rig.Poll();
+        rig.Advance(249, 16384);
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+        rig.Advance(1, 16384);
+        Assert.Equal(1, rig.Sink.Last.Clutch);
+        rig.Buttons.Set(Rig.Button, false); rig.Poll();
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+        Assert.Equal(new PedalOutput(.25, .5, .4), rig.Sink.Last);
+        rig.Sample(8192);
+        Assert.Equal(.2, rig.Sink.Last.Clutch);
+        rig.Sample(0);
+        Assert.Equal(0, rig.Sink.Last.Clutch);
+        Assert.Equal(0, rig.Sink.Invalidations);
+    }
+
+    [Fact]
+    public void FullRangeModeChangesPercentageAndModeLiveAndCanReturnToNormalOutput()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Engine.SetBitePointEnabled(true);
+        rig.Sample(8192);
+        var before = rig.Engine.Snapshot(PedalAxis.Clutch);
+        rig.Configure(.6, mode: ClutchBitePointMode.HoldFullRange);
+        Assert.Equal(.3, rig.Sink.Last.Clutch);
+        Assert.Equal(before.SampleCount, rig.Engine.Snapshot(PedalAxis.Clutch).SampleCount);
+        Assert.Equal(.5, rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(axis => axis.Axis == PedalAxis.Clutch).Result!.Value.Processing.Output);
+        rig.Configure(.6);
+        Assert.Equal(.5, rig.Sink.Last.Clutch);
+        rig.Configure(.6, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Engine.SetBitePointEnabled(false);
+        Assert.Equal(.5, rig.Sink.Last.Clutch);
+        rig.Engine.SetBitePointEnabled(true);
+        Assert.Equal(.3, rig.Sink.Last.Clutch);
+        rig.Configure(.6, bind: false, mode: ClutchBitePointMode.HoldFullRange);
+        Assert.Equal(.5, rig.Sink.Last.Clutch);
+        Assert.False(rig.Engine.BitePointState.Enabled);
+        Assert.Equal(0, rig.Sink.Invalidations);
+    }
+
+    [Fact]
+    public void QuickTapDoesNotPulseFullRangeAndDoubleTapStillDisablesTheMode()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Engine.SetBitePointEnabled(true); rig.Sample(16384);
+        rig.Buttons.Set(Rig.Button, true); rig.Poll(); rig.Advance(30, 16384);
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+        rig.Buttons.Set(Rig.Button, false); rig.Poll();
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+        rig.Advance(50, 16384); rig.Buttons.Set(Rig.Button, true); rig.Poll();
+        Assert.False(rig.Engine.BitePointState.Enabled);
+        Assert.Equal(1, rig.Sink.Last.Clutch);
+        Assert.Equal(0, rig.Sink.Invalidations);
+    }
+
+    [Fact]
+    public void FullRangeModeResumesAHeldButtonAfterReconnectAndNeverAffectsReplayOrCalibration()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Engine.SetBitePointEnabled(true);
+        rig.Buttons.Set(Rig.Button, true); rig.Poll(); rig.Advance(250, 16384);
+        Assert.True(rig.Engine.BitePointState.Holding);
+        rig.Engine.Begin(new("live-device-axis"));
+        rig.Sample(16384); rig.Sample(16384); rig.Poll();
+        Assert.Equal(.4, rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(axis => axis.Axis == PedalAxis.Clutch).FinalOutput);
+        rig.Advance(250, 16384);
+        Assert.True(rig.Engine.BitePointState.Holding);
+        Assert.Equal(1, rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(axis => axis.Axis == PedalAxis.Clutch).FinalOutput);
+        rig.Engine.StartCalibration(PedalAxis.Clutch); rig.Poll();
+        Assert.False(rig.Engine.BitePointState.Holding);
+        Assert.False(rig.Engine.CanPublishOutput);
+        Assert.Equal(1, rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(axis => axis.Axis == PedalAxis.Clutch).FinalOutput);
+        rig.Engine.Begin(new("capture-replay")); rig.Sample(16384); rig.Poll();
+        Assert.Equal(1, rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(axis => axis.Axis == PedalAxis.Clutch).FinalOutput);
+        Assert.False(rig.Engine.CanPublishOutput);
+    }
+
+    [Fact]
+    public void CapturesKeepFullRangeModeScalingSeparateFromTheResponseCurve()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        var recording = new Recording(); rig.Engine.AttachRecording(recording);
+        rig.Engine.SetBitePointEnabled(true); rig.Sample(8192);
+        Assert.Equal(.5, recording.Last!.Clutch.Processing.Output);
+        Assert.Equal(.2, recording.Last.FinalClutchOutput);
+        Assert.Equal("0.2", RecordingFormat.Processed(1, recording.Last).Split(',')[^1]);
+    }
+
     private sealed class Recording : IDashboardRecording
     {
         public RecordedSample? Last { get; private set; }
@@ -224,17 +324,17 @@ public sealed class ClutchBitePointTests
             Engine = new(Clock); Configure(.4); Engine.Begin(new("live-device-axis"));
             Sample(0); Sample(0); Engine.AttachOutput(Sink);
         }
-        public void Configure(double output, bool bind = true)
+        public void Configure(double output, bool bind = true, ClutchBitePointMode mode = ClutchBitePointMode.HoldMinimum)
         {
             var axes = DashboardEngine.DefaultProfile().Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
-            axes[PedalAxis.Clutch] = clutchProfile.WithBitePoint(new(output, bind ? Button : null));
+            axes[PedalAxis.Clutch] = clutchProfile.WithBitePoint(new(output, bind ? Button : null, mode));
             Engine.Configure(new("Launch", axes), limits);
         }
         public void Sample(int clutch) => Engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(Clock.Ticks), 1, new(4096, 8388608, clutch)));
         public void Poll() => Engine.ProcessCorrectionButtons(Buttons);
-        public void Advance(int milliseconds)
+        public void Advance(int milliseconds, int clutch = 0)
         {
-            for (var i = 0; i < milliseconds; i += 10) { Clock.Ticks += Math.Min(10, milliseconds - i); Sample(0); Poll(); }
+            for (var i = 0; i < milliseconds; i += 10) { Clock.Ticks += Math.Min(10, milliseconds - i); Sample(clutch); Poll(); }
         }
         public void Tap() { Buttons.Set(Button, true); Poll(); Advance(30); Buttons.Set(Button, false); Poll(); }
     }

@@ -82,17 +82,63 @@ public sealed class ClutchBitePointUiTests
         var engine = new DashboardEngine();
         var model = new DashboardViewModel(engine) { SelectedAxis = PedalAxis.Clutch };
         model.Editor.BitePointOutput = "37";
+        model.SetBitePointMode("Hold full range");
         model.BindBitePoint(new("controller", 4, "wheel"));
         var saved = model.ValidateEditors().Profile;
         var launch = model.SelectedProfile!;
         model.Load(new("Other", DashboardEngine.DefaultProfile().Axes));
         Assert.False(model.HasBitePointBinding);
+        Assert.Equal("Hold bite point", model.SelectedBitePointMode);
         model.SwitchProfile(launch);
         Assert.Equal("37", model.Editor.BitePointOutput);
+        Assert.Equal("Hold full range", model.SelectedBitePointMode);
         Assert.True(model.HasBitePointBinding);
         Assert.False(model.BitePointEnabled);
         var editor = AxisEditor.FromProfile(ProfileJson.Deserialize(ProfileJson.Serialize(saved)).Axes[PedalAxis.Clutch]);
         Assert.Equal("37", editor.BitePointOutput);
         Assert.Equal(new("controller", 4, "wheel"), editor.BitePointButton);
+        Assert.Equal(ClutchBitePointMode.HoldFullRange, editor.BitePointMode);
     }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task ModeSelectorAppliesAndExplainsBothClutchBehaviors(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        try
+        {
+            await using var main = new MainWindow(new DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
+            Localizer.Instance.Language = language;
+            var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+            model.SelectedAxis = PedalAxis.Clutch;
+            model.Editor.BitePointOutput = "40";
+            model.BindBitePoint(new("keyboard", 65));
+            var selector = Assert.IsAssignableFrom<ComboBox>(main.FindName("BitePointModeSelector"));
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal("Hold bite point", selector.SelectedItem);
+            selector.SelectedItem = "Hold full range";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal(ClutchBitePointMode.HoldFullRange, model.ValidateEditors().Profile.Axes[PedalAxis.Clutch].BitePoint!.Mode);
+            Assert.True(model.SelectedProfile!.HasUnsavedChanges);
+            var hint = Assert.IsType<TextBlock>(main.FindName("BitePointModeHint"));
+            Assert.Contains("40%", hint.Text, StringComparison.Ordinal);
+            Assert.Contains("100%", hint.Text, StringComparison.Ordinal);
+            Assert.Equal(Localizer.Translate(model.BitePointHint), hint.Text);
+            model.SetBitePointEnabled(true);
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var status = Assert.IsType<TextBlock>(main.FindName("BitePointStatusLabel"));
+            Assert.Equal(Localizer.Translate(model.BitePointStatus), status.Text);
+            Assert.Contains("40", status.Text, StringComparison.Ordinal);
+            Assert.Contains(language == "uk" ? "обмежено" : "limited", status.Text, StringComparison.Ordinal);
+            var content = Assert.IsAssignableFrom<FrameworkElement>(main.Content);
+            content.Measure(new Size(1288, 862)); content.Arrange(new Rect(0, 0, 1288, 862)); content.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsType<StackPanel>(main.FindName("ClutchBitePointPanel")), $"clutch-full-range-{language}.png");
+            selector.SelectedItem = "Hold bite point";
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.Equal(ClutchBitePointMode.HoldMinimum, model.ValidateEditors().Profile.Axes[PedalAxis.Clutch].BitePoint!.Mode);
+            Assert.True(model.BitePointEnabled);
+            Assert.Equal(Localizer.Translate("Enabled · hold the button to apply the bite point"), status.Text);
+        }
+        finally { Localizer.Instance.Language = "en"; }
+    });
 }
