@@ -28,6 +28,7 @@ own curve, deadzones and filtering settings.
 | --- | --- |
 | Change the feel of a pedal | Choose a response preset or shape the curve yourself. |
 | Reduce small input fluctuations | Try a filter and compare the result on the graph. |
+| Set up repeatable clutch launches | Bind one button to enable and hold your clutch bite point. |
 | Correct a changed resting value | Check for sensor drift and shift the calibrated range. |
 | Keep different setups ready | Save profiles for different cars or games and switch from the app or tray. |
 | Manage the controller | Calibrate the pedals, back up settings and update supported firmware. |
@@ -57,6 +58,40 @@ smoothing. Filtering also adds delay, so compare the result before choosing stro
 
 The filtering guide inside the app includes two recorded examples for each filter.
 Open it with the information button next to **Filtering**.
+
+### Launch with a clutch bite point
+
+Use a wheel button or keyboard key to control a repeatable clutch position at the
+start of a race. One binding handles both switching the assist on and off and
+holding it during a launch.
+
+In **Tuning → Clutch**, choose a **Bite point mode**, set **Bite point output (%)**
+and click **Bind** to assign your button. Double-tap the button to enable or
+disable the assist, or use the **Enabled** checkbox. Hold it for at least **250 ms**
+to activate the selected mode's held behavior; releasing applies its released
+behavior immediately.
+
+| Mode | While holding the button | After releasing the button |
+| --- | --- | --- |
+| **Hold bite point** | Keeps clutch output at least at your chosen percentage. Pressing the pedal farther takes priority. | Returns to normal pedal control. |
+| **Hold full range** | Gives normal pedal output across the full 0–100% range. | Scales pedal output by your chosen percentage. |
+
+With **Hold full range** set to **40%**, a fully pressed clutch gives **100% output
+while held** and **40% after release**. You can then ease off the pedal to bring
+output smoothly from 40% down to zero. Half of the normal clutch output becomes
+20%; a fully released pedal still gives 0%.
+
+![Hold full range at 40 percent during a recorded clutch press: purple clutch output follows the pedal to 100% while the button is held, drops to 40% when it is released, then follows the pedal down at 40% scale](docs/screenshots/clutch-bite-point.png)
+
+*A real clutch press with Hold full range at 40%: dashed grey is the pedal; purple
+is the clutch output sent to the game. While the button is held (shaded), output
+reaches 100%. Releasing it drops output to 40%, and easing off the pedal brings it
+down to zero.*
+
+Save your profile to keep the mode, percentage and binding. The assist starts
+disabled each time you open SherpaAxis. It changes only the processed clutch
+output: throttle, brake and hardware calibration stay unchanged, and your game's
+axis binding stays the same.
 
 ### Correct pedal drift
 
