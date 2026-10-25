@@ -35,7 +35,8 @@ public sealed class WindowLayoutTests
                     Assert.True(content.ActualWidth > 0);
                     var curves = Descendants(content).OfType<CurveEditor>().ToArray();
                     Assert.Equal(3, curves.Length);
-                    Assert.Equal(Enum.GetValues<PedalAxis>(), curves.Select(c => Assert.IsType<PedalCurveViewModel>(c.DataContext).Axis));
+                    PedalAxis[] expectedOrder = [PedalAxis.Clutch, PedalAxis.Brake, PedalAxis.Throttle];
+                    Assert.Equal(expectedOrder, curves.Select(c => Assert.IsType<PedalCurveViewModel>(c.DataContext).Axis));
                     Assert.All(curves, curve =>
                     {
                         Assert.Equal(2, curve.Points!.Count);
@@ -44,6 +45,8 @@ public sealed class WindowLayoutTests
                         Assert.True(curve.ActualWidth >= 100 && curve.ActualHeight >= 115);
                     });
                     var model = Assert.IsType<DashboardViewModel>(window.DataContext);
+                    Assert.Equal(expectedOrder, model.Cards.Select(card => card.Axis));
+                    UiRefinementTests.CapturePreview(content, $"pedal-order-{width}-{height}.png");
                     model.SetCurvePreset(PedalAxis.Throttle, "Progressive");
                     var clear = Descendants(content).OfType<Button>().Single(b => Equals(b.Content, "Clear curve")
                         && b.DataContext is PedalCurveViewModel { Axis: PedalAxis.Throttle });

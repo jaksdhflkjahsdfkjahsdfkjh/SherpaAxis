@@ -85,7 +85,7 @@ public sealed class GraphInteractionTests
         engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(.03), 1, new(16384, 8388608, 0)));
         model.Refresh();
         Assert.Same(frozen, model.PedalHistories);
-        Assert.Equal(100, model.Cards[0].OutputPercent);
+        Assert.Equal(100, model.Cards.Single(card => card.Axis == PedalAxis.Throttle).OutputPercent);
         Assert.Equal(2, engine.Snapshot(PedalAxis.Brake).SampleCount);
         model.GraphPaused = false;
         model.Refresh();

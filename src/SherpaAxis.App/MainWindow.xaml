@@ -338,7 +338,7 @@
                                 <TextBlock Grid.Row="3" Text="{loc:Translate Value={Binding DisplaySampleInfo}}" FontSize="10" Foreground="#95A9C1" Margin="0,6,0,0"/>
                             </Grid>
                         </Border>
-                        <Expander Grid.Row="2" x:Name="CurvesSection" Header="{loc:Text T31FF831B9097}" IsExpanded="True">
+                        <Expander Grid.Row="2" x:Name="CurvesSection" Header="{loc:Text T59F91F4084CB}" IsExpanded="True">
                             <StackPanel><TextBlock Text="{loc:Text T67662D152A12}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap"/>
                         <ItemsControl ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanTune}" Height="240">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
