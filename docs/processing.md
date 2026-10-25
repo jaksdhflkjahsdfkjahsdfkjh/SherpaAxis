@@ -15,20 +15,29 @@ and endpoints (0,0) and (1,1). Deadzones rescale the remaining interval to 0..1.
 ## Clutch bite point
 
 The desktop app applies this launch assist after the clutch's normal filtering,
-deadzones and response curve. While the binding is held and the feature is enabled,
-final output is the greater of normal clutch output and the configured bite point.
-Pressing the pedal farther always takes priority. Throttle and brake are unaffected.
+deadzones and response curve. Choose a mode in Tuning → Clutch:
+
+- **Hold bite point** keeps the greater of normal clutch output and the configured
+  bite point while the button is held. Pressing the pedal farther takes priority;
+  releasing the button restores normal pedal output. Existing profiles keep this mode.
+- **Hold full range** gives normal 0–100% pedal output while the button is held.
+  Releasing the button scales normal output by the configured percentage. At 40%,
+  a fully pressed pedal gives 100% while held and 40% after release; half pedal
+  gives 20% after release, and a released pedal gives 0%. Disabling the feature
+  restores normal output immediately.
+
+Throttle and brake are unaffected.
 No calibration or drift settings are changed, and toggles do not restart vJoy or
 reset processing history.
 
 In Tuning, select Clutch, set the output percentage and bind a keyboard or controller
 button. Double-tap the binding to enable or disable: each tap must be shorter than
 250 ms, and the second press must begin within 350 ms of the first release. A hold
-starts after 250 ms; releasing immediately restores normal pedal output. The second
+starts after 250 ms; releasing immediately applies the selected mode's released behavior. The second
 press can stay held to launch after enabling. Quick taps never apply the bite point.
 The Enabled checkbox provides the same session toggle.
 
-Profiles save the percentage and binding; the enabled state starts off when the app
+Profiles save the mode, percentage and binding; the enabled state starts off when the app
 starts. Disconnects or stale input cancel the hold and pending taps but retain the
 session toggle. A held binding resumes after 250 ms once healthy input returns,
 without another binding, press or game-axis change. Replay never feeds this assist

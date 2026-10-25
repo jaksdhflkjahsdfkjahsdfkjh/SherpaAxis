@@ -863,7 +863,7 @@
   "Double-tap to enable or disable. Hold for 250 ms to apply; release to return to the pedal. The pedal can always request more clutch.": "Двічі натисніть для ввімкнення або вимкнення. Утримуйте 250 мс для застосування; відпустіть для повернення до педалі. Натискання педалі сильніше завжди має пріоритет.",
   "Clear bite point binding": "Прибрати призначення точки схоплювання",
   "Bind clutch bite point": "Призначити кнопку точки схоплювання",
-  "Double-tap to enable or disable. While enabled, hold the same button to apply the bite point.": "Двічі натисніть для ввімкнення або вимкнення. Коли ввімкнено, утримуйте цю саму кнопку для застосування точки схоплювання.",
+  "Double-tap to enable or disable. Hold the same button to use the selected clutch mode.": "Двічі натисніть для ввімкнення або вимкнення. Утримуйте цю саму кнопку, щоб застосувати вибраний режим зчеплення.",
   "Bind a button to use the clutch bite point.": "Призначте кнопку для точки схоплювання зчеплення.",
   "Holding clutch at {0} minimum · press the pedal farther to override": "Утримання зчеплення щонайменше на {0} · сильніше натискання педалі має пріоритет",
   "Enabled · hold the button to apply the bite point": "Увімкнено · утримуйте кнопку для точки схоплювання",
@@ -871,5 +871,14 @@
   "Clutch bite point hold active": "Утримання точки схоплювання зчеплення активне",
   "Bite point output must be between 0% and 100%.": "Вихід у точці схоплювання має бути від 0% до 100%.",
   "Clutch bite point requires profile schema 4.": "Для точки схоплювання зчеплення потрібна версія формату профілю 4.",
-  "Bite point settings are supported only for the clutch.": "Налаштування точки схоплювання підтримуються лише для зчеплення."
+  "Bite point settings are supported only for the clutch.": "Налаштування точки схоплювання підтримуються лише для зчеплення.",
+  "Bite point mode": "Режим точки схоплювання",
+  "Hold bite point": "Утримувати точку схоплювання",
+  "Hold full range": "Утримувати повний діапазон",
+  "Double-tap to enable or disable. Hold for 250 ms for full pedal output; release to scale pedal output by the bite percentage. At 40%: full pedal gives 100% while held, 40% after release.": "Двічі натисніть для ввімкнення або вимкнення. Утримуйте 250 мс для повного діапазону; відпустіть, щоб масштабувати вихід за відсотком точки схоплювання. Для 40%: повне натискання дає 100% під час утримання та 40% після відпускання.",
+  "Full clutch range · release the button to use {0} range": "Повний діапазон зчеплення · відпустіть кнопку для діапазону {0}",
+  "Clutch range limited to {0} · hold the button for full range": "Діапазон зчеплення обмежено до {0} · утримуйте кнопку для повного діапазону",
+  "Clutch launch mode active": "Режим старту зі зчепленням активний",
+  "Clutch bite point modes require profile schema 5.": "Для режимів точки схоплювання зчеплення потрібна версія формату профілю 5.",
+  "Unknown clutch bite point mode.": "Невідомий режим точки схоплювання зчеплення."
 }

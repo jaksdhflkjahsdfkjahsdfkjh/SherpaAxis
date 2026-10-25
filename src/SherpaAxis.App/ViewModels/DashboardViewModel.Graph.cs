@@ -33,7 +33,8 @@ public sealed partial class DashboardViewModel
         "Device counts" => "Original device counts · Each pedal has its own scale · Applied settings",
         "Output" => "Final output after filter, deadzones and curve · Applied settings",
         _ => "Normalized signal before deadzones and curve · Applied settings"
-    }) + (bitePointState.Holding ? " · Clutch bite point hold active" : "");
+    }) + (bitePointState.Enabled && bitePointState.Mode == SherpaAxis.Profiles.ClutchBitePointMode.HoldFullRange ? " · Clutch launch mode active"
+        : bitePointState.Holding ? " · Clutch bite point hold active" : "");
     public bool GraphZoom { get => graphZoom; set => Set(ref graphZoom, value); }
     public double GraphWindow
     {

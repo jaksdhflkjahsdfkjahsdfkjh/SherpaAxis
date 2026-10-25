@@ -4,7 +4,7 @@ using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Models;
 
-public sealed record ClutchBitePointState(bool Enabled, bool Holding, double Output);
+public sealed record ClutchBitePointState(bool Enabled, bool Holding, double Output, ClutchBitePointMode Mode = ClutchBitePointMode.HoldMinimum);
 
 public sealed partial class DashboardEngine
 {
@@ -14,7 +14,7 @@ public sealed partial class DashboardEngine
     private ClutchBitePointSettings? BiteSettings => activeProfile.Axes[PedalAxis.Clutch].BitePoint;
     public ClutchBitePointState BitePointState
     {
-        get { lock (sync) { return new(bitePoint.Enabled, bitePoint.Holding && IsFresh(axes[PedalAxis.Clutch]), BiteSettings?.Output ?? .5); } }
+        get { lock (sync) { return new(bitePoint.Enabled, bitePoint.Holding && IsFresh(axes[PedalAxis.Clutch]), BiteSettings?.Output ?? .5, BiteSettings?.Mode ?? ClutchBitePointMode.HoldMinimum); } }
     }
     public void SetBitePointEnabled(bool enabled)
     {
@@ -38,11 +38,17 @@ public sealed partial class DashboardEngine
         else { bitePoint.Release(); }
         if (before != (bitePoint.Enabled, bitePoint.Holding)) { PublishBitePointChange(); }
     }
-    private double FinalOutput(PedalAxis axis, double output) => axis == PedalAxis.Clutch && bitePoint.Holding
-        && BiteSettings?.Button is not null && IsFresh(axes[axis]) ? Math.Max(output, BiteSettings.Output) : output;
+    private double FinalOutput(PedalAxis axis, double output)
+    {
+        if (axis != PedalAxis.Clutch || !bitePoint.Enabled || BiteSettings?.Button is null || !IsFresh(axes[axis])
+            || !sourceActive || source.Kind != "live-device-axis" || calibration is { IsActive: true }) { return output; }
+        return BiteSettings.Mode == ClutchBitePointMode.HoldFullRange
+            ? bitePoint.Holding ? output : output * BiteSettings.Output
+            : bitePoint.Holding ? Math.Max(output, BiteSettings.Output) : output;
+    }
     private void PublishBitePointChange()
     {
-        Event("clutch-bite-point", new { bitePoint.Enabled, bitePoint.Holding, Output = BiteSettings?.Output ?? .5 });
+        Event("clutch-bite-point", BitePointState);
         var clutch = axes[PedalAxis.Clutch];
         if (!IsFresh(clutch) || clutch.Current is not { } result) { return; }
         clutch.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized,
