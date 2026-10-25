@@ -66,6 +66,19 @@ profile, separately from the extracted app folder. Exit SherpaAxis before replac
 that folder with a newer ZIP. When moving it to a different location, review the
 Start with Windows setting and physical-pedal hiding configuration in Settings.
 
+Uninstalling
+
+Exit SherpaAxis completely, including its tray instance, then run Uninstall.exe.
+Choose English or Ukrainian before continuing to the removal options.
+Select "Remove drivers installed by SherpaAxis" only if you also want to remove
+recorded, unchanged components; other apps may need these shared drivers. The
+option is off by default. Pre-existing or unrecorded drivers are preserved.
+Driver ownership tracking starts with v1.2.1 and cannot identify installations
+made by older versions. Administrator approval is needed for driver removal.
+Close the final window to remove the packaged app files. Modified and extra files
+are left in the folder. Profiles, settings and calibration backups are kept.
+Restart Windows if requested. Cleanup logs: %LOCALAPPDATA%\SherpaAxis\Logs.
+
 Need help?
 
 Guide: https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis#readme

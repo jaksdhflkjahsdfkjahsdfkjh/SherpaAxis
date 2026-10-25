@@ -100,6 +100,7 @@ Copy-Item -LiteralPath $driverDestination, $hidHideDestination -Destination $zip
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/vJoy-LICENSE.txt'), (Join-Path $repositoryDirectory 'installer/HidHide-LICENSE.txt') -Destination $zipLicenses
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'LICENSE') -Destination $appDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/Zip-README.txt') -Destination (Join-Path $appDirectory 'START-HERE.txt')
+Copy-Item -LiteralPath (Join-Path $appDirectory 'SherpaAxis.App.exe') -Destination (Join-Path $appDirectory 'Uninstall.exe')
 $manifest = @{
     SchemaVersion = 1
     Files = @(Get-ChildItem -LiteralPath $appDirectory -File -Recurse | ForEach-Object {

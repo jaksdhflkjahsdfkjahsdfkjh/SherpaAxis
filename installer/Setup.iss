@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.2.1"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"
@@ -81,6 +81,14 @@ english.CloseVendorControl=FEEL-VR Control is running. Exit it completely, inclu
 ukrainian.CloseVendorControl=FEEL-VR Control запущено. Повністю закрийте програму, зокрема її значок у системному треї, а потім натисніть «Повторити», щоб продовжити встановлення.
 english.VendorControlCheckFailed=Could not check whether FEEL-VR Control is running. Restart Windows and run Setup again. Details: %1
 ukrainian.VendorControlCheckFailed=Не вдалося перевірити, чи запущено FEEL-VR Control. Перезавантажте Windows і запустіть інсталятор знову. Подробиці: %1
+english.RemoveOwnedDrivers=Also remove vJoy, HidHide and the DfuSe USB driver installed by SherpaAxis?%n%nOnly recorded, unchanged components are eligible. Pre-existing drivers and profiles are preserved. Other applications may need these shared drivers.%n%nChoose No to keep drivers, or Cancel to stop uninstalling.
+ukrainian.RemoveOwnedDrivers=Також видалити vJoy, HidHide та USB-драйвер DfuSe, встановлені SherpaAxis?%n%nВидаляються лише записані та незмінені компоненти. Наявні раніше драйвери та профілі зберігаються. Ці спільні драйвери можуть бути потрібні іншим програмам.%n%nОберіть «Ні», щоб залишити драйвери, або «Скасувати», щоб припинити видалення.
+english.UninstallReleaseFailed=Input configuration could not be released. Close SherpaAxis and other controller apps, then retry uninstalling.
+ukrainian.UninstallReleaseFailed=Не вдалося скасувати налаштування вводу. Закрийте SherpaAxis та інші програми контролерів і повторіть видалення.
+english.DriverRemovalStartFailed=Could not start optional driver removal. Retry uninstalling.
+ukrainian.DriverRemovalStartFailed=Не вдалося запустити додаткове видалення драйверів. Повторіть спробу.
+english.DriverRemovalFailed=Optional driver removal did not finish. The app is kept so you can retry, or choose No to preserve the drivers. Logs: ProgramData\SherpaAxis\Prerequisites.
+ukrainian.DriverRemovalFailed=Видалення драйверів не завершено. Програму збережено для повторної спроби; також можна обрати «Ні», щоб залишити драйвери. Журнали: ProgramData\SherpaAxis\Prerequisites.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
@@ -105,9 +113,6 @@ Name: "{autodesktop}\SherpaAxis"; Filename: "{app}\SherpaAxis.App.exe"; Tasks: d
 [Run]
 Filename: "{app}\SherpaAxis.App.exe"; Description: "{cm:LaunchProgram,SherpaAxis}"; Flags: postinstall nowait skipifsilent runasoriginaluser; Check: CanLaunchApplication
 
-[UninstallRun]
-Filename: "{app}\SherpaAxis.App.exe"; Parameters: "--release-input-configuration"; Flags: runhidden; RunOnceId: "ReleaseSherpaAxisInputConfiguration"
-
 [Code]
 const
   DeferredTaskName = 'SherpaAxis.DeviceSetup.48CBF14C';
@@ -125,6 +130,25 @@ var
   DfuConfigurationFailed: Boolean;
   DeferredSetupCreated: Boolean;
   InstallationCompleted: Boolean;
+  RemoveOwnedDrivers: Boolean;
+  DriverRemovalRestart: Boolean;
+
+function UninstallNeedRestart: Boolean;
+begin
+  Result := DriverRemovalRestart;
+end;
+
+function InitializeUninstall: Boolean;
+var
+  Choice: Integer;
+begin
+  Result := True;
+  RemoveOwnedDrivers := ExpandConstant('{param:REMOVEOWNEDDRIVERS|0}') = '1';
+  if UninstallSilent then Exit;
+  Choice := MsgBox(CustomMessage('RemoveOwnedDrivers'), mbConfirmation, MB_YESNOCANCEL or MB_DEFBUTTON2);
+  Result := Choice <> IDCANCEL;
+  RemoveOwnedDrivers := Choice = IDYES;
+end;
 
 function DriverPackageExists(InfName: String): Boolean;
 var
@@ -428,10 +452,23 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Command: String;
+  ExitCode: Integer;
 begin
   if CurUninstallStep <> usUninstall then
     Exit;
   RemoveDeferredSetup;
+  if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--release-input-configuration',
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
+    RaiseException(CustomMessage('UninstallReleaseFailed'));
+  if RemoveOwnedDrivers then
+  begin
+    if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--remove-owned-prerequisites',
+      ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+      RaiseException(CustomMessage('DriverRemovalStartFailed'));
+    DriverRemovalRestart := ExitCode = 3010;
+    if (ExitCode <> 0) and not DriverRemovalRestart then
+      RaiseException(CustomMessage('DriverRemovalFailed'));
+  end;
   if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, Command) and
     (Pos('"' + ExpandConstant('{app}\SherpaAxis.App.exe') + '"', Command) = 1) then
     RegDeleteValue(HKCU, StartupRegistryKey, StartupValueName);

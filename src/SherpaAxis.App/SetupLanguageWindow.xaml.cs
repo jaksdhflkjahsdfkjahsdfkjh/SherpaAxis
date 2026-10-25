@@ -14,14 +14,14 @@ public partial class SetupLanguageWindow : Window
     private bool saving;
     internal bool Accepted { get; private set; }
 
-    public SetupLanguageWindow() : this(new ApplicationPreferencesStore(ApplicationPreferencesStore.DefaultPath)) { }
-    internal SetupLanguageWindow(IApplicationPreferencesStore preferences)
+    public SetupLanguageWindow(bool uninstall = false) : this(new ApplicationPreferencesStore(ApplicationPreferencesStore.DefaultPath), uninstall) { }
+    internal SetupLanguageWindow(IApplicationPreferencesStore preferences, bool uninstall = false)
     {
         this.preferences = preferences;
         InitializeComponent();
-        Localizer.Bind(this, TitleProperty, "Setup language");
+        Localizer.Bind(this, TitleProperty, uninstall ? "Uninstall language" : "Setup language");
         Localizer.Bind(Heading, TextBlock.TextProperty, "Choose your language");
-        Localizer.Bind(Explanation, TextBlock.TextProperty, "Your choice will be used for setup and the app.");
+        Localizer.Bind(Explanation, TextBlock.TextProperty, uninstall ? "Your choice will be used for uninstalling and the app." : "Your choice will be used for setup and the app.");
         Localizer.Bind(CancelButton, ContentControl.ContentProperty, "Cancel");
         Width = Math.Min(Width, SystemParameters.WorkArea.Width);
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
