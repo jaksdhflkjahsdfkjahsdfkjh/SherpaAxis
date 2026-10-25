@@ -100,6 +100,13 @@ Copy-Item -LiteralPath $driverDestination, $hidHideDestination -Destination $zip
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/vJoy-LICENSE.txt'), (Join-Path $repositoryDirectory 'installer/HidHide-LICENSE.txt') -Destination $zipLicenses
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'LICENSE') -Destination $appDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryDirectory 'installer/Zip-README.txt') -Destination (Join-Path $appDirectory 'START-HERE.txt')
+$manifest = @{
+    SchemaVersion = 1
+    Files = @(Get-ChildItem -LiteralPath $appDirectory -File -Recurse | ForEach-Object {
+        @{ Path = [IO.Path]::GetRelativePath($appDirectory, $_.FullName).Replace('\', '/'); Hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+    })
+}
+[IO.File]::WriteAllText((Join-Path $appDirectory 'uninstall-manifest.json'), ($manifest | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
 $archive = Join-Path $outputDirectory 'SherpaAxis-win-x64.zip'
 $zipStream = [IO.File]::Open($archive, [IO.FileMode]::Create)
 $zip = [IO.Compression.ZipArchive]::new($zipStream, [IO.Compression.ZipArchiveMode]::Create)
