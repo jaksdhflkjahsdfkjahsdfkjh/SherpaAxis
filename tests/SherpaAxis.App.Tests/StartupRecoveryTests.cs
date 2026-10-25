@@ -91,6 +91,9 @@ public sealed class StartupRecoveryTests
             await main.RequestPanelModeAsync(SidePanelMode.Calibration);
             Assert.True(model.IsCalibrationMode);
             CheckLayout();
+            Assert.Equal(cycle * 2, checks);
+            await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
+            CheckLayout();
             await fixture.Journal();
             await main.RequestPanelModeAsync(SidePanelMode.Tuning);
             Assert.False(model.IsCalibrationMode || model.Recovery.IsBlocked || model.Recovery.NeedsAttention);

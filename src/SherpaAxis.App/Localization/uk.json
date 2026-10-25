@@ -880,5 +880,12 @@
   "Clutch range limited to {0} · hold the button for full range": "Діапазон зчеплення обмежено до {0} · утримуйте кнопку для повного діапазону",
   "Clutch launch mode active": "Режим старту зі зчепленням активний",
   "Clutch bite point modes require profile schema 5.": "Для режимів точки схоплювання зчеплення потрібна версія формату профілю 5.",
-  "Unknown clutch bite point mode.": "Невідомий режим точки схоплювання зчеплення."
+  "Unknown clutch bite point mode.": "Невідомий режим точки схоплювання зчеплення.",
+  "Live pedal output continues. Hardware operations verify the controller before making changes.": "Вихід педалей продовжує працювати. Перед апаратними змінами контролер буде перевірено.",
+  "Controller bounds are read when a hardware operation starts.": "Межі контролера зчитуються на початку апаратної операції.",
+  "Live input and output continue in the main graph.": "Поточні вхід і вихід продовжують відображатися на головному графіку.",
+  "Last known hardware calibration bounds (sensor counts)": "Останні відомі межі апаратного калібрування (відліки датчика)",
+  "Controller bounds were refreshed. Review the values before applying hardware changes.": "Межі контролера оновлено. Перевірте значення перед застосуванням апаратних змін.",
+  "Finish the firmware update or recovery before changing hardware calibration.": "Завершіть оновлення або відновлення прошивки перед зміною апаратного калібрування.",
+  "Calibration cancelled. Controller settings restored; live pedal monitoring resumed.": "Калібрування скасовано. Налаштування контролера відновлено; поточне зчитування педалей поновлено."
 }

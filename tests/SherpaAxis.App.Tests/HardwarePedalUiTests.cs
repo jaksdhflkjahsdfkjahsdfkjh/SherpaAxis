@@ -21,6 +21,289 @@ public sealed class WpfUiTestGroup;
 public sealed class HardwarePedalUiTests
 {
     [Fact]
+    public Task BrowsingCalibrationPreservesDraftsAndLiveOutputWithoutOpeningHardware() => OnUiAsync(async () =>
+    {
+        var starts = 0;
+        var stops = 0;
+        var hardwareOpens = 0;
+        var controller = new LiveController();
+        var engine = new Models.DashboardEngine();
+        await using var main = new MainWindow(engine, (_, _, _) =>
+        {
+            hardwareOpens++;
+            throw new InvalidOperationException("Tab navigation must not open the controller.");
+        }, new SettingsAndTrayTests.FakeDesktop().Services);
+        var source = MainField<DashboardSource>(main, "source");
+        var runtime = new PedalRuntime(engine, source, new(Input, () => controller), new ButtonStateBuffer());
+        SetMainField(main, "runtime", runtime);
+        await runtime.ResumeAsync();
+        await UntilAsync(() => controller.Writes > 0);
+        var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
+        dashboard.Refresh();
+        dashboard.GraphPaused = true;
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        var panel = Assert.IsType<HardwareCalibrationView>(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+        var model = Assert.IsType<HardwarePedalViewModel>(panel.DataContext);
+        model.Minimum = "345";
+        model.Maximum = "1800";
+        model.LowerDeadzone = "7";
+        model.UpperDeadzone = "8";
+        var plot = main.FindName("MainSignalPlot");
+        var sampleCount = engine.Snapshot(Profiles.PedalAxis.Brake).SampleCount;
+        var writeCount = controller.Writes;
+        for (var cycle = 0; cycle < 3; cycle++)
+        {
+            await main.RequestPanelModeAsync(Models.SidePanelMode.Tuning);
+            await main.RequestPanelModeAsync(Models.SidePanelMode.Settings);
+            await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+            Assert.Same(panel, Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+            Assert.Same(model, panel.DataContext);
+            Assert.Same(plot, main.FindName("MainSignalPlot"));
+            Assert.False(dashboard.IsSwitchingMode || dashboard.UsesHardwareInput || runtime.IsPaused);
+            Assert.Equal(dashboard.GraphMode, dashboard.DisplayGraphMode);
+            Assert.True(dashboard.GraphPaused && source.IsRunning);
+            Assert.Equal(("345", "1800", "7", "8"), (model.Minimum, model.Maximum, model.LowerDeadzone, model.UpperDeadzone));
+        }
+        await UntilAsync(() => controller.Writes > writeCount && engine.Snapshot(Profiles.PedalAxis.Brake).SampleCount > sampleCount);
+        Assert.Equal(1, starts);
+        Assert.Equal(0, stops);
+        Assert.Equal(0, hardwareOpens);
+        Assert.Equal(0, controller.Disposals);
+
+        async IAsyncEnumerable<PedalMonitorEvent> Input([EnumeratorCancellation] CancellationToken token)
+        {
+            Interlocked.Increment(ref starts);
+            try
+            {
+                while (true)
+                {
+                    yield return Sample(600) with { Elapsed = TimeSpan.FromMilliseconds(Environment.TickCount64) };
+                    await Task.Delay(2, token);
+                }
+            }
+            finally { Interlocked.Increment(ref stops); }
+        }
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task AHardwareActionPausesOutputRestoresBoundsAndRetainsThePanelDraft(bool cancel) => OnUiAsync(async () =>
+    {
+        var device = new Device();
+        var engine = new Models.DashboardEngine();
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        MainWindow? window = null;
+        var opens = 0;
+        var starts = 0;
+        var controller = new LiveController();
+        var resumedController = new LiveController();
+        var resumeInput = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var services = desktop.Services with { Runtime = new(Input, () => controller.Disposals == 0 ? controller : resumedController) };
+        await using var main = new MainWindow(engine, (channel, theme, _) =>
+        {
+            opens++;
+            var config = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, Device.Original), device, device, new Backup(), TimeSpan.FromSeconds(1));
+            var view = MainField<HardwareCalibrationView>(window!, "cachedCalibrationView");
+            view.Reconnect(config, EmptyInput, selectedChannel: channel);
+            return Task.FromResult(new HardwareCalibrationSession(config, view));
+        }, services);
+        window = main;
+        await main.InitializeForLaunchAsync();
+        await UntilAsync(() => controller.Writes > 0);
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
+        var model = Assert.IsType<HardwarePedalViewModel>(dashboard.HardwareDisplay);
+        var view = Assert.IsType<HardwareCalibrationView>(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+        var barrier = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        device.WriteBarrier = barrier.Task;
+        var action = view.ExecuteAsync(HardwareCalibrationAction.Capture);
+        try
+        {
+            await UntilAsync(() => device.Writes.Count > 0);
+            Assert.True(MainField<PedalRuntime>(main, "runtime").IsPaused);
+            Assert.False(MainField<DashboardSource>(main, "source").IsRunning);
+            Assert.Equal(1, controller.Disposals);
+        }
+        finally { barrier.TrySetResult(); }
+        await action;
+        Assert.True(model.IsCapturing && dashboard.UsesHardwareInput);
+        Assert.Equal(PedalHardwareSettings.Defaults.Brake, device.State.Brake);
+        model.LowerDeadzone = "7";
+        model.UpperDeadzone = "8";
+        if (cancel)
+        {
+            model.Accept(Sample(600));
+            model.Refresh();
+            var cancellation = view.ExecuteAsync(HardwareCalibrationAction.Cancel);
+            try
+            {
+                await UntilAsync(() => starts == 2);
+                Assert.False(cancellation.IsCompleted);
+                Assert.True(dashboard.IsSwitchingMode);
+                Assert.Equal("Device counts", dashboard.DisplayGraphMode);
+                Assert.NotEmpty(dashboard.DisplayHistories.Single(series => series.Axis == Profiles.PedalAxis.Brake).Samples);
+            }
+            finally { resumeInput.TrySetResult(); }
+            await cancellation;
+            Assert.Contains("live pedal monitoring resumed", dashboard.Message, StringComparison.Ordinal);
+            Assert.True(dashboard.IsCalibrationMode);
+            Assert.False(dashboard.UsesHardwareInput || model.HasSession || dashboard.IsSwitchingMode);
+            Assert.True(MainField<DashboardSource>(main, "source").IsRunning);
+            Assert.False(MainField<PedalRuntime>(main, "runtime").IsPaused);
+            await UntilAsync(() => resumedController.Writes > 0);
+            Assert.Equal(2, starts);
+        }
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Tuning);
+        await UntilAsync(() => starts == 2 && !MainField<PedalRuntime>(main, "runtime").IsPaused);
+        Assert.Equal(0, resumedController.Disposals);
+        Assert.Equal(Device.Original, device.State);
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        Assert.Same(view, Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+        Assert.Same(model, dashboard.HardwareDisplay);
+        Assert.False(model.HasSession);
+        Assert.Equal(("7", "8"), (model.LowerDeadzone, model.UpperDeadzone));
+        Assert.Equal(1, opens);
+
+        async IAsyncEnumerable<PedalMonitorEvent> Input([EnumeratorCancellation] CancellationToken token)
+        {
+            var generation = Interlocked.Increment(ref starts);
+            if (cancel && generation == 2) { await resumeInput.Task.WaitAsync(token); }
+            while (true)
+            {
+                yield return Sample(600) with { Elapsed = TimeSpan.FromMilliseconds(Environment.TickCount64) };
+                await Task.Delay(2, token);
+            }
+        }
+    });
+
+    [Fact]
+    public Task FailedCancellationKeepsOutputPausedAndRetryRestoresLiveInput() => OnUiAsync(async () =>
+    {
+        var device = new Device();
+        MainWindow? window = null;
+        var starts = 0;
+        var services = new SettingsAndTrayTests.FakeDesktop().Services with { Runtime = new(Input, () => new LiveController()) };
+        await using var main = new MainWindow(new(), (channel, theme, _) =>
+        {
+            var config = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, Device.Original), device, device, new Backup(), TimeSpan.FromSeconds(1));
+            var panel = MainField<HardwareCalibrationView>(window!, "cachedCalibrationView");
+            panel.Reconnect(config, EmptyInput, selectedChannel: channel);
+            return Task.FromResult(new HardwareCalibrationSession(config, panel));
+        }, services);
+        window = main;
+        await main.InitializeForLaunchAsync();
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        var view = Assert.IsType<HardwareCalibrationView>(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+        await view.ExecuteAsync(HardwareCalibrationAction.Capture);
+        var model = Assert.IsType<HardwarePedalViewModel>(view.DataContext);
+        device.FailWrites = true;
+        try
+        {
+            await view.ExecuteAsync(HardwareCalibrationAction.Cancel);
+            Assert.True(model.IsCapturing && model.HasSession);
+            Assert.True(MainField<PedalRuntime>(main, "runtime").IsPaused);
+            Assert.False(MainField<DashboardSource>(main, "source").IsRunning);
+            Assert.Equal(1, starts);
+        }
+        finally { device.FailWrites = false; }
+        await view.ExecuteAsync(HardwareCalibrationAction.Cancel);
+        Assert.Equal(Device.Original, device.State);
+        Assert.False(model.HasSession || model.IsCapturing || model.CanAbandon);
+        Assert.False(MainField<PedalRuntime>(main, "runtime").IsPaused);
+        Assert.True(MainField<DashboardSource>(main, "source").IsRunning);
+        Assert.Equal(2, starts);
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Tuning);
+        Assert.Equal(2, starts);
+
+        async IAsyncEnumerable<PedalMonitorEvent> Input([EnumeratorCancellation] CancellationToken token)
+        {
+            Interlocked.Increment(ref starts);
+            while (true)
+            {
+                yield return Sample(600) with { Elapsed = TimeSpan.FromMilliseconds(Environment.TickCount64) };
+                await Task.Delay(2, token);
+            }
+        }
+    });
+
+    [Fact]
+    public Task SwitchingToTuningWhileCancelRestoresDoesNotDeadlockOrReopenHardware() => OnUiAsync(async () =>
+    {
+        var device = new Device();
+        var opens = 0;
+        await using var main = new MainWindow(new(), (channel, theme, _) =>
+        {
+            opens++;
+            var config = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, Device.Original), device, device, new Backup(), TimeSpan.FromSeconds(1));
+            return Task.FromResult(new HardwareCalibrationSession(config, new(config, EmptyInput, theme, selectedChannel: channel)));
+        }, new SettingsAndTrayTests.FakeDesktop().Services);
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        await main.StartHardwareOperationAsync(HardwareCalibrationAction.Capture);
+        var view = Assert.IsType<HardwareCalibrationView>(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
+        var restore = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        device.WriteBarrier = restore.Task;
+        var writes = device.Writes.Count;
+        var cancellation = view.ExecuteAsync(HardwareCalibrationAction.Cancel);
+        await UntilAsync(() => device.Writes.Count > writes);
+        var tuning = main.RequestPanelModeAsync(Models.SidePanelMode.Tuning);
+        restore.SetResult();
+        await Task.WhenAll(cancellation, tuning).WaitAsync(TimeSpan.FromSeconds(2));
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.True(model.IsTuningMode);
+        Assert.False(model.IsSwitchingMode || model.HardwareDisplay!.HasSession);
+        Assert.Equal(Device.Original, device.State);
+        Assert.Equal(1, opens);
+    });
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public Task CachedManualBoundsApplyOnlyToTheSameControllerWithUnchangedCalibration(int change) => OnUiAsync(async () =>
+    {
+        var device = new Device();
+        var engine = new Models.DashboardEngine();
+        engine.SetSensorCalibration(new("PE001700", Device.Original));
+        engine.SetOwnedControllerIdentity(new("FEEL-VR", "Pedals", "PE001700"));
+        MainWindow? window = null;
+        var fresh = change == 1 ? Device.Original.WithRange(PedalChannel.Brake, new(400, 2400)) : Device.Original;
+        await using var main = new MainWindow(engine, (channel, theme, _) =>
+        {
+            var config = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, Device.Collection, fresh), device, device, new Backup(), TimeSpan.FromSeconds(1));
+            var view = MainField<HardwareCalibrationView>(window!, "cachedCalibrationView");
+            view.Reconnect(config, EmptyInput, new("FEEL-VR", "Pedals", change == 2 ? "PE001701" : "PE001700"), channel);
+            return Task.FromResult(new HardwareCalibrationSession(config, view));
+        }, new SettingsAndTrayTests.FakeDesktop().Services);
+        window = main;
+        await main.RequestPanelModeAsync(Models.SidePanelMode.Calibration);
+        var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
+        var model = Assert.IsType<HardwarePedalViewModel>(dashboard.HardwareDisplay);
+        model.Minimum = "345";
+        model.Maximum = "1800";
+        await main.StartHardwareOperationAsync(HardwareCalibrationAction.ApplyBounds);
+        if (change == 0)
+        {
+            Assert.Single(device.Writes);
+            Assert.Equal(new(345, 1800), device.State.Brake);
+            return;
+        }
+        Assert.Empty(device.Writes);
+        Assert.Equal(fresh.Brake.Minimum.ToString(System.Globalization.CultureInfo.InvariantCulture), model.Minimum);
+        Assert.Contains("Review the values", model.Status, StringComparison.Ordinal);
+    });
+
+    private sealed class LiveController : IVirtualController
+    {
+        private int writes;
+        private int disposals;
+        public int Writes => Volatile.Read(ref writes);
+        public int Disposals => Volatile.Read(ref disposals);
+        public void Write(PedalOutput output) => Interlocked.Increment(ref writes);
+        public void Dispose() => Interlocked.Increment(ref disposals);
+    }
+
+    [Fact]
     public Task NewRawReferencesExcludeCenteredReportsAtInputStartup() => OnUiAsync(async () =>
     {
         await using var theme = new MainWindow(new SherpaAxis.App.Models.DashboardEngine(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
@@ -224,6 +507,8 @@ public sealed class HardwarePedalUiTests
         var plot = Assert.IsType<Controls.SignalPlot>(main.FindName("MainSignalPlot"));
         var bounds = new Rect(plot.TranslatePoint(new Point(), content), new Size(plot.ActualWidth, plot.ActualHeight));
         calibrationButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(0, connections);
+        await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
         await UntilAsync(() => host.Content is HardwareCalibrationView && !dashboard.IsSwitchingMode);
         var panel = Assert.IsType<HardwareCalibrationView>(host.Content);
         var captureButton = Assert.IsType<Button>(panel.FindName("CaptureButton"));
@@ -268,7 +553,7 @@ public sealed class HardwarePedalUiTests
         await UntilAsync(() => !dashboard.IsCalibrationMode && !dashboard.IsSwitchingMode);
         Assert.False(dashboard.IsCalibrationMode);
         Assert.Same(panel, host.Content);
-        Assert.Equal(Visibility.Hidden, host.Visibility);
+        Assert.Equal(Visibility.Visible, host.Visibility);
         Assert.Equal(Device.Original, device.State);
         Assert.All(device.Writes, bytes => Assert.Equal(3, bytes[0]));
         dashboard.GraphPaused = true;
@@ -278,9 +563,10 @@ public sealed class HardwarePedalUiTests
         Assert.Equal(message, dashboard.Message);
         calibrationButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await UntilAsync(() => dashboard.IsCalibrationMode && !dashboard.IsSwitchingMode);
-        Assert.Equal(2, connections);
+        Assert.Equal(1, connections);
         Assert.Same(panel, host.Content);
-        Assert.NotSame(model, panel.DataContext);
+        Assert.Same(model, panel.DataContext);
+        Assert.False(model.HasSession);
         Assert.Same(captureButton, cachedView!.FindName("CaptureButton"));
         Assert.Equal(0, emptyCalibrationFrames);
         Assert.Equal(Visibility.Hidden, Assert.IsType<DockPanel>(main.FindName("TuningSidePanel")).Visibility);
@@ -319,11 +605,13 @@ public sealed class HardwarePedalUiTests
             return new(configuration, new(configuration, EmptyInput, theme, selectedChannel: channel), transport);
         }, desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
         Assert.IsType<Button>(main.FindName("CalibrationModeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var operation = main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
         Assert.True(Assert.IsType<DashboardViewModel>(main.DataContext).IsSwitchingMode);
         var disposal = main.DisposeAsync().AsTask();
         Assert.False(disposal.IsCompleted);
         connect.SetResult();
         await disposal;
+        await operation;
         Assert.True(transport.Disposed);
         Assert.Null(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
         Assert.Empty(device.Writes);
@@ -440,6 +728,7 @@ public sealed class HardwarePedalUiTests
         }, desktopServices: new SettingsAndTrayTests.FakeDesktop().Services);
         var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
         Assert.IsType<Button>(main.FindName("CalibrationModeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
         await UntilAsync(() => dashboard.HardwareDisplay is not null && !dashboard.IsSwitchingMode);
         var panel = Assert.IsType<HardwareCalibrationView>(Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Content);
         var model = Assert.IsType<HardwarePedalViewModel>(panel.DataContext);
@@ -487,22 +776,24 @@ public sealed class HardwarePedalUiTests
         var calibration = Assert.IsType<Button>(main.FindName("CalibrationModeButton"));
         var tuning = Assert.IsType<Button>(main.FindName("TuningModeButton"));
         calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.False(model.IsCalibrationMode);
+        var operation = main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
+        Assert.True(model.IsCalibrationMode);
         Assert.True(model.IsSwitchingMode);
-        Assert.Equal(Visibility.Visible, Assert.IsType<DockPanel>(main.FindName("TuningSidePanel")).Visibility);
-        Assert.Equal(Visibility.Hidden, Assert.IsType<Grid>(main.FindName("CalibrationSidePanel")).Visibility);
+        Assert.Equal(Visibility.Hidden, Assert.IsType<DockPanel>(main.FindName("TuningSidePanel")).Visibility);
+        Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(main.FindName("CalibrationSidePanel")).Visibility);
         Assert.Equal(model.GraphMode, model.DisplayGraphMode);
         await Task.Yield();
         Assert.True(tuning.IsEnabled);
         tuning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.False(model.IsCalibrationMode);
+        Assert.True(model.IsCalibrationMode);
         calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.False(model.IsCalibrationMode);
+        Assert.True(model.IsCalibrationMode);
         connect.SetResult();
+        await operation;
         await UntilAsync(() => model.HardwareDisplay is not null && !model.IsSwitchingMode);
-        Assert.Equal(2, calls);
+        Assert.Equal(1, calls);
         Assert.True(transports[0].Disposed);
-        Assert.False(transports[1].Disposed);
+        Assert.False(model.HardwareDisplay!.HasSession);
         tuning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await UntilAsync(() => !model.IsCalibrationMode && !model.IsSwitchingMode);
         Assert.All(transports, transport => Assert.True(transport.Disposed));
@@ -530,13 +821,16 @@ public sealed class HardwarePedalUiTests
         var dashboard = Assert.IsType<DashboardViewModel>(main.DataContext);
         var calibration = Assert.IsType<Button>(main.FindName("CalibrationModeButton"));
         calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.False(dashboard.IsCalibrationMode);
-        Assert.Equal(Visibility.Visible, Assert.IsType<DockPanel>(main.FindName("TuningSidePanel")).Visibility);
+        var operation = main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
+        Assert.True(dashboard.IsCalibrationMode);
+        Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(main.FindName("CalibrationSidePanel")).Visibility);
         connect.SetResult();
+        await operation;
         await UntilAsync(() => !dashboard.IsSwitchingMode);
         Assert.True(dashboard.IsCalibrationMode);
-        Assert.Equal("Test controller unavailable", Assert.IsType<TextBlock>(main.FindName("CalibrationConnectionInfo")).Text);
+        Assert.Equal("Test controller unavailable", dashboard.Message);
         calibration.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
         await UntilAsync(() => dashboard.HardwareDisplay is not null && !dashboard.IsSwitchingMode);
         Assert.Equal(2, calls);
         Assert.Equal(Visibility.Visible, Assert.IsType<ContentControl>(main.FindName("CalibrationHost")).Visibility);

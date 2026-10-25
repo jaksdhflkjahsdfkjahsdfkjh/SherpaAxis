@@ -10,6 +10,8 @@ using SherpaAxis.FeelVR;
 
 namespace SherpaAxis.App;
 
+internal enum HardwareCalibrationAction { Capture, Cancel, ApplyBounds, Defaults, Save, Restore, Abandon }
+
 public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
 {
     private PedalConfigurationTransaction configuration = null!;
@@ -23,8 +25,10 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
     private bool ended;
     private bool disposed = true;
     private TaskCompletionSource? operationFinished;
+    internal string? ControllerSerial { get; private set; }
     public DiagnosticLog? Log { get; set; }
     public Func<PedalChannel, HardwareCalibrationRange, HardwareCalibrationRange, Task>? StoreSensorReference { get; set; }
+    internal Func<HardwareCalibrationAction, Task>? RequestOperation { get; set; }
 
     public event EventHandler? Completed;
     public event RoutedEventHandler? RestoreBackupRequested;
@@ -32,16 +36,35 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
 
     public HardwareCalibrationView(PedalConfigurationTransaction configuration,
         Func<CancellationToken, IAsyncEnumerable<PedalMonitorEvent>> input, ResourceDictionary theme, HidDeviceIdentity? identity = null,
-        PedalChannel selectedChannel = PedalChannel.Brake)
+        PedalChannel selectedChannel = PedalChannel.Brake) : this(theme)
+        => Reconnect(configuration, input, identity, selectedChannel);
+
+    public HardwareCalibrationView(ResourceDictionary theme)
     {
         InitializeComponent();
         Resources.MergedDictionaries.Add(theme);
+        model = new();
+        DataContext = model;
         refresh = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, (_, _) =>
         {
             model.Refresh();
             if (Volatile.Read(ref inputFailure) is { } failure) { model.Status = failure; }
         }, Dispatcher);
-        Reconnect(configuration, input, identity, selectedChannel);
+        ShowPreview();
+    }
+
+    internal void ShowPreview(PedalCalibration? bounds = null, HidDeviceIdentity? identity = null)
+    {
+        if (model.HasSession) { return; }
+        var wasClosed = disposed || ended;
+        disposed = false;
+        ended = false;
+        var changedController = identity is not null && ControllerSerial is not null && !PedalDeviceIdentity.SameController(identity.SerialNumber, ControllerSerial);
+        model.Preview(bounds, changedController);
+        if (identity is not null) { UpdateIdentity(identity); }
+        if (wasClosed) { model.Status = "Live pedal output continues. Hardware operations verify the controller before making changes."; }
+        model.Refresh();
+        refresh.Stop();
     }
 
     public void Reconnect(PedalConfigurationTransaction configuration,
@@ -49,18 +72,19 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         PedalChannel selectedChannel = PedalChannel.Brake)
     {
         Dispatcher.VerifyAccess();
-        if (!disposed || inputWorker is not null) { throw new InvalidOperationException("Close the previous hardware session before reusing its controls."); }
+        if (model.HasSession || inputWorker is not null) { throw new InvalidOperationException("Close the previous hardware session before reusing its controls."); }
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(input);
         this.configuration = configuration;
         this.input = input;
         calibration = new(configuration);
-        model = new(configuration, calibration);
+        var sameController = identity is null ? ControllerSerial is null
+            : ControllerSerial is not null && PedalDeviceIdentity.SameController(identity.SerialNumber, ControllerSerial);
+        model.Connect(configuration, calibration, sameController);
         model.SelectedChannel = selectedChannel;
         if (identity is not null)
         {
-            var device = PedalDeviceIdentity.Parse(identity.SerialNumber);
-            model.IdentityInfo = $"{identity.Product} · {identity.Manufacturer}\nHardware {device.Hardware} · Firmware {device.Firmware}\nSerial: {device.Serial}";
+            UpdateIdentity(identity);
         }
         DataContext = model;
         inputFailure = null;
@@ -72,9 +96,16 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         model.Refresh();
     }
 
+    private void UpdateIdentity(HidDeviceIdentity identity)
+    {
+        ControllerSerial = identity.SerialNumber;
+        var device = PedalDeviceIdentity.Parse(identity.SerialNumber);
+        model.IdentityInfo = $"{identity.Product} · {identity.Manufacturer}\nHardware {device.Hardware} · Firmware {device.Firmware}\nSerial: {device.Serial}";
+    }
+
     private async void StartInput(object sender, RoutedEventArgs e) { Loaded -= StartInput; await ActivateAsync(); }
 
-    internal Task ActivateAsync() => inputCancellation is null ? RunAsync(RestartInputAsync) : Task.CompletedTask;
+    internal Task ActivateAsync() => model.HasSession && inputCancellation is null ? RunAsync(RestartInputAsync) : Task.CompletedTask;
 
     private async Task RestartInputAsync()
     {
@@ -117,7 +148,66 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         inputWorker = null;
     }
 
-    private async void CaptureClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
+    private async void CaptureClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Capture);
+    private async void CancelCaptureClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Cancel);
+    private async void ApplyBoundsClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.ApplyBounds);
+    private async void DefaultsClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Defaults);
+    private async void SaveClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Save);
+    private async void RestoreClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Restore);
+    private async void AbandonClick(object sender, RoutedEventArgs e) => await ExecuteAsync(HardwareCalibrationAction.Abandon);
+
+    internal Task ExecuteAsync(HardwareCalibrationAction action)
+    {
+        if (disposed || ended || model.Busy) { return Task.CompletedTask; }
+        return RequestOperation?.Invoke(action) ?? ExecuteConnectedAsync(action);
+    }
+
+    internal Task ExecuteConnectedAsync(HardwareCalibrationAction action)
+    {
+        if (disposed || ended || model.Busy || !model.HasSession) { return Task.CompletedTask; }
+        return action switch
+        {
+            HardwareCalibrationAction.Capture => CaptureAsync(),
+            HardwareCalibrationAction.Cancel => ChangeAsync(async () =>
+            {
+                if (configuration.NeedsRecovery) { await calibration.RestoreSavedAsync(); }
+                else { await calibration.CancelAsync(); }
+                model.Status = "This pedal's pre-calibration hardware bounds were restored and verified.";
+            }, restartInput: RequestOperation is null),
+            HardwareCalibrationAction.ApplyBounds => ChangeAsync(async () =>
+            {
+                await configuration.ChangeAsync(configuration.Current.WithRange(model.SelectedChannel, model.EditedRange()));
+                model.Status = "Manual hardware bounds applied and verified. Save is separate.";
+            }),
+            HardwareCalibrationAction.Defaults => ChangeAsync(async () =>
+            {
+                await configuration.ChangeAsync(PedalHardwareSettings.Defaults);
+                model.Status = "All three hardware ranges reset and verified. Save is separate; Restore saved undoes this change.";
+            }),
+            HardwareCalibrationAction.Save => ChangeAsync(async () =>
+            {
+                if (calibration.Capture is not null) { throw new InvalidOperationException("Finish or cancel calibration before Save."); }
+                await configuration.SaveAsync();
+                model.Status = "Controller Save command completed and current bounds were verified. Reconnect to verify persistence.";
+            }),
+            HardwareCalibrationAction.Restore => ChangeAsync(async () =>
+            {
+                await calibration.RestoreSavedAsync();
+                model.Status = configuration.PersistenceUncertain ? "Volatile bounds restored. Save completion is still uncertain; the backup is retained."
+                    : "Saved hardware bounds restored and verified.";
+            }),
+            HardwareCalibrationAction.Abandon => RunAsync(async () =>
+            {
+                await StopInputAsync();
+                ended = true;
+                refresh.Stop();
+                Completed?.Invoke(this, EventArgs.Empty);
+            }),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+    }
+
+    private Task CaptureAsync() => RunAsync(async () =>
     {
         await StopInputAsync();
         try
@@ -144,43 +234,11 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         finally { if (!configuration.NeedsRecovery) { await RestartInputAsync(); } }
     });
 
-    private async void CancelCaptureClick(object sender, RoutedEventArgs e) => await ChangeAsync(async () =>
-    {
-        await calibration.CancelAsync();
-        model.Status = "This pedal's pre-calibration hardware bounds were restored and verified.";
-    });
-
-    private async void ApplyBoundsClick(object sender, RoutedEventArgs e) => await ChangeAsync(async () =>
-    {
-        await configuration.ChangeAsync(configuration.Current.WithRange(model.SelectedChannel, model.EditedRange()));
-        model.Status = "Manual hardware bounds applied and verified. Save is separate.";
-    });
-
-    private async void DefaultsClick(object sender, RoutedEventArgs e) => await ChangeAsync(async () =>
-    {
-        await configuration.ChangeAsync(PedalHardwareSettings.Defaults);
-        model.Status = "All three hardware ranges reset and verified. Save is separate; Restore saved undoes this change.";
-    });
-
-    private async void SaveClick(object sender, RoutedEventArgs e) => await ChangeAsync(async () =>
-    {
-        if (calibration.Capture is not null) { throw new InvalidOperationException("Finish or cancel calibration before Save."); }
-        await configuration.SaveAsync();
-        model.Status = "Controller Save command completed and current bounds were verified. Reconnect to verify persistence.";
-    });
-
-    private async void RestoreClick(object sender, RoutedEventArgs e) => await ChangeAsync(async () =>
-    {
-        await calibration.RestoreSavedAsync();
-        model.Status = configuration.PersistenceUncertain ? "Volatile bounds restored. Save completion is still uncertain; the backup is retained."
-            : "Saved hardware bounds restored and verified.";
-    });
-
-    private Task ChangeAsync(Func<Task> action) => RunAsync(async () =>
+    private Task ChangeAsync(Func<Task> action, bool restartInput = true) => RunAsync(async () =>
     {
         await StopInputAsync();
         try { await action(); model.ReadBounds(); }
-        finally { if (!configuration.NeedsRecovery) { await RestartInputAsync(); } }
+        finally { if (restartInput && !configuration.NeedsRecovery) { await RestartInputAsync(); } }
     });
 
     private async Task RunAsync(Func<Task> action)
@@ -199,7 +257,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
 
     public Task<HardwareRecoverySnapshot> CreateHardwareBackupAsync(CancellationToken cancellationToken = default)
     {
-        if (model.Busy || calibration.Capture is not null) { throw new InvalidOperationException("Finish or cancel calibration before backing up hardware."); }
+        if (!model.HasSession || model.Busy || calibration.Capture is not null) { throw new InvalidOperationException("Finish or cancel calibration before backing up hardware."); }
         return configuration.CreateHardwareBackupAsync(cancellationToken);
     }
 
@@ -207,6 +265,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
     {
         if (ended) { return true; }
         refresh.Stop();
+        if (!model.HasSession) { ended = true; return true; }
         if (operationFinished is { } pending) { await pending.Task; }
         if (ended) { return true; }
         if (model.Busy) { refresh.Start(); model.Status = "Wait for the current hardware operation before closing."; return false; }
@@ -214,7 +273,9 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         try
         {
             await StopInputAsync();
+            var previous = configuration.Current;
             await calibration.RestoreSavedAsync();
+            if (previous != configuration.Current) { model.ReadBounds(); }
             ended = true;
             refresh.Stop();
             return true;
@@ -223,14 +284,6 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         finally { model.Busy = false; model.Refresh(); }
     }
 
-    private async void AbandonClick(object sender, RoutedEventArgs e) => await RunAsync(async () =>
-    {
-        await StopInputAsync();
-        ended = true;
-        refresh.Stop();
-        Completed?.Invoke(this, EventArgs.Empty);
-    });
-
     public async ValueTask DisposeAsync()
     {
         if (disposed) { return; }
@@ -238,7 +291,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         Loaded -= StartInput;
         refresh.Stop();
         await StopInputAsync();
-        calibration.Dispose();
+        if (model.HasSession) { calibration.Dispose(); model.Disconnect(); }
         GC.SuppressFinalize(this);
     }
 

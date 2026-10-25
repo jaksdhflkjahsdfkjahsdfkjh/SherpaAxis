@@ -73,10 +73,11 @@ public sealed partial class DashboardViewModel : ObservableObject
     internal void CommitDisplayTransition() => transitionDisplay = null;
     public bool CanTune => CanEdit && !IsCalibrationMode && !IsSwitchingMode;
     public HardwarePedalViewModel? HardwareDisplay { get => hardwareDisplay; set { if (Set(ref hardwareDisplay, value)) { value?.SetGraphWindow(GraphWindow); NotifyDisplay(); } } }
-    public string DisplayGraphMode => transitionDisplay?.Mode ?? (IsCalibrationMode ? "Device counts" : GraphMode);
-    public string DisplayGraphLegend => transitionDisplay?.Legend ?? (IsCalibrationMode ? HardwareDisplay?.GraphLegend ?? "Calibration · connect a controller to view live counts" : GraphLegend);
-    public IReadOnlyList<PedalHistory> DisplayHistories => transitionDisplay?.Histories ?? (IsCalibrationMode ? HardwareDisplay?.Histories ?? HardwarePedalViewModel.EmptyHistories : PedalHistories);
-    public string DisplaySampleInfo => transitionDisplay?.SampleInfo ?? (IsCalibrationMode ? HardwareDisplay?.StateInfo ?? "Waiting for controller" : SampleInfo);
+    public bool UsesHardwareInput => IsCalibrationMode && HardwareDisplay?.HasSession == true;
+    public string DisplayGraphMode => transitionDisplay?.Mode ?? (UsesHardwareInput ? "Device counts" : GraphMode);
+    public string DisplayGraphLegend => transitionDisplay?.Legend ?? (UsesHardwareInput ? HardwareDisplay?.GraphLegend ?? "Calibration · connect a controller to view live counts" : GraphLegend);
+    public IReadOnlyList<PedalHistory> DisplayHistories => transitionDisplay?.Histories ?? (UsesHardwareInput ? HardwareDisplay?.Histories ?? HardwarePedalViewModel.EmptyHistories : PedalHistories);
+    public string DisplaySampleInfo => transitionDisplay?.SampleInfo ?? (UsesHardwareInput ? HardwareDisplay?.StateInfo ?? "Waiting for controller" : SampleInfo);
     private string outputInfo = "Waiting for live input";
     public string OutputInfo { get => outputInfo; set => Set(ref outputInfo, value); }
     public bool PlotCounts
@@ -139,7 +140,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         var sensorCounts = engine.DriftState(selectedAxis).RawAvailable;
         foreach (var card in Cards)
         {
-            if (IsCalibrationMode)
+            if (UsesHardwareInput)
             {
                 var input = HardwareDisplay?.CurrentAxes;
                 var count = input.HasValue ? card.Axis switch
@@ -152,7 +153,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         var selected = frame.Axes.Single(axis => axis.Axis == selectedAxis);
         IsReceiving = selected.IsFresh;
         Status = selected.IsFresh ? "Connected" : "Not connected";
-        if (IsCalibrationMode)
+        if (UsesHardwareInput)
         { Status = HardwareDisplay?.CurrentAxes is not null ? "Connected" : "Not connected"; }
         if (frame.Detail?.StartsWith("Source error:", StringComparison.Ordinal) == true)
         {
