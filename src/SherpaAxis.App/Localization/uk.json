@@ -74,7 +74,7 @@
   "Wheel or drag across the graph to zoom · Zoom pauses the graph · Right-click resets": "Коліщатко або виділення — масштаб · Масштабування призупиняє графік · Права кнопка — скинути",
   "Mouse wheel zooms around the pointer. Drag left-to-right or right-to-left to select a time range. Zoom pauses only the graph. Right-click or double-click resets zoom; Resume graph returns to live scrolling.": "Коліщатко масштабує біля вказівника. Перетягніть у будь-який бік для вибору часового діапазону. Призупиняється лише графік. Права кнопка або подвійний клік скидають масштаб. «Відновити графік» повертає поточні дані.",
   "Pedal signal history": "Історія сигналу педалей",
-  "Response curves · throttle / brake / clutch": "Криві відгуку · газ / гальмо / зчеплення",
+  "Response curves · clutch / brake / throttle": "Криві відгуку · зчеплення / гальмо / газ",
   "Clear curve": "Очистити криву",
   "Restore linear response for this pedal; keep calibration, deadzones and filters": "Відновити лінійний відгук педалі, зберігши калібрування, мертві зони та фільтри",
   "Tuning": "Тюнінг",

@@ -76,7 +76,7 @@ public sealed partial class DashboardViewModel
 
     public static IReadOnlyList<string> CurveKinds { get; } = [.. CurvePresets.Names, "Custom"];
 
-    public IReadOnlyList<PedalCurveViewModel> PedalCurves { get; } = Enum.GetValues<PedalAxis>().Select(axis => new PedalCurveViewModel(axis)).ToArray();
+    public IReadOnlyList<PedalCurveViewModel> PedalCurves { get; } = PedalDisplayOrder.Select(axis => new PedalCurveViewModel(axis)).ToArray();
 
     public IReadOnlyList<CurvePoint> DraftPoints { get; private set; } = [];
 

@@ -29,7 +29,8 @@ public sealed partial class DashboardViewModel : ObservableObject
         ShowMessage("Connecting to the pedals automatically. Select a profile or tune the pedals; hardware calibration is separate.");
     }
 
-    public IReadOnlyList<AxisCardViewModel> Cards { get; } = Enum.GetValues<PedalAxis>().Select(axis => new AxisCardViewModel(axis)).ToArray();
+    private static IReadOnlyList<PedalAxis> PedalDisplayOrder { get; } = [PedalAxis.Clutch, PedalAxis.Brake, PedalAxis.Throttle];
+    public IReadOnlyList<AxisCardViewModel> Cards { get; } = PedalDisplayOrder.Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
     private bool canEdit = true;
     public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); } } }
