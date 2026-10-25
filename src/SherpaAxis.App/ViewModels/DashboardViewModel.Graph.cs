@@ -15,10 +15,10 @@ public sealed partial class DashboardViewModel
     private bool graphPaused;
     public bool GraphPaused
     {
-        get => IsCalibrationMode && HardwareDisplay is not null ? HardwareDisplay.GraphPaused : graphPaused;
+        get => UsesHardwareInput && HardwareDisplay is not null ? HardwareDisplay.GraphPaused : graphPaused;
         set
         {
-            if (IsCalibrationMode && HardwareDisplay is not null) { HardwareDisplay.GraphPaused = value; Changed(); Changed(nameof(GraphPauseText)); }
+            if (UsesHardwareInput && HardwareDisplay is not null) { HardwareDisplay.GraphPaused = value; Changed(); Changed(nameof(GraphPauseText)); }
             else if (Set(ref graphPaused, value)) { Changed(nameof(GraphPauseText)); }
         }
     }

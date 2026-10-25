@@ -14,6 +14,7 @@ public sealed partial class DashboardEngine
     private string? driftInputError;
     private HidDeviceIdentity? ownedControllerIdentity;
     public HidDeviceIdentity? OwnedControllerIdentity { get { lock (sync) { return ownedControllerIdentity; } } }
+    internal PedalCalibration? CalibrationBounds { get { lock (sync) { return sensorCalibration?.Bounds ?? hardware?.Calibration; } } }
     internal void SetOwnedControllerIdentity(HidDeviceIdentity? identity) { lock (sync) { ownedControllerIdentity = identity; } }
     public bool RequiresSensorInput { get { lock (sync) { return activeProfile.Axes.Values.Any(axis => axis.CorrectionMode != BaselineCorrectionMode.Off); } } }
 

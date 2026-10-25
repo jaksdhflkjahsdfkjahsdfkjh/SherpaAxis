@@ -352,6 +352,7 @@ public sealed class DeviceDiagnosticsUiTests
             await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
             Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
             await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Calibration);
+            await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
             Assert.Equal(0, connections);
             Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
             running = false;
@@ -360,6 +361,7 @@ public sealed class DeviceDiagnosticsUiTests
             Assert.False(model.VendorControlRunning);
             Assert.Equal(System.Windows.Visibility.Collapsed, warning.Visibility);
             await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Calibration);
+            await main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
             Assert.Equal(1, connections);
         }
         finally { if (Directory.Exists(directory)) { Directory.Delete(directory, true); } }

@@ -50,7 +50,8 @@ public sealed class AutomaticPedalsTests
         Assert.Equal(Visibility.Collapsed, Assert.IsType<StackPanel>(main.FindName("CorrectionBindingPanel")).Visibility);
         model.Refresh(); content.UpdateLayout();
         var before = Pixels(plot);
-        var pending = main.RequestPanelModeAsync(SidePanelMode.Calibration);
+        await main.RequestPanelModeAsync(SidePanelMode.Calibration);
+        var pending = main.StartHardwareOperationAsync(HardwareCalibrationAction.Restore);
         await Dispatcher.Yield(DispatcherPriority.ContextIdle);
         content.UpdateLayout();
         Assert.True(model.IsSwitchingMode);

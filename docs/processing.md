@@ -4,6 +4,17 @@
 is independent of the controller's persistent calibration. Each processor/session
 is mutable and must be used serially by its owner.
 
+Opening the Calibration panel keeps the live input connection and virtual output
+running. Its controls retain draft values between tab switches; cached hardware
+bounds are labelled as last known values. Starting a hardware operation pauses
+output, restores any temporary drift-monitoring bounds and verifies the controller
+before accessing calibration. Changed controller identity or bounds require review
+before cached manual limits can be applied. Leaving an active hardware session
+restores unsaved controller changes and resumes normal input and output. Cancel
+also closes the hardware session and resumes live output while keeping the
+Calibration panel open. The display retains its last frame during that handoff;
+switching to Tuning afterwards uses the already running input connection.
+
 `AxisProcessor` subtracts a confirmed baseline, normalizes to 0..1, applies
 input deadzones and evaluates a monotonic response curve. Original and intermediate
 values are retained in the result. Invalid/nonfinite inputs are rejected.
