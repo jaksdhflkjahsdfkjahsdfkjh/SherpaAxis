@@ -111,6 +111,14 @@ Approve the Windows administrator prompt and restart Windows if requested, then
 open the app again. No separate driver downloads or manual DLL selection are needed.
 **START-HERE.txt** includes setup and troubleshooting instructions.
 
+To uninstall, use **Windows Settings → Apps** for a Setup installation, or exit
+SherpaAxis and run **Uninstall.exe** inside an extracted ZIP folder, then choose
+English or Ukrainian. Drivers are
+kept by default. You can also remove recorded, unchanged drivers installed by
+SherpaAxis; drivers that were already present are preserved. Profiles, settings
+and calibration backups are kept. Driver ownership tracking starts with v1.2.1;
+older installations without records keep their drivers.
+
 **Keep SherpaAxis running while playing.** The app sends processed pedal input to
 your game. Minimizing it or leaving it in the system tray continues output;
 choosing **Exit** stops output. Keep FEEL-VR Control closed while using SherpaAxis.

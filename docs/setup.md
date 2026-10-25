@@ -137,8 +137,26 @@ Failures are logged to `%PROGRAMDATA%/SherpaAxis/device-setup.log`. A failed
 configuration returns a nonzero setup exit code and explains recovery through
 Settings; the installed app remains available with its uninstaller.
 
-Uninstall through Windows Settings → Apps. Profiles and settings are retained,
-and the shared vJoy driver is left installed. The setup wizard supports English
+Uninstall through Windows Settings → Apps. Profiles and settings are retained.
+The uninstaller asks whether to remove drivers installed by SherpaAxis; No is the
+default. Silent uninstall also keeps drivers unless `/REMOVEOWNEDDRIVERS=1` is
+explicitly supplied. ZIP users exit the app and run `Uninstall.exe`, choose
+English or Ukrainian, then continue to the removal window, which offers
+the same optional driver removal, restores input visibility and removes this
+copy's startup entry. The ZIP file manifest removes only unchanged packaged
+files, preserves additional/modified files and rejects paths through links.
+
+Starting with v1.2.1, successful first-time driver installations are recorded in
+the protected machine registry under `HKLM\SOFTWARE\SherpaAxis\Prerequisites`.
+Records include published INF names and SHA-256 fingerprints. vJoy's uninstaller
+and the HidHide product version are also checked. Setup records fingerprints
+before finalizing ownership so a later replacement cannot be adopted. Pre-existing
+components are not adopted, including drivers installed by older SherpaAxis
+versions with no record. Removal preserves externally changed components, uses
+vendor uninstallers and PnPUtil without forced removal, and retains ownership on
+failure for retry. Other apps can share these drivers; removal remains opt-in.
+
+The setup wizard supports English
 and Ukrainian and can create an optional desktop shortcut. Automated deployments
 can use `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /RESTARTEXITCODE=3010 /LOG`.
 

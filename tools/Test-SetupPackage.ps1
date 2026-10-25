@@ -29,6 +29,7 @@ class SetupStub {
         bool dfu = Array.IndexOf(args, "--configure-dfuse") >= 0;
         bool release = Array.IndexOf(args, "--release-input-configuration") >= 0;
         if (Array.IndexOf(args, "--record-prerequisite-ownership") >= 0) return 0;
+        if (Array.IndexOf(args, "--remove-owned-prerequisites") >= 0) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "remove-owned\n"); return int.Parse(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_REMOVE")); }
         bool hidHide = Path.GetFileNameWithoutExtension(Environment.GetCommandLineArgs()[0]).Equals("HidHideSetup", StringComparison.OrdinalIgnoreCase);
         if (hidHide && (args.Length != 3 || Array.IndexOf(args, "/exenoui") < 0 || Array.IndexOf(args, "/qn") < 0 || Array.IndexOf(args, "/norestart") < 0)) return 1639;
         if (release) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "release\n"); return 0; }
@@ -46,7 +47,7 @@ $vendorExecutable = Join-Path $testRoot 'SherpaAxis.SetupTest.Vendor.exe'
 Copy-Item -LiteralPath $stub -Destination $vendorExecutable
 $vendorProcess = $null
 $stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
-$variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY')
+$variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY', 'SHERPAAXIS_SETUP_TEST_REMOVE')
 $previousEnvironment = @{}
 foreach ($name in $variables) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $env:SHERPAAXIS_SETUP_TEST_TRACE = $trace
@@ -87,13 +88,14 @@ function Build-Fixture {
 }
 
 function Invoke-Fixture {
-    param([string]$Executable, [string]$Name, [int]$Expected, [string]$Language = 'english')
+    param([string]$Executable, [string]$Name, [int]$Expected, [string]$Language = 'english', [string[]]$ExtraArgs = @())
     $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/LANG=$Language", '/RESTARTEXITCODE=3010', "/DIR=`"$installDirectory`"", "/LOG=`"$(Join-Path $testRoot ($Name + '.log'))`"")
-    $process = Start-Process -FilePath $Executable -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
+    $process = Start-Process -FilePath $Executable -ArgumentList ($arguments + $ExtraArgs) -WindowStyle Hidden -Wait -PassThru
     Assert-Setup ($process.ExitCode -eq $Expected) "$Name returned $($process.ExitCode), expected $Expected."
 }
 
 function Reset-Fixture {
+    $env:SHERPAAXIS_SETUP_TEST_REMOVE = '0'
     $env:SHERPAAXIS_SETUP_TEST_HIDHIDE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DFUSE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '0'
@@ -104,8 +106,12 @@ function Reset-Fixture {
 }
 
 function Uninstall-Fixture {
+    param([switch]$RemoveDrivers, [int]$Expected = 0)
     $record = Get-ChildItem -LiteralPath $installDirectory -Filter 'unins*.dat' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-    if ($record) { Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'uninstall' 0 }
+    if ($record) {
+        $extra = if ($RemoveDrivers) { @('/REMOVEOWNEDDRIVERS=1') } else { @() }
+        Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'uninstall' $Expected -ExtraArgs $extra
+    }
     Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Test uninstall entry remains.'
     Assert-Setup (-not (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe'))) 'Test app was not removed.'
     Assert-Setup (-not (Get-ItemProperty -LiteralPath $startupKey -Name $startupName -ErrorAction SilentlyContinue)) 'Test startup entry remains.'
@@ -254,6 +260,29 @@ try {
     Assert-Setup (Test-Path -LiteralPath "$library.deferred") 'HidHide restart did not defer device configuration.'
     Uninstall-Fixture
     Write-Output 'PASS: HidHide restart and uninstall cleanup'
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'owned-driver-removal' 0
+    Uninstall-Fixture -RemoveDrivers
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim().EndsWith("release`nremove-owned")) 'Optional driver removal did not run after input cleanup.'
+    Write-Output 'PASS: explicit owned-driver removal during uninstall'
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'owned-removal-failure' 0
+    $env:SHERPAAXIS_SETUP_TEST_REMOVE = '1603'
+    $record = Get-ChildItem -LiteralPath $installDirectory -Filter 'unins*.dat' | Select-Object -First 1
+    Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'owned-removal-failure-uninstall' 1 -ExtraArgs @('/REMOVEOWNEDDRIVERS=1')
+    Assert-Setup (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe')) 'Failed driver removal deleted the app before retry.'
+    $env:SHERPAAXIS_SETUP_TEST_REMOVE = '0'
+    Uninstall-Fixture
+    Write-Output 'PASS: failed driver removal preserves the app for retry'
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'owned-removal-restart' 0
+    $env:SHERPAAXIS_SETUP_TEST_REMOVE = '3010'
+    Uninstall-Fixture -RemoveDrivers
+    Assert-Setup ((Get-Content -LiteralPath (Join-Path $testRoot 'uninstall.log') -Raw) -match 'Need to restart Windows\? Yes') 'Uninstall did not request the driver restart.'
+    Write-Output 'PASS: driver removal propagates the restart request'
 
 
 }

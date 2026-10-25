@@ -2,6 +2,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using SherpaAxis.App.Localization;
 using SherpaAxis.App.Services.Setup;
 
 namespace SherpaAxis.App.Tests;
@@ -137,4 +141,60 @@ public sealed class ZipUninstallTests : IDisposable
     {
         if (Directory.Exists(directory)) { Directory.Delete(directory, recursive: true); }
     }
+}
+
+[Collection("WPF UI")]
+public sealed class ZipUninstallUiTests
+{
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task DriversAreKeptByDefaultAndUnknownOwnershipCannotBeSelected(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        Localizer.Instance.Language = language;
+        bool? selected = null;
+        var window = new ZipUninstallWindow([], (remove, _) => { selected = remove; return Task.FromResult(false); }) { ShowInTaskbar = false, Opacity = 0 };
+        try
+        {
+            window.Show();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            window.UpdateLayout();
+            var option = Assert.IsType<CheckBox>(window.FindName("RemoveDrivers"));
+            Assert.False(option.IsEnabled);
+            Assert.NotEqual(true, option.IsChecked);
+            UiRefinementTests.CapturePreview((FrameworkElement)window.Content, $"zip-uninstall-{language}.png");
+            await window.RunAsync();
+            Assert.False(selected);
+            Assert.True(window.Completed);
+        }
+        finally { window.Close(); Localizer.Instance.Language = "en"; }
+    });
+
+    [Fact]
+    public Task ExplicitDriverRemovalCannotBeClosedWhileRunningAndCanRetryAfterFailure() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var owned = new OwnedPrerequisite(PrerequisiteStep.HidHide, [new("oem42.inf", new('A', 64))]);
+        var window = new ZipUninstallWindow([owned], (remove, _) =>
+        { Assert.True(remove); return ++calls == 1 ? Task.FromException<bool>(new IOException("Test failure")) : finish.Task; })
+        { ShowInTaskbar = false, Opacity = 0 };
+        try
+        {
+            window.Show();
+            var option = Assert.IsType<CheckBox>(window.FindName("RemoveDrivers"));
+            option.IsChecked = true;
+            await window.RunAsync();
+            Assert.False(window.Completed);
+            Assert.True(option.IsEnabled);
+            var operation = window.RunAsync();
+            window.Close();
+            Assert.True(window.IsVisible);
+            finish.SetResult(true);
+            await operation;
+            Assert.True(window.Completed);
+            Assert.Contains("restart Windows", Assert.IsType<TextBlock>(window.FindName("StatusText")).Text, StringComparison.Ordinal);
+        }
+        finally { finish.TrySetResult(false); window.Close(); }
+    });
 }

@@ -26,6 +26,50 @@ public partial class App : Application, IDisposable
             { DiagnosticLog.Default.Write("driver-ownership", "Could not record installed drivers.", failure); Shutdown(1); }
             return;
         }
+        if (e.Args.Length > 0 && e.Args[0] == "--remove-owned-prerequisites")
+        {
+            try
+            {
+                int? parent = null;
+                if (e.Args.Length > 2 || e.Args.Length == 2 && (!int.TryParse(e.Args[1], out var value) || value <= 0)) { Shutdown(1); return; }
+                if (e.Args.Length == 2) { parent = int.Parse(e.Args[1], System.Globalization.CultureInfo.InvariantCulture); }
+                WindowsPrerequisiteOwnership.RequireAdministrator();
+                ZipUninstall.RequireApplicationsClosed(parent);
+                var restart = await WindowsPrerequisiteOwnership.RemoveAsync(new Progress<string>(message =>
+                    DiagnosticLog.Default.Write("uninstall", message)), CancellationToken.None);
+                Shutdown(restart ? 3010 : 0);
+            }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            {
+                DiagnosticLog.Default.Write("uninstall", "Driver removal did not finish.", failure);
+                Shutdown(1);
+            }
+            return;
+        }
+        if (ZipUninstall.IsLaunch(e.Args, Environment.ProcessPath))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            try
+            {
+                var preferences = await new Services.Persistence.ApplicationPreferencesStore(Services.Persistence.ApplicationPreferencesStore.DefaultPath).LoadAsync(CancellationToken.None);
+                Localization.Localizer.Instance.Language = preferences.Language;
+                var language = new SetupLanguageWindow(uninstall: true);
+                language.ShowDialog();
+                if (!language.Accepted) { Shutdown(0); return; }
+                MainWindow = null;
+                var uninstall = new ZipUninstallWindow();
+                uninstall.ShowDialog();
+                if (uninstall.Completed) { ZipUninstall.ScheduleCleanup(); }
+                Shutdown(0);
+            }
+            catch (Exception failure) when (OperationErrors.IsExpected(failure))
+            {
+                DiagnosticLog.Default.Write("uninstall", "ZIP uninstall could not start.", failure);
+                MessageBox.Show(Localization.Localizer.Translate(failure.Message), "SherpaAxis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Shutdown(1);
+            }
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--prepare-zip")
         {
             try
