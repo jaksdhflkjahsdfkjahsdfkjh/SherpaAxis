@@ -28,6 +28,7 @@ class SetupStub {
         bool configure = Array.IndexOf(args, "--configure-vjoy") >= 0;
         bool dfu = Array.IndexOf(args, "--configure-dfuse") >= 0;
         bool release = Array.IndexOf(args, "--release-input-configuration") >= 0;
+        if (Array.IndexOf(args, "--record-prerequisite-ownership") >= 0) return 0;
         bool hidHide = Path.GetFileNameWithoutExtension(Environment.GetCommandLineArgs()[0]).Equals("HidHideSetup", StringComparison.OrdinalIgnoreCase);
         if (hidHide && (args.Length != 3 || Array.IndexOf(args, "/exenoui") < 0 || Array.IndexOf(args, "/qn") < 0 || Array.IndexOf(args, "/norestart") < 0)) return 1639;
         if (release) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "release\n"); return 0; }

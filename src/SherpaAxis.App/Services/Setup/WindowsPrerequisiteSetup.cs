@@ -23,7 +23,7 @@ internal static class WindowsPrerequisiteSetup
     internal static string LogDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SherpaAxis", "Prerequisites");
     private static string ProgressPath => Path.Combine(LogDirectory, "status.json");
     internal static bool IsZipPackage => Directory.Exists(Path.Combine(Root, "Prerequisites"));
-    private static DateTimeOffset Boot => DateTimeOffset.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
+    internal static DateTimeOffset Boot => DateTimeOffset.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
 
     internal static PrerequisiteProgress? ReadProgress(string? path = null)
     {
