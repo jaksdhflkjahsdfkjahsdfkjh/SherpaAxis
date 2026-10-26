@@ -34,6 +34,7 @@ public partial class FirmwareUpdateWindow : Window
     private async void FlashClick(object sender, RoutedEventArgs e)
     {
         if (model.Completed) { Close(); return; }
+        if (model.Blocked && model.ProgrammingCompleted && review is not null) { await review(); return; }
         await flash();
     }
     private async void ReviewClick(object sender, RoutedEventArgs e) { if (review is not null) { await review(); } }

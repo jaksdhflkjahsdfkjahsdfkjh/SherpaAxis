@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
+using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Hardware;
 using SherpaAxis.App.Services.Persistence;
 using SherpaAxis.Devices;
@@ -33,6 +34,7 @@ public sealed record FirmwareUpdateServices(
 
 public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices services)
 {
+    internal const string ReconnectInstructions = "Firmware programming finished, but the pedals have not reconnected. Unplug the pedal USB cable for 5 seconds, reconnect it to the same USB port, then choose Check firmware to restore calibration and finish. The backup is retained; output remains paused.";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     public string DirectoryPath { get; } = Path.GetFullPath(directory);
     public string JournalPath => Path.Combine(DirectoryPath, "update.json");
@@ -163,6 +165,25 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         var record = await ReadPendingAsync(token).ConfigureAwait(false) ?? throw new IOException("No firmware update is pending.");
         if (!record.DownloadCompleted && !record.ProgramVerified)
         { throw new IOException("Programming was not confirmed. Automatic calibration restoration is unavailable; review the update logs."); }
+        try
+        {
+            await WriteAsync(record with { Phase = "Checking controller after programming" }, token).ConfigureAwait(false);
+            return await CompleteControllerCheckAsync(record, progress, token).ConfigureAwait(false);
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        {
+            var latest = await ReadPendingAsync(CancellationToken.None).ConfigureAwait(false) ?? record;
+            await WriteAsync(latest with
+            {
+                Phase = failure.Message == ReconnectInstructions ? "Reconnect pedals" : "Controller check needs attention",
+                Log = Limit(latest.Log + "\nController check: " + failure.Message)
+            }, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task<FirmwareCheckResult> CompleteControllerCheckAsync(FirmwareUpdateRecord record, IProgress<string> progress, CancellationToken token)
+    {
         progress.Report("Firmware programmed. Waiting for the pedals to reconnect automatically…");
         var started = Stopwatch.GetTimestamp();
         for (var attempt = 0; attempt < 120 && Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(30); attempt++)
@@ -200,7 +221,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             }
             await DelayAsync(TimeSpan.FromMilliseconds(250), token).ConfigureAwait(false);
         }
-        throw new IOException("Programming finished, but the pedals did not reconnect in time. Reconnect them at the original USB port and choose Check firmware; the calibration backup is retained.");
+        throw new IOException(ReconnectInstructions);
     }
 
     private static bool HasCalibrationRecovery(FirmwareUpdateRecord record) =>
@@ -241,8 +262,8 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         };
         await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
         if (!completed) { throw new IOException("DfuSe did not confirm successful programming. Output remains paused; inspect the update log before retrying."); }
-        progress.Report(verified ? "Programming verified. Unplug and reconnect the pedals, then choose Check firmware."
-            : "Firmware programming completed. The pedals may reconnect automatically. Choose Check firmware and review calibration. Byte readback was not performed.");
+        progress.Report(verified ? "Programming verified. Waiting for the pedals to reconnect automatically…"
+            : "Firmware programming completed. Waiting for the pedals to reconnect automatically…");
         return record;
     }
 

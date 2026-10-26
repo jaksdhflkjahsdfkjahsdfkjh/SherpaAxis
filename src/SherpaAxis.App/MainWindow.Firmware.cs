@@ -17,7 +17,14 @@ public partial class MainWindow
         {
             var pending = await desktop.Firmware.ReadPendingAsync(lifetime.Token);
             viewModel.Firmware.Blocked = pending is not null;
-            if (pending is not null) { viewModel.Firmware.Status = "A firmware update needs review. Output remains paused. Reconnect the pedals and choose Check firmware, or open Update firmware to retry at the recorded USB port."; }
+            viewModel.Firmware.ProgrammingCompleted = pending is not null && (pending.DownloadCompleted || pending.ProgramVerified);
+            if (pending is not null)
+            {
+                viewModel.Firmware.Status = pending.Phase == "Reconnect pedals" ? FirmwareUpdater.ReconnectInstructions
+                    : pending.DownloadCompleted || pending.ProgramVerified
+                        ? "Firmware programming finished. Choose Check firmware to finish checking the controller and restoring calibration. Output remains paused."
+                        : "A firmware update needs review. Output remains paused. Reconnect the pedals and choose Check firmware, or open Update firmware to retry at the recorded USB port.";
+            }
         }
         catch (Exception failure) when (OperationErrors.IsExpected(failure))
         { desktop.Log?.Write("firmware", "An operation needs attention.", failure); viewModel.Firmware.Blocked = true; viewModel.Firmware.Status = $"Firmware update needs review: {failure.Message}"; }
@@ -32,6 +39,7 @@ public partial class MainWindow
             model.Completed = false;
             var pending = await desktop.Firmware.ReadPendingAsync(lifetime.Token);
             model.Blocked = pending is not null;
+            model.ProgrammingCompleted = pending is not null && (pending.DownloadCompleted || pending.ProgramVerified);
             if (pending is not null)
             {
                 model.Images = [new(pending.StagedImagePath, pending.Plan.Image.Version, Path.GetFileName(pending.Plan.ImagePath))];
