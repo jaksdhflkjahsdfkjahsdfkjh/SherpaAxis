@@ -192,7 +192,7 @@ public sealed class AppUpdateUiTests : IDisposable
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
             Assert.False(model.Updates.HasUpdate);
             Assert.Equal(Visibility.Collapsed, viewRelease.Visibility);
-            Assert.Equal("Встановлено актуальну версію (v1.2.2).", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
+            Assert.Equal("Встановлено актуальну версію (v1.3.0).", Assert.IsType<TextBlock>(main.FindName("AppUpdateStatus")).Text);
         }
         finally { Localizer.Instance.Language = "en"; }
     });

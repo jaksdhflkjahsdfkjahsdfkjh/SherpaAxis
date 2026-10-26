@@ -9,6 +9,8 @@
         <TextBlock x:Name="Explanation" Foreground="#B4C4D8" TextWrapping="Wrap" Margin="0,0,0,16"/>
         <CheckBox x:Name="RemoveDrivers" Foreground="#E8EFF8" Margin="0,0,0,8"><TextBlock x:Name="DriverOption" TextWrapping="Wrap"/></CheckBox>
         <TextBlock x:Name="OwnedDrivers" Foreground="#95A9C1" TextWrapping="Wrap" Margin="24,0,0,14"/>
+        <CheckBox x:Name="RemoveSavedData" Foreground="#E8EFF8" Margin="0,0,0,8"><TextBlock x:Name="DataOption" TextWrapping="Wrap"/></CheckBox>
+        <TextBlock x:Name="DataWarning" Foreground="#FFCE83" TextWrapping="Wrap" Margin="24,0,0,16"/>
         <TextBlock x:Name="StatusText" Foreground="#FFCE83" TextWrapping="Wrap" Margin="0,0,0,18" AutomationProperties.LiveSetting="Polite"/>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <Button x:Name="LogsButton" Click="LogsClick" HorizontalAlignment="Left"/>

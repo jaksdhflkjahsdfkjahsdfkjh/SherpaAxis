@@ -68,12 +68,15 @@ public sealed class ZipUninstallTests : IDisposable
         Assert.Equal("keep", File.ReadAllText(Path.Combine(Root, "custom.txt")));
     }
 
-    [Fact]
-    public async Task UnmodifiedPackageFolderIsRemovedCompletely()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnmodifiedPackageFolderIsRemovedCompletely(bool removeData)
     {
         Manifest(AddFile("SherpaAxis.App.exe", "app"), AddFile("Uninstall.exe", "uninstaller"), AddFile("Tools/sample.dll", "library"));
-        Assert.True(await RunCleanupAsync() == 0, cleanupLog);
+        Assert.True(await RunCleanupAsync(removeData) == 0, cleanupLog);
         Assert.False(Directory.Exists(Root));
+        if (removeData) { Assert.False(Directory.Exists(Path.Combine(directory, "UserData", "SherpaAxis"))); }
     }
 
     [Fact]
@@ -115,17 +118,19 @@ public sealed class ZipUninstallTests : IDisposable
         finally { Directory.Delete(link); }
     }
 
-    private async Task<int> RunCleanupAsync()
+    private async Task<int> RunCleanupAsync(bool removeData = false)
     {
         var script = Path.Combine(directory, "cleanup.ps1");
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Tools", "Remove-ZipPackage.ps1"), script);
         var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"))
         { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         start.Environment["LOCALAPPDATA"] = Path.Combine(directory, "UserData");
+        start.Environment["TEMP"] = directory;
         foreach (var value in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script,
             "-Root", Root, "-ApplicationPid", int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "-ApplicationStarted", DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) })
         { start.ArgumentList.Add(value); }
+        if (removeData) { start.ArgumentList.Add("-RemoveSavedData"); }
         using var process = Process.Start(start)!;
         try
         {
@@ -153,7 +158,7 @@ public sealed class ZipUninstallUiTests
     {
         Localizer.Instance.Language = language;
         bool? selected = null;
-        var window = new ZipUninstallWindow([], (remove, _) => { selected = remove; return Task.FromResult(false); }) { ShowInTaskbar = false, Opacity = 0 };
+        var window = new ZipUninstallWindow([], (remove, data, _) => { selected = remove; Assert.False(data); return Task.FromResult(false); }) { ShowInTaskbar = false, Opacity = 0 };
         try
         {
             window.Show();
@@ -162,6 +167,7 @@ public sealed class ZipUninstallUiTests
             var option = Assert.IsType<CheckBox>(window.FindName("RemoveDrivers"));
             Assert.False(option.IsEnabled);
             Assert.NotEqual(true, option.IsChecked);
+            Assert.NotEqual(true, Assert.IsType<CheckBox>(window.FindName("RemoveSavedData")).IsChecked);
             UiRefinementTests.CapturePreview((FrameworkElement)window.Content, $"zip-uninstall-{language}.png");
             await window.RunAsync();
             Assert.False(selected);
@@ -176,8 +182,8 @@ public sealed class ZipUninstallUiTests
         var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var calls = 0;
         var owned = new OwnedPrerequisite(PrerequisiteStep.HidHide, [new("oem42.inf", new('A', 64))]);
-        var window = new ZipUninstallWindow([owned], (remove, _) =>
-        { Assert.True(remove); return ++calls == 1 ? Task.FromException<bool>(new IOException("Test failure")) : finish.Task; })
+        var window = new ZipUninstallWindow([owned], (remove, data, _) =>
+        { Assert.True(remove); Assert.False(data); return ++calls == 1 ? Task.FromException<bool>(new IOException("Test failure")) : finish.Task; })
         { ShowInTaskbar = false, Opacity = 0 };
         try
         {
@@ -196,5 +202,38 @@ public sealed class ZipUninstallUiTests
             Assert.Contains("restart Windows", Assert.IsType<TextBlock>(window.FindName("StatusText")).Text, StringComparison.Ordinal);
         }
         finally { finish.TrySetResult(false); window.Close(); }
+    });
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task DataRemovalIsIndependentOfDriverRemovalAndCannotBeChangedWhileRunning(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        Localizer.Instance.Language = language;
+        var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var window = new ZipUninstallWindow([], (drivers, data, _) =>
+        { Assert.False(drivers); Assert.True(data); return finish.Task; })
+        { ShowInTaskbar = false, Opacity = 0 };
+        try
+        {
+            window.Show();
+            var option = Assert.IsType<CheckBox>(window.FindName("RemoveSavedData"));
+            Assert.NotEqual(true, option.IsChecked);
+            option.IsChecked = true;
+            var operation = window.RunAsync();
+            Assert.False(option.IsEnabled);
+            window.Close();
+            Assert.True(window.IsVisible);
+            finish.SetResult(false);
+            await operation;
+            Assert.True(window.Completed && window.DataRemoved);
+            Assert.False(Assert.IsType<Button>(window.FindName("LogsButton")).IsEnabled);
+            Assert.Equal(Localizer.Translate("Saved SherpaAxis data was deleted. Close this window to remove the app files."),
+                Assert.IsType<TextBlock>(window.FindName("StatusText")).Text);
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            window.UpdateLayout();
+            UiRefinementTests.CapturePreview((FrameworkElement)window.Content, $"zip-uninstall-data-{language}.png");
+        }
+        finally { finish.TrySetResult(false); window.Close(); Localizer.Instance.Language = "en"; }
     });
 }

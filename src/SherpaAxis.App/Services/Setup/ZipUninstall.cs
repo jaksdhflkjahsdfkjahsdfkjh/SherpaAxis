@@ -48,27 +48,29 @@ internal static class ZipUninstall
         }
     }
 
-    internal static async Task<bool> PrepareAsync(bool removeDrivers, IProgress<string> progress)
+    internal static async Task<bool> PrepareAsync(bool removeDrivers, bool removeData, IProgress<string> progress)
     {
         _ = ReadManifest(AppContext.BaseDirectory);
         RequireApplicationsClosed();
         using (var visibility = WindowsHidHide.Default()) { await visibility.ReleaseAsync(CancellationToken.None); }
         VJoyDeviceName.Default().Restore();
         var startup = new WindowsStartupRegistration(Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe"));
-        if (!removeDrivers) { startup.RemoveIfOwned(); return false; }
-        progress.Report("Removing drivers installed by SherpaAxis…");
+        if (!removeDrivers && !removeData) { startup.RemoveIfOwned(); return false; }
+        progress.Report("Removing selected SherpaAxis components and saved data…");
         var start = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe"))
         { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden };
-        start.ArgumentList.Add("--remove-owned-prerequisites");
+        var dataArgument = "--remove-saved-data=" + SavedDataRemoval.CurrentUserSid;
+        start.ArgumentList.Add(removeDrivers ? "--remove-owned-prerequisites" : dataArgument);
         start.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (removeDrivers && removeData) { start.ArgumentList.Add(dataArgument); }
         using var helper = Process.Start(start) ?? throw new IOException("Could not start driver removal.");
         await helper.WaitForExitAsync();
-        if (helper.ExitCode is not (0 or 3010)) { throw new IOException("Driver removal needs attention. Review the setup logs before retrying; the app folder was kept."); }
+        if (helper.ExitCode is not (0 or 3010)) { throw new IOException("Uninstall cleanup needs attention. Review the setup logs before retrying; the app folder was kept."); }
         startup.RemoveIfOwned();
         return helper.ExitCode == 3010;
     }
 
-    internal static void ScheduleCleanup()
+    internal static void ScheduleCleanup(bool removeData = false)
     {
         _ = ReadManifest(AppContext.BaseDirectory);
         var worker = Path.Combine(Path.GetTempPath(), "SherpaAxis-uninstall-" + Guid.NewGuid().ToString("N") + ".ps1");
@@ -80,6 +82,7 @@ internal static class ZipUninstall
             "-Root", AppContext.BaseDirectory, "-ApplicationPid", Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "-ApplicationStarted", current.StartTime.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture) })
         { start.ArgumentList.Add(value); }
+        if (removeData) { start.ArgumentList.Add("-RemoveSavedData"); }
         using var process = Process.Start(start) ?? throw new IOException("Could not schedule ZIP file cleanup.");
     }
 }

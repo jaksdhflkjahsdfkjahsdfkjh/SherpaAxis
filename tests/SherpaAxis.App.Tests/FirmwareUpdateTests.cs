@@ -19,6 +19,134 @@ namespace SherpaAxis.App.Tests;
 
 public sealed class FirmwareUpdateTests
 {
+    internal const string LegacySerial = "PE001600320017FFFFFFFCFFFF0080";
+    internal const string UpdatedSerial = "PE0017003200175656511320383938";
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChangedLegacySerialIsRediscoveredAndCalibrationRestoredWithoutConfirmation(bool restart)
+    {
+        using var fake = new FakeFirmware { Serial = LegacySerial };
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        var programmed = await fake.Flash(await fake.Prepare());
+        var legacyJournal = JsonSerializer.SerializeToNode(programmed, JsonSerializerOptions.Web)!.AsObject();
+        Assert.True(legacyJournal.Remove("confirmedSerialNumber"));
+        Assert.True(legacyJournal.Remove("serialAutomaticallyAssociated"));
+        await File.WriteAllTextAsync(fake.Updater.JournalPath, legacyJournal.ToJsonString());
+        fake.Reconnect(); fake.Serial = UpdatedSerial; fake.Calibration = PedalHardwareSettings.Defaults;
+        if (restart) { fake.RestartUpdater(); }
+        Assert.False(PedalDeviceIdentity.SameController(LegacySerial, UpdatedSerial));
+        var complete = await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None);
+        Assert.True(complete.Complete);
+        Assert.False(complete.CanAccept);
+        Assert.Contains("rediscovered", complete.Detail, StringComparison.Ordinal);
+        Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
+        Assert.Equal(1, fake.CalibrationWrites);
+        Assert.Equal(1, fake.CalibrationSaves);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(1, fake.Commands);
+        Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.Equal(LegacySerial, (await HardwareRecoveryStore.ReadAsync(programmed.BackupPath)).SerialNumber);
+        using var log = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(Path.GetDirectoryName(programmed.BackupPath)!, "update-log.json")));
+        Assert.Equal(UpdatedSerial, log.RootElement.GetProperty("confirmedSerialNumber").GetString());
+        Assert.True(log.RootElement.GetProperty("serialAutomaticallyAssociated").GetBoolean());
+        Assert.Contains("Automatically associated", log.RootElement.GetProperty("log").GetString()!, StringComparison.Ordinal);
+        Assert.DoesNotContain("User confirmed", log.RootElement.GetProperty("log").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("port")]
+    [InlineData("firmware")]
+    [InlineData("hardware")]
+    [InlineData("backup")]
+    [InlineData("backup-calibration")]
+    [InlineData("programming")]
+    [InlineData("bootloader")]
+    [InlineData("cancel")]
+    [InlineData("multiple")]
+    public async Task RediscoveryRejectsUnconfirmedProgrammingWrongPortsUnsupportedControllersAndInvalidBackups(string changed)
+    {
+        using var fake = new FakeFirmware { Serial = LegacySerial };
+        var programmed = await fake.Flash(await fake.Prepare());
+        fake.Reconnect(); fake.Serial = UpdatedSerial; fake.Calibration = PedalHardwareSettings.Defaults;
+        using var cancel = new CancellationTokenSource();
+        if (changed == "port") { fake.ConnectionPort = "port-2"; }
+        if (changed == "firmware") { fake.Serial = "PE001800"; }
+        if (changed == "hardware") { fake.Serial = "PE101700"; }
+        if (changed is "backup" or "backup-calibration")
+        {
+            var backup = await HardwareRecoveryStore.ReadAsync(programmed.BackupPath);
+            await new HardwareRecoveryStore(programmed.BackupPath).WriteAsync(changed == "backup"
+                ? backup with { SerialNumber = "PE0016AA" }
+                : backup with { Saved = PedalHardwareSettings.Defaults, LastConfirmed = PedalHardwareSettings.Defaults }, CancellationToken.None);
+        }
+        if (changed == "programming")
+        {
+            var record = (await fake.Updater.ReadPendingAsync(CancellationToken.None))!;
+            await File.WriteAllTextAsync(fake.Updater.JournalPath, JsonSerializer.Serialize(record with
+            { DownloadCompleted = false, ProgramVerified = false }, JsonSerializerOptions.Web));
+        }
+        if (changed == "bootloader") { fake.InBootloader = true; }
+        if (changed == "multiple") { fake.NormalControllerCount = 2; }
+        if (changed == "cancel") { cancel.Cancel(); }
+        await Assert.ThrowsAnyAsync<Exception>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), cancel.Token));
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.Equal(0, fake.CalibrationSaves);
+        Assert.Equal(1, fake.Programs);
+        Assert.True(File.Exists(fake.Updater.JournalPath));
+        Assert.Null((await fake.Updater.ReadPendingAsync(CancellationToken.None))!.ConfirmedSerialNumber);
+    }
+
+    [Fact]
+    public async Task RediscoveredSerialSurvivesInterruptedCalibrationRestorationAndRejectsLaterReplacementDevices()
+    {
+        using var fake = new FakeFirmware { Serial = LegacySerial, FailCalibrationSave = true };
+        var programmed = await fake.Flash(await fake.Prepare());
+        fake.Reconnect(); fake.Serial = UpdatedSerial; fake.Calibration = PedalHardwareSettings.Defaults;
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        var pending = (await fake.Updater.ReadPendingAsync(CancellationToken.None))!;
+        Assert.Equal(UpdatedSerial, pending.ConfirmedSerialNumber);
+        Assert.True(pending.SerialAutomaticallyAssociated);
+        fake.RestartUpdater();
+        fake.FailCalibrationSave = false;
+        fake.Serial = "PE0017AA";
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        fake.Serial = "PE0017" + LegacySerial[6..];
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        fake.Serial = UpdatedSerial;
+        Assert.True((await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None)).Complete);
+        Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(LegacySerial, (await HardwareRecoveryStore.ReadAsync(programmed.BackupPath)).SerialNumber);
+    }
+
+    [Fact]
+    public async Task RetriedProgrammingClearsEarlierSerialAssociationUntilItsResultIsConfirmed()
+    {
+        using var fake = new FakeFirmware { Serial = LegacySerial, FailCalibrationSave = true };
+        await fake.Flash(await fake.Prepare());
+        fake.Reconnect(); fake.Serial = UpdatedSerial; fake.Calibration = PedalHardwareSettings.Defaults;
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.True((await fake.Updater.ReadPendingAsync(CancellationToken.None))!.SerialAutomaticallyAssociated);
+        fake.InBootloader = true;
+        fake.Result = new(1, "", "programming failed", ReadbackRequested: false);
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.RetryAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        var pending = (await fake.Updater.ReadPendingAsync(CancellationToken.None))!;
+        Assert.False(pending.DownloadCompleted || pending.ProgramVerified || pending.SerialAutomaticallyAssociated);
+        Assert.Null(pending.ConfirmedSerialNumber);
+        Assert.True(File.Exists(pending.BackupPath));
+    }
+
+    [Fact]
+    public async Task ReflashingFirmware017NeverAllowsAChangedSerialToBeConfirmed()
+    {
+        using var fake = new FakeFirmware { Serial = "PE001700" };
+        await fake.Flash(await fake.Prepare()); fake.Reconnect(); fake.Serial = "PE0017AA";
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(0, fake.CalibrationWrites);
+    }
+
     [Fact]
     public void BundledCatalogOnlyOffersReviewedImagesAndReportsInvalidFiles()
     {
@@ -179,14 +307,12 @@ public sealed class FirmwareUpdateTests
 
     [Theory]
     [InlineData("port")]
-    [InlineData("identity")]
     [InlineData("missing")]
     public async Task CompletionNeverRestoresAnUnexpectedOrMissingController(string failure)
     {
         using var fake = new FakeFirmware { AutoReconnectAfterProgram = failure != "missing", AfterFlashCalibration = PedalHardwareSettings.Defaults };
         await fake.Flash(await fake.Prepare());
         if (failure == "port") { fake.ConnectionPort = "port-2"; }
-        if (failure == "identity") { fake.Serial = "PE0017FF"; }
         await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
         Assert.Equal(0, fake.CalibrationWrites);
         Assert.Equal(0, fake.CalibrationSaves);
@@ -279,7 +405,7 @@ public sealed class FirmwareUpdateTests
     [Fact]
     public async Task CalibrationBackupRestorationRejectsAnotherControllerBeforeWriting()
     {
-        using var fake = new FakeFirmware();
+        using var fake = new FakeFirmware { Serial = "PE001700" };
         await fake.Flash(await fake.Prepare());
         fake.Reconnect(); fake.Serial = "PE0017FF";
         await Assert.ThrowsAsync<IOException>(() => fake.Updater.RestoreCalibrationBackupAsync(CancellationToken.None));
@@ -327,8 +453,10 @@ public sealed class FirmwareUpdateTests
         Assert.False((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
         fake.Reconnect();
         fake.Serial = "PE0017AA";
-        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CheckConnectionAsync(false, CancellationToken.None));
+        fake.ConnectionPort = "port-2";
+        Assert.False((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
         fake.Serial = "PE001700";
+        fake.ConnectionPort = "port-1";
         var complete = await fake.Updater.CheckConnectionAsync(false, CancellationToken.None);
         Assert.True(complete.Complete);
         Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
@@ -585,20 +713,24 @@ public sealed class FirmwareUpdateTests
         internal int CalibrationSaves { get; private set; }
         internal Task<FirmwareToolResult>? ProgramBarrier { get; set; }
         internal bool AutoReconnectAfterProgram { get; set; }
+        internal string ReconnectedSerial { get; set; } = "PE001700";
         internal PedalCalibration? AfterFlashCalibration { get; set; }
         internal bool FailCalibrationSave { get; set; }
         internal int TransientConnectFailures { get; set; }
+        internal int NormalControllerCount { get; set; } = 1;
         internal FirmwareToolResult Result { get; set; } = Success;
         internal string ImagePath => Path.Combine(directory, "image.dfu");
         internal string ToolPath => Path.Combine(directory, "DfuSeCommand.exe");
-        internal FirmwareUpdater Updater { get; }
+        internal FirmwareUpdater Updater { get; private set; }
+        private readonly FirmwareUpdateServices services;
         private static readonly HidDeviceInfo Device = new("fake-pedal", PedalInputReport.VendorId, PedalInputReport.ProductId, 0x200, 0xFF00, 1, 0, 0, 17);
         internal FakeFirmware()
         {
             Directory.CreateDirectory(directory); File.WriteAllBytes(ImagePath, Bytes); File.WriteAllText(ToolPath, "test tool");
-            Updater = new(Path.Combine(directory, "updates"), new(
+            services = new(
                 _ =>
                 {
+                    if (NormalControllerCount != 1) { throw new InvalidOperationException("More than one pedal controller is connected."); }
                     if (Programs > 0 && !InBootloader && TransientConnectFailures > 0)
                     { TransientConnectFailures--; return Task.FromException<FirmwareConnection>(new IOException("USB still reconnecting")); }
                     return Task.FromResult(new FirmwareConnection(new(Device, Serial, this, this), new("usb-pedals", ConnectionPort), Calibration));
@@ -622,11 +754,13 @@ public sealed class FirmwareUpdateTests
                     DriverPreparations++;
                     if (RepairDriver) { BootFailure = DriverRepairChangesPort ? "wrong-port" : ""; }
                     return Task.CompletedTask;
-                }));
+                });
+            Updater = new(Path.Combine(directory, "updates"), services);
         }
+        internal void RestartUpdater() => Updater = new(Updater.DirectoryPath, services);
         internal Task<FirmwarePlan> Prepare() => Updater.PrepareAsync(ImagePath, ToolPath, CancellationToken.None);
         internal Task<FirmwareUpdateRecord> Flash(FirmwarePlan plan) => Updater.FlashAsync(plan, new InlineProgress(_ => { }), CancellationToken.None);
-        internal void Reconnect() { InBootloader = false; Serial = "PE001700"; }
+        internal void Reconnect() { InBootloader = false; Serial = ReconnectedSerial; }
         public Task<byte[]> ReadAsync(HidDeviceInfo device, byte id, CancellationToken token) => Task.FromResult(PedalCalibrationReport.Encode(Calibration));
         public Task WriteAsync(HidDeviceInfo device, ReadOnlyMemory<byte> bytes, CancellationToken token)
         {
@@ -645,6 +779,54 @@ public sealed class FirmwareUpdateTests
 [Collection("WPF UI")]
 public sealed class FirmwareUpdateUiTests
 {
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task LegacySerialChangeAutomaticallyRestoresCalibrationAndEndsWithOk(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware
+        {
+            Serial = FirmwareUpdateTests.LegacySerial,
+            ReconnectedSerial = FirmwareUpdateTests.UpdatedSerial,
+            AutoReconnectAfterProgram = true,
+            AfterFlashCalibration = PedalHardwareSettings.Defaults,
+            Result = new(0, "Upgrade successful !", "", ReadbackRequested: false)
+        };
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater },
+            profileLibrary: new(Path.Combine(fake.Updater.DirectoryPath, "profiles")));
+        Localizer.Instance.Language = language;
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        model.Firmware.SelectedImage = new(fake.ImagePath, "017", "test.dfu");
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var dialog = new FirmwareUpdateWindow(model.Firmware, main.Resources,
+            async () => { await main.UpdateFirmwareAsync(fake.ImagePath); finished.SetResult(); }, review: main.CheckFirmwareAsync)
+        { Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            dialog.Show();
+            var button = Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton"));
+            Assert.Equal(Localizer.Translate("Flash"), button.Content);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.True(model.Firmware.Completed);
+            Assert.False(model.Firmware.Blocked);
+            Assert.Equal("OK", button.Content);
+            Assert.Null(dialog.FindName("ConfirmFirmwareIdentityButton"));
+            Assert.Equal(FirmwareUpdateTests.FakeFirmware.InitialCalibration, fake.Calibration);
+            Assert.Equal(1, fake.CalibrationWrites);
+            Assert.Equal(1, fake.CalibrationSaves);
+            Assert.Equal(1, fake.Commands);
+            Assert.Equal(1, fake.Programs);
+            dialog.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsAssignableFrom<FrameworkElement>(dialog.Content), $"firmware-rediscovery-{language}.png");
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(dialog.IsVisible);
+        }
+        finally { dialog.Close(); Localizer.Instance.Language = "en"; }
+    });
+
     [Theory]
     [InlineData("en")]
     [InlineData("uk")]

@@ -137,7 +137,7 @@ Failures are logged to `%PROGRAMDATA%/SherpaAxis/device-setup.log`. A failed
 configuration returns a nonzero setup exit code and explains recovery through
 Settings; the installed app remains available with its uninstaller.
 
-Uninstall through Windows Settings → Apps. Profiles and settings are retained.
+Uninstall through Windows Settings → Apps. Saved data is retained by default.
 The uninstaller asks whether to remove drivers installed by SherpaAxis; No is the
 default. Silent uninstall also keeps drivers unless `/REMOVEOWNEDDRIVERS=1` is
 explicitly supplied. ZIP users exit the app and run `Uninstall.exe`, choose
@@ -145,6 +145,24 @@ English or Ukrainian, then continue to the removal window, which offers
 the same optional driver removal, restores input visibility and removes this
 copy's startup entry. The ZIP file manifest removes only unchanged packaged
 files, preserves additional/modified files and rejects paths through links.
+
+Both uninstallers offer separate, opt-in saved data removal. It deletes the current
+Windows account's `%LOCALAPPDATA%\SherpaAxis` directory (including profiles,
+preferences, bindings, sensor references, logs and calibration/firmware recovery
+backups), `%PROGRAMDATA%\SherpaAxis`, and SherpaAxis's own HKCU/HKLM software keys.
+Input visibility and the controller display name are restored before removal;
+selected driver removal runs before its ownership records are cleared. The fixed
+SherpaAxis deferred setup task is also removed. Exported files outside managed app
+folders and Windows driver configurations remain. Complete pending recovery or
+export required backups before choosing this permanent deletion.
+Removing saved data also clears driver ownership records. If the drivers are kept,
+later SherpaAxis installations treat them as pre-existing components.
+
+Silent uninstall keeps data unless `/REMOVESAVEDDATA=1` is supplied. This option is
+independent of `/REMOVEOWNEDDRIVERS=1`. Cleanup validates both fixed data trees
+before deleting anything and refuses filesystem links or an app running inside its
+own data folder. A cleanup error retains the app for retry. ZIP cleanup avoids
+recreating the removed LocalAppData folder for its completion log.
 
 Starting with v1.2.1, successful first-time driver installations are recorded in
 the protected machine registry under `HKLM\SOFTWARE\SherpaAxis\Prerequisites`.

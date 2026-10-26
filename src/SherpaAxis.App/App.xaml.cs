@@ -26,22 +26,41 @@ public partial class App : Application, IDisposable
             { DiagnosticLog.Default.Write("driver-ownership", "Could not record installed drivers.", failure); Shutdown(1); }
             return;
         }
-        if (e.Args.Length > 0 && e.Args[0] == "--remove-owned-prerequisites")
+        if (e.Args.Length > 0 && (e.Args[0] is "--remove-owned-prerequisites" or "--remove-saved-data"
+            || e.Args[0].StartsWith("--remove-saved-data=", StringComparison.Ordinal)))
         {
             try
             {
                 int? parent = null;
-                if (e.Args.Length > 2 || e.Args.Length == 2 && (!int.TryParse(e.Args[1], out var value) || value <= 0)) { Shutdown(1); return; }
-                if (e.Args.Length == 2) { parent = int.Parse(e.Args[1], System.Globalization.CultureInfo.InvariantCulture); }
+                var removeDrivers = e.Args[0] == "--remove-owned-prerequisites";
+                var dataArgument = removeDrivers ? e.Args[^1] : e.Args[0];
+                var removeData = dataArgument == "--remove-saved-data" || dataArgument.StartsWith("--remove-saved-data=", StringComparison.Ordinal);
+                var arguments = removeDrivers && removeData ? e.Args[..^1] : e.Args;
+                if (arguments.Length > 2 || arguments.Length == 2 && (!int.TryParse(arguments[1], out var value) || value <= 0)) { Shutdown(1); return; }
+                if (arguments.Length == 2) { parent = int.Parse(arguments[1], System.Globalization.CultureInfo.InvariantCulture); }
                 WindowsPrerequisiteOwnership.RequireAdministrator();
+                if (removeData && dataArgument.StartsWith("--remove-saved-data=", StringComparison.Ordinal))
+                { SavedDataRemoval.RequireCurrentUser(dataArgument["--remove-saved-data=".Length..]); }
                 ZipUninstall.RequireApplicationsClosed(parent);
-                var restart = await WindowsPrerequisiteOwnership.RemoveAsync(new Progress<string>(message =>
+                var restart = removeDrivers && await WindowsPrerequisiteOwnership.RemoveAsync(new Progress<string>(message =>
                     DiagnosticLog.Default.Write("uninstall", message)), CancellationToken.None);
+                if (removeData)
+                {
+                    using var gate = new Semaphore(1, 1, @"Global\SherpaAxis.PrerequisiteSetup");
+                    if (!gate.WaitOne(0)) { throw new System.IO.IOException("Driver setup is still running. Wait for it to finish before uninstalling."); }
+                    try
+                    {
+                        if (WindowsPrerequisiteSetup.HasActiveInstaller(WindowsPrerequisiteSetup.ReadProgress()))
+                        { throw new System.IO.IOException("Driver setup is still running. Wait for it to finish before uninstalling."); }
+                        SavedDataRemoval.Default().Remove();
+                    }
+                    finally { gate.Release(); }
+                }
                 Shutdown(restart ? 3010 : 0);
             }
             catch (Exception failure) when (OperationErrors.IsExpected(failure))
             {
-                DiagnosticLog.Default.Write("uninstall", "Driver removal did not finish.", failure);
+                DiagnosticLog.Default.Write("uninstall", "Uninstall cleanup did not finish.", failure);
                 Shutdown(1);
             }
             return;
@@ -59,7 +78,7 @@ public partial class App : Application, IDisposable
                 MainWindow = null;
                 var uninstall = new ZipUninstallWindow();
                 uninstall.ShowDialog();
-                if (uninstall.Completed) { ZipUninstall.ScheduleCleanup(); }
+                if (uninstall.Completed) { ZipUninstall.ScheduleCleanup(uninstall.DataRemoved); }
                 Shutdown(0);
             }
             catch (Exception failure) when (OperationErrors.IsExpected(failure))

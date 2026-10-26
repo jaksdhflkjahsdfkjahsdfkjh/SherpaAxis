@@ -2,10 +2,12 @@
 param(
     [Parameter(Mandatory)][string]$Root,
     [Parameter(Mandatory)][int]$ApplicationPid,
-    [Parameter(Mandatory)][datetime]$ApplicationStarted
+    [Parameter(Mandatory)][datetime]$ApplicationStarted,
+    [switch]$RemoveSavedData
 )
 $ErrorActionPreference = 'Stop'
-$logDirectory = Join-Path $env:LOCALAPPDATA 'SherpaAxis\Logs'
+$logDirectory = if ($RemoveSavedData) { $env:TEMP } else { Join-Path $env:LOCALAPPDATA 'SherpaAxis\Logs' }
+$logPath = Join-Path $logDirectory $(if ($RemoveSavedData) { 'SherpaAxis-zip-uninstall-' + [Guid]::NewGuid().ToString('N') + '.log' } else { 'zip-uninstall.log' })
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 try {
     $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\')
@@ -58,7 +60,7 @@ try {
         }
     }
     if (-not (Get-ChildItem -LiteralPath $rootPath -Force | Select-Object -First 1)) { Remove-Item -LiteralPath $rootPath }
-    'ZIP cleanup completed. Modified files, extra files and user settings were preserved.' | Add-Content -LiteralPath (Join-Path $logDirectory 'zip-uninstall.log')
+    if (-not $RemoveSavedData) { 'ZIP cleanup completed. Modified files, extra files and user settings were preserved.' | Add-Content -LiteralPath $logPath }
 }
-catch { $_ | Out-String | Add-Content -LiteralPath (Join-Path $logDirectory 'zip-uninstall.log'); exit 1 }
+catch { $_ | Out-String | Add-Content -LiteralPath $logPath; exit 1 }
 finally { Remove-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue }

@@ -96,6 +96,21 @@ reconnection instructions when the controller does not return. A pending update
 keeps those instructions after restarting the app. Do not unplug the pedals while
 the firmware tool is still programming.
 
+After a confirmed upgrade from firmware 001–016 to 017, SherpaAxis rediscovers the
+single supported controller at the original USB port. A changed reported serial
+is associated automatically with that update when the pre-update backup matches.
+Calibration restoration and final checks continue without a confirmation prompt
+or another flash. This also applies when resuming a confirmed pending update with
+**Check firmware** after restarting the app. Keep the same physical pedals
+connected throughout the update; USB location is not proof of an unchanged
+physical controller if pedals are exchanged at that port.
+
+The journal retains both serials and records automatic association explicitly.
+The original backup is unchanged. Wrong-port devices, multiple controllers,
+unconfirmed programming, invalid backups and subsequent serial changes remain
+blocked. Reflashing firmware 017 does not permit an unrelated serial change.
+Normal identity matching for other hardware operations is unchanged.
+
 ## Recovery and validation
 
 Private records live under `%LOCALAPPDATA%/SherpaAxis/FirmwareUpdates`.

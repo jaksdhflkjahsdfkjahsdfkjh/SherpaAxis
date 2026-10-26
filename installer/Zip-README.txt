@@ -76,7 +76,13 @@ option is off by default. Pre-existing or unrecorded drivers are preserved.
 Driver ownership tracking starts with v1.2.1 and cannot identify installations
 made by older versions. Administrator approval is needed for driver removal.
 Close the final window to remove the packaged app files. Modified and extra files
-are left in the folder. Profiles, settings and calibration backups are kept.
+are left in the folder. Profiles, settings and calibration backups are kept by default.
+You can independently select "Delete all saved SherpaAxis data". This permanently
+removes this account's %LOCALAPPDATA%\SherpaAxis folder, including profiles,
+bindings, logs and calibration/firmware recovery backups, plus shared SherpaAxis
+setup files and registry records. Finish pending recovery or export needed backups
+first. Files exported elsewhere and Windows driver configurations are kept.
+Saved data removal also requires Windows administrator approval.
 Restart Windows if requested. Cleanup logs: %LOCALAPPDATA%\SherpaAxis\Logs.
 
 Need help?
