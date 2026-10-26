@@ -30,6 +30,15 @@ class SetupStub {
         bool release = Array.IndexOf(args, "--release-input-configuration") >= 0;
         if (Array.IndexOf(args, "--record-prerequisite-ownership") >= 0) return 0;
         if (Array.IndexOf(args, "--remove-owned-prerequisites") >= 0) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "remove-owned\n"); return int.Parse(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_REMOVE")); }
+        if (Array.IndexOf(args, "--remove-saved-data") >= 0) {
+            var trace = Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE");
+            File.AppendAllText(trace, "remove-data\n");
+            int code = int.Parse(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_DATA_REMOVE"));
+            var data = Path.GetFullPath(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_DATA"));
+            if (!data.StartsWith(Path.GetDirectoryName(trace) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return 87;
+            if (code == 0 && Directory.Exists(data)) Directory.Delete(data, true);
+            return code;
+        }
         bool hidHide = Path.GetFileNameWithoutExtension(Environment.GetCommandLineArgs()[0]).Equals("HidHideSetup", StringComparison.OrdinalIgnoreCase);
         if (hidHide && (args.Length != 3 || Array.IndexOf(args, "/exenoui") < 0 || Array.IndexOf(args, "/qn") < 0 || Array.IndexOf(args, "/norestart") < 0)) return 1639;
         if (release) { File.AppendAllText(Environment.GetEnvironmentVariable("SHERPAAXIS_SETUP_TEST_TRACE"), "release\n"); return 0; }
@@ -47,11 +56,12 @@ $vendorExecutable = Join-Path $testRoot 'SherpaAxis.SetupTest.Vendor.exe'
 Copy-Item -LiteralPath $stub -Destination $vendorExecutable
 $vendorProcess = $null
 $stubHash = (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash
-$variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY', 'SHERPAAXIS_SETUP_TEST_REMOVE')
+$variables = @('SHERPAAXIS_SETUP_TEST_HIDHIDE', 'SHERPAAXIS_SETUP_TEST_DFUSE', 'SHERPAAXIS_SETUP_TEST_TRACE', 'SHERPAAXIS_SETUP_TEST_CONFIGURE', 'SHERPAAXIS_SETUP_TEST_DRIVER', 'SHERPAAXIS_SETUP_TEST_LIBRARY', 'SHERPAAXIS_SETUP_TEST_REMOVE', 'SHERPAAXIS_SETUP_TEST_DATA_REMOVE', 'SHERPAAXIS_SETUP_TEST_DATA')
 $previousEnvironment = @{}
 foreach ($name in $variables) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $env:SHERPAAXIS_SETUP_TEST_TRACE = $trace
 $env:SHERPAAXIS_SETUP_TEST_LIBRARY = $library
+$env:SHERPAAXIS_SETUP_TEST_DATA = Join-Path $testRoot 'saved-data'
 
 function Assert-Setup {
     param([bool]$Condition, [string]$Message)
@@ -96,6 +106,7 @@ function Invoke-Fixture {
 
 function Reset-Fixture {
     $env:SHERPAAXIS_SETUP_TEST_REMOVE = '0'
+    $env:SHERPAAXIS_SETUP_TEST_DATA_REMOVE = '0'
     $env:SHERPAAXIS_SETUP_TEST_HIDHIDE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DFUSE = '0'
     $env:SHERPAAXIS_SETUP_TEST_DRIVER = '0'
@@ -106,10 +117,12 @@ function Reset-Fixture {
 }
 
 function Uninstall-Fixture {
-    param([switch]$RemoveDrivers, [int]$Expected = 0)
+    param([switch]$RemoveDrivers, [switch]$RemoveSavedData, [int]$Expected = 0)
     $record = Get-ChildItem -LiteralPath $installDirectory -Filter 'unins*.dat' -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
     if ($record) {
-        $extra = if ($RemoveDrivers) { @('/REMOVEOWNEDDRIVERS=1') } else { @() }
+        $extra = @()
+        if ($RemoveDrivers) { $extra += '/REMOVEOWNEDDRIVERS=1' }
+        if ($RemoveSavedData) { $extra += '/REMOVESAVEDDATA=1' }
         Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'uninstall' $Expected -ExtraArgs $extra
     }
     Assert-Setup (-not (Test-Path -LiteralPath $uninstallKey)) 'Test uninstall entry remains.'
@@ -283,6 +296,41 @@ try {
     Uninstall-Fixture -RemoveDrivers
     Assert-Setup ((Get-Content -LiteralPath (Join-Path $testRoot 'uninstall.log') -Raw) -match 'Need to restart Windows\? Yes') 'Uninstall did not request the driver restart.'
     Write-Output 'PASS: driver removal propagates the restart request'
+
+    Reset-Fixture
+    New-Item -ItemType Directory -Path $env:SHERPAAXIS_SETUP_TEST_DATA -Force | Out-Null
+    $savedProfile = Join-Path $env:SHERPAAXIS_SETUP_TEST_DATA 'profile.json'
+    Set-Content -LiteralPath $savedProfile -Value 'saved profile'
+    Invoke-Fixture $setup 'keep-saved-data' 0
+    Uninstall-Fixture
+    Assert-Setup (Test-Path -LiteralPath $savedProfile) 'Default uninstall removed saved data.'
+    Write-Output 'PASS: default uninstall keeps saved data'
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'delete-saved-data' 0
+    Uninstall-Fixture -RemoveSavedData
+    Assert-Setup (-not (Test-Path -LiteralPath $env:SHERPAAXIS_SETUP_TEST_DATA)) 'Explicit saved data removal was not performed.'
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim().EndsWith("release`nremove-data")) 'Data cleanup did not run after input cleanup.'
+    Write-Output 'PASS: explicit saved data removal'
+
+    Reset-Fixture
+    New-Item -ItemType Directory -Path $env:SHERPAAXIS_SETUP_TEST_DATA -Force | Out-Null
+    Set-Content -LiteralPath $savedProfile -Value 'saved profile'
+    Invoke-Fixture $setup 'data-removal-failure' 0
+    $env:SHERPAAXIS_SETUP_TEST_DATA_REMOVE = '1603'
+    $record = Get-ChildItem -LiteralPath $installDirectory -Filter 'unins*.dat' | Select-Object -First 1
+    Invoke-Fixture ([IO.Path]::ChangeExtension($record.FullName, '.exe')) 'data-removal-failure-uninstall' 1 -ExtraArgs @('/REMOVESAVEDDATA=1')
+    Assert-Setup (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe')) 'Failed data cleanup deleted the app before retry.'
+    Assert-Setup (Test-Path -LiteralPath $savedProfile) 'Failed data cleanup unexpectedly removed the test profile.'
+    $env:SHERPAAXIS_SETUP_TEST_DATA_REMOVE = '0'
+    Uninstall-Fixture -RemoveSavedData
+    Write-Output 'PASS: failed data cleanup preserves the app for retry'
+
+    Reset-Fixture
+    Invoke-Fixture $setup 'drivers-and-data-removal' 0
+    Uninstall-Fixture -RemoveDrivers -RemoveSavedData
+    Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim().EndsWith("release`nremove-owned`nremove-data")) 'Selected data cleanup ran before driver removal.'
+    Write-Output 'PASS: driver removal precedes selected data cleanup'
 
 
 }

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.2.2"
+  #define AppVersion "1.3.0"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"
@@ -89,6 +89,10 @@ english.DriverRemovalStartFailed=Could not start optional driver removal. Retry 
 ukrainian.DriverRemovalStartFailed=Не вдалося запустити додаткове видалення драйверів. Повторіть спробу.
 english.DriverRemovalFailed=Optional driver removal did not finish. The app is kept so you can retry, or choose No to preserve the drivers. Logs: ProgramData\SherpaAxis\Prerequisites.
 ukrainian.DriverRemovalFailed=Видалення драйверів не завершено. Програму збережено для повторної спроби; також можна обрати «Ні», щоб залишити драйвери. Журнали: ProgramData\SherpaAxis\Prerequisites.
+english.RemoveSavedData=Permanently delete all saved SherpaAxis data?%n%nThis removes this Windows account's profiles, settings, bindings, logs and calibration/firmware recovery backups, plus shared SherpaAxis setup records. Complete pending recovery or export needed backups first.%n%nFiles exported elsewhere and Windows driver configurations are kept. Choose No to keep saved data, or Cancel to stop uninstalling.
+ukrainian.RemoveSavedData=Назавжди видалити всі збережені дані SherpaAxis?%n%nБуде видалено профілі, налаштування, призначення кнопок, журнали та резервні копії відновлення калібрування/прошивки цього облікового запису Windows, а також спільні записи налаштування SherpaAxis. Спочатку завершіть відновлення або експортуйте потрібні резервні копії.%n%nФайли, експортовані в інші папки, та налаштування драйверів Windows зберігаються. Оберіть «Ні», щоб залишити дані, або «Скасувати», щоб припинити видалення.
+english.SavedDataRemovalFailed=Saved data could not be completely removed. The app is kept so you can retry, or uninstall without deleting saved data.
+ukrainian.SavedDataRemovalFailed=Не вдалося повністю видалити збережені дані. Програму залишено для повторної спроби; також можна видалити її зі збереженням даних.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
@@ -132,6 +136,7 @@ var
   InstallationCompleted: Boolean;
   RemoveOwnedDrivers: Boolean;
   DriverRemovalRestart: Boolean;
+  RemoveSavedData: Boolean;
 
 function UninstallNeedRestart: Boolean;
 begin
@@ -144,10 +149,15 @@ var
 begin
   Result := True;
   RemoveOwnedDrivers := ExpandConstant('{param:REMOVEOWNEDDRIVERS|0}') = '1';
+  RemoveSavedData := ExpandConstant('{param:REMOVESAVEDDATA|0}') = '1';
   if UninstallSilent then Exit;
   Choice := MsgBox(CustomMessage('RemoveOwnedDrivers'), mbConfirmation, MB_YESNOCANCEL or MB_DEFBUTTON2);
   Result := Choice <> IDCANCEL;
   RemoveOwnedDrivers := Choice = IDYES;
+  if not Result then Exit;
+  Choice := MsgBox(CustomMessage('RemoveSavedData'), mbConfirmation, MB_YESNOCANCEL or MB_DEFBUTTON2);
+  Result := Choice <> IDCANCEL;
+  RemoveSavedData := Choice = IDYES;
 end;
 
 function DriverPackageExists(InfName: String): Boolean;
@@ -468,6 +478,12 @@ begin
     DriverRemovalRestart := ExitCode = 3010;
     if (ExitCode <> 0) and not DriverRemovalRestart then
       RaiseException(CustomMessage('DriverRemovalFailed'));
+  end;
+  if RemoveSavedData then
+  begin
+    if not Exec(ExpandConstant('{app}\SherpaAxis.App.exe'), '--remove-saved-data',
+      ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
+      RaiseException(CustomMessage('SavedDataRemovalFailed'));
   end;
   if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, Command) and
     (Pos('"' + ExpandConstant('{app}\SherpaAxis.App.exe') + '"', Command) = 1) then

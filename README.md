@@ -148,10 +148,13 @@ open the app again. No separate driver downloads or manual DLL selection are nee
 
 To uninstall, use **Windows Settings → Apps** for a Setup installation, or exit
 SherpaAxis and run **Uninstall.exe** inside an extracted ZIP folder, then choose
-English or Ukrainian. Drivers are
-kept by default. You can also remove recorded, unchanged drivers installed by
-SherpaAxis; drivers that were already present are preserved. Profiles, settings
-and calibration backups are kept. Driver ownership tracking starts with v1.2.1;
+English or Ukrainian. Drivers and saved data are kept by default. You can
+independently choose to remove recorded, unchanged drivers installed by SherpaAxis,
+or **delete all saved SherpaAxis data**. Data removal permanently clears this
+account's profiles, settings, bindings, logs and calibration/firmware recovery
+backups from `%LOCALAPPDATA%\SherpaAxis`, plus shared SherpaAxis setup data and
+registry records. Finish pending recovery or export needed backups first. Files
+exported elsewhere and Windows driver configurations are kept. Driver ownership tracking starts with v1.2.1;
 older installations without records keep their drivers.
 
 **Keep SherpaAxis running while playing.** The app sends processed pedal input to
@@ -225,11 +228,12 @@ checks. No pedal data or profiles are sent. Downloads and installation are manua
 To update, download the newer `Setup.exe`, exit SherpaAxis from its tray menu,
 close FEEL-VR Control and games, then run Setup. Your profiles and settings are retained.
 
-To uninstall, use Windows **Settings → Apps → SherpaAxis → Uninstall**. Profiles
-and settings are retained. The shared vJoy and HidHide drivers stay installed;
-SherpaAxis releases its own visibility entries and restores the previous controller
-display name. After an abnormal termination, reopen the app and exit normally to
-complete visibility cleanup.
+To uninstall, use Windows **Settings → Apps → SherpaAxis → Uninstall**, or run
+`Uninstall.exe` in the extracted ZIP folder. Saved data and shared drivers remain
+unless you select their separate removal options. SherpaAxis releases its own
+visibility entries and restores the previous controller display name. Deleting
+saved data also removes calibration and firmware recovery backups; export anything
+you need before choosing it.
 
 </details>
 

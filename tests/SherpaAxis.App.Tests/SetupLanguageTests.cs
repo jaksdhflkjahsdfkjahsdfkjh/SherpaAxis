@@ -27,7 +27,7 @@ public sealed class SetupLanguageTests
             Assert.Equal(original with { Language = language }, store.Value);
             Assert.Equal(Localizer.Translate("Uninstall language"), chooser.Title);
             Assert.Equal(Localizer.Translate("Your choice will be used for uninstalling and the app."), Assert.IsType<TextBlock>(chooser.FindName("Explanation")).Text);
-            var uninstall = new ZipUninstallWindow([], (_, _) => throw new InvalidOperationException("Uninstall must not run while choosing a language."));
+            var uninstall = new ZipUninstallWindow([], (_, _, _) => throw new InvalidOperationException("Uninstall must not run while choosing a language."));
             try
             {
                 Assert.Equal(Localizer.Translate("Uninstall SherpaAxis"), uninstall.Title);

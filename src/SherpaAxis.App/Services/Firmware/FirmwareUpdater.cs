@@ -21,7 +21,8 @@ public sealed record FirmwareToolResult(int ExitCode, string Output, string Erro
 public sealed record FirmwarePlan(string ImagePath, string ToolPath, string ToolHash, PedalFirmwareImage Image,
     string SerialNumber, string OriginalVersion, string LocationPath, HidDeviceInfo Device, PedalCalibration Calibration);
 public sealed record FirmwareUpdateRecord(int SchemaVersion, DateTimeOffset StartedAtUtc, FirmwarePlan Plan,
-    string StagedImagePath, string BackupPath, bool ProgramVerified, string Phase, string Log = "", bool DownloadCompleted = false);
+    string StagedImagePath, string BackupPath, bool ProgramVerified, string Phase, string Log = "", bool DownloadCompleted = false,
+    string? ConfirmedSerialNumber = null, bool SerialAutomaticallyAssociated = false);
 public sealed record FirmwareCheckResult(bool Complete, bool CanAccept, string Detail);
 public sealed record FirmwareUpdateServices(
     Func<CancellationToken, Task<FirmwareConnection>> Connect,
@@ -138,21 +139,21 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     {
         var record = await ReadPendingAsync(token).ConfigureAwait(false) ?? throw new IOException("No firmware update calibration backup is pending.");
         if (services.Bootloaders().Count != 0) { throw new IOException("Reconnect the pedals in normal mode before restoring their calibration backup."); }
-        var backup = await HardwareRecoveryStore.ReadAsync(record.BackupPath, token).ConfigureAwait(false);
+        var backup = await ReadOriginalBackupAsync(record, token).ConfigureAwait(false);
         await using var connection = await services.Connect(token).ConfigureAwait(false);
         var identity = ValidateController(connection);
-        if (identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath
-            || !PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber)
-            || !backup.IsManualBackup || backup.Saved != record.Plan.Calibration
-            || !PedalDeviceIdentity.SameController(backup.SerialNumber!, connection.Controller.SerialNumber))
+        if (identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath)
         { throw new IOException("The reconnected controller, firmware, USB port and saved calibration backup must match the original update."); }
+        if (!MatchesController(record, connection.Controller.SerialNumber))
+        { record = await AssociateReconnectedControllerAsync(record, connection, token).ConfigureAwait(false); }
         var directory = Path.GetDirectoryName(record.BackupPath)!;
         using var transaction = new PedalConfigurationTransaction(new(1, DateTimeOffset.UtcNow, connection.Controller.Device, connection.Calibration),
             connection.Controller.Reader, connection.Controller.Writer, new HardwareRecoveryStore(Path.Combine(directory, "calibration-restore.json")),
             TimeSpan.FromSeconds(2), connection.Controller.SerialNumber);
         await new HardwareRecoveryStore(Path.Combine(directory, "post-flash-calibration-backup.json"))
             .WriteAsync(await transaction.CreateHardwareBackupAsync(token).ConfigureAwait(false), token).ConfigureAwait(false);
-        await transaction.RestoreHardwareBackupAsync(backup with { Device = connection.Controller.Device }, token).ConfigureAwait(false);
+        await transaction.RestoreHardwareBackupAsync(backup with
+        { Device = connection.Controller.Device, SerialNumber = connection.Controller.SerialNumber }, token).ConfigureAwait(false);
         await transaction.SaveAsync(token).ConfigureAwait(false);
         const string detail = "Original calibration restored, saved to the controller and read back successfully. Choose Check firmware to review the update.";
         await WriteAsync(record with { Log = Limit(record.Log + "\n" + detail) }, CancellationToken.None).ConfigureAwait(false);
@@ -203,9 +204,10 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
                     await using (connection)
                     {
                         var identity = ValidateController(connection);
-                        if (!PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber)
-                            || identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath)
+                        if (identity.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath)
                         { throw new IOException("The reconnected controller, firmware or USB port does not match the update. Calibration was not restored."); }
+                        if (!MatchesController(record, connection.Controller.SerialNumber))
+                        { record = await AssociateReconnectedControllerAsync(record, connection, token).ConfigureAwait(false); }
                         restore = connection.Calibration != record.Plan.Calibration || HasCalibrationRecovery(record);
                     }
                     if (restore)
@@ -227,6 +229,41 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     private static bool HasCalibrationRecovery(FirmwareUpdateRecord record) =>
         Directory.GetFileSystemEntries(Path.GetDirectoryName(record.BackupPath)!, "calibration-restore.json").Length != 0;
 
+    private static bool MatchesController(FirmwareUpdateRecord record, string serial) =>
+        record.ConfirmedSerialNumber is { } confirmed ? string.Equals(confirmed, serial, StringComparison.Ordinal)
+            : PedalDeviceIdentity.SameController(record.Plan.SerialNumber, serial);
+
+    private static async Task<HardwareRecoverySnapshot> ReadOriginalBackupAsync(FirmwareUpdateRecord record, CancellationToken token)
+    {
+        var backup = await HardwareRecoveryStore.ReadAsync(record.BackupPath, token).ConfigureAwait(false);
+        if (!backup.IsManualBackup || backup.Saved != record.Plan.Calibration || backup.Device != record.Plan.Device
+            || !PedalDeviceIdentity.SameController(backup.SerialNumber!, record.Plan.SerialNumber))
+        { throw new IOException("The calibration backup does not match the original firmware update. It was not applied."); }
+        return backup;
+    }
+
+    private async Task<FirmwareUpdateRecord> AssociateReconnectedControllerAsync(FirmwareUpdateRecord record, FirmwareConnection connection, CancellationToken token)
+    {
+        var original = PedalDeviceIdentity.Parse(record.Plan.SerialNumber);
+        var current = ValidateController(connection);
+        if ((!record.DownloadCompleted && !record.ProgramVerified) || record.ConfirmedSerialNumber is not null
+            || original.Hardware != current.Hardware || original.Firmware != record.Plan.OriginalVersion
+            || !int.TryParse(original.Firmware, out var version) || version is < 1 or >= 17
+            || current.Firmware != record.Plan.Image.Version || connection.Usb.LocationPath != record.Plan.LocationPath)
+        { throw new IOException("The reconnected controller identity does not match the update. Calibration was not restored."); }
+        _ = await ReadOriginalBackupAsync(record, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        record = record with
+        {
+            ConfirmedSerialNumber = connection.Controller.SerialNumber,
+            SerialAutomaticallyAssociated = true,
+            Phase = "Controller rediscovered after programming",
+            Log = Limit(record.Log + $"\nAutomatically associated the supported controller at the original USB port after confirmed programming. Previous serial: {record.Plan.SerialNumber}; current serial: {connection.Controller.SerialNumber}.")
+        };
+        await WriteAsync(record, token).ConfigureAwait(false);
+        return record;
+    }
+
     private async Task<FirmwareUpdateRecord> ProgramAsync(FirmwareUpdateRecord record, IProgress<string> progress)
     {
         await WaitForBootloaderAsync(record.Plan.LocationPath, progress).ConfigureAwait(false);
@@ -240,7 +277,8 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         await using var toolLock = new FileStream(record.Plan.ToolPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (Convert.ToHexString(await SHA256.HashDataAsync(toolLock).ConfigureAwait(false)) != record.Plan.ToolHash)
         { throw new IOException("The DfuSe tool changed; programming was not started."); }
-        record = record with { Phase = "Programming firmware", ProgramVerified = false, DownloadCompleted = false };
+        record = record with
+        { Phase = "Programming firmware", ProgramVerified = false, DownloadCompleted = false, ConfirmedSerialNumber = null, SerialAutomaticallyAssociated = false };
         await WriteAsync(record, CancellationToken.None).ConfigureAwait(false);
         progress.Report("Programming firmware… Do not unplug the pedals or close the app.");
         FirmwareToolResult result;
@@ -301,10 +339,12 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         if (services.Bootloaders().Count != 0) { return new(false, false, "The pedals are still in DFU mode. After verified programming, unplug and reconnect them; otherwise retry programming at the recorded USB port."); }
         await using var connection = await services.Connect(token).ConfigureAwait(false);
         var identity = ValidateController(connection);
-        if (!PedalDeviceIdentity.SameController(record.Plan.SerialNumber, connection.Controller.SerialNumber) || identity.Firmware != record.Plan.Image.Version)
+        if (identity.Firmware != record.Plan.Image.Version)
         { throw new IOException("The reconnected controller identity or firmware does not match the prepared update."); }
         if (connection.Usb.LocationPath != record.Plan.LocationPath)
         { return new(false, false, "Reconnect the original controller at its recorded USB port, then choose Check firmware. Output remains paused."); }
+        if (!MatchesController(record, connection.Controller.SerialNumber))
+        { record = await AssociateReconnectedControllerAsync(record, connection, token).ConfigureAwait(false); }
         if (connection.Calibration != record.Plan.Calibration)
         { return new(false, false, "Firmware 017 is detected, but calibration does not match the pre-update backup. Restore the calibration backup, then choose Check firmware. Output remains paused."); }
         if (HasCalibrationRecovery(record))
@@ -316,7 +356,11 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
         token.ThrowIfCancellationRequested();
         await WriteAsync(record with { Phase = acceptCurrent ? "Detected firmware and calibration explicitly accepted" : "Controller verified after reconnect" }, token).ConfigureAwait(false);
         File.Delete(JournalPath);
-        return new(true, false, "Firmware 017 and controller identity verified. Hardware backup and update log were retained."
+        return new(true, false, (record.ConfirmedSerialNumber is null
+            ? "Firmware 017 and controller identity verified. Hardware backup and update log were retained."
+            : record.SerialAutomaticallyAssociated
+                ? "Firmware 017 and restored calibration checked. The controller was rediscovered at the original USB port. Hardware backup and update log were retained."
+                : "Firmware 017 and restored calibration checked. The changed serial number was confirmed by the user. Hardware backup and update log were retained.")
             + (record.ProgramVerified ? "" : " Byte readback was not verified."));
     }
 
@@ -338,6 +382,17 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             || !UnderDirectory(record.StagedImagePath) || !UnderDirectory(record.BackupPath) || !Path.IsPathFullyQualified(record.Plan.ToolPath))
         { throw new InvalidDataException("Firmware update identity or paths are invalid; keep the record for recovery."); }
         PedalHardwareSettings.Validate(record.Plan.Calibration);
+        if (record.SerialAutomaticallyAssociated && record.ConfirmedSerialNumber is null)
+        { throw new InvalidDataException("The confirmed controller identity is invalid for this update. Keep the record for recovery."); }
+        if (record.ConfirmedSerialNumber is { } confirmed)
+        {
+            var original = PedalDeviceIdentity.Parse(record.Plan.SerialNumber);
+            var identity = PedalDeviceIdentity.Parse(confirmed);
+            if ((!record.DownloadCompleted && !record.ProgramVerified) || identity.Hardware != original.Hardware
+                || identity.Firmware != record.Plan.Image.Version || original.Firmware != record.Plan.OriginalVersion
+                || !int.TryParse(original.Firmware, out var version) || version is < 1 or >= 17)
+            { throw new InvalidDataException("The confirmed controller identity is invalid for this update. Keep the record for recovery."); }
+        }
         return record;
     }
 
