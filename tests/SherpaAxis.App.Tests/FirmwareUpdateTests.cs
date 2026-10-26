@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -122,7 +123,8 @@ public sealed class FirmwareUpdateTests
         using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults, TransientConnectFailures = 3 };
         fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
         await fake.Flash(await fake.Prepare());
-        var result = await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None);
+        var messages = new List<string>();
+        var result = await fake.Updater.CompleteUpdateAsync(new InlineProgress(messages.Add), CancellationToken.None);
         Assert.True(result.Complete);
         Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
         Assert.Equal(1, fake.CalibrationWrites);
@@ -130,6 +132,39 @@ public sealed class FirmwareUpdateTests
         Assert.Equal(1, fake.Commands);
         Assert.Equal(1, fake.Programs);
         Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.DoesNotContain(FirmwareUpdater.ReconnectInstructions, messages);
+    }
+
+    [Fact]
+    public async Task ReconnectionTimeoutRetainsInstructionsAndManualReconnectCompletesWithoutReflashing()
+    {
+        using var fake = new FakeFirmware();
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        var programmed = await fake.Flash(await fake.Prepare());
+        var failure = await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(FirmwareUpdater.ReconnectInstructions, failure.Message);
+        var pending = await fake.Updater.ReadPendingAsync(CancellationToken.None);
+        Assert.NotNull(pending);
+        Assert.Equal("Reconnect pedals", pending.Phase);
+        Assert.True(pending.DownloadCompleted);
+        Assert.False(pending.ProgramVerified);
+        Assert.Equal(0, fake.CalibrationWrites);
+        Assert.True(File.Exists(pending.BackupPath));
+        using (var log = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(Path.GetDirectoryName(pending.BackupPath)!, "update-log.json"))))
+        {
+            Assert.Equal("Reconnect pedals", log.RootElement.GetProperty("phase").GetString());
+            Assert.Contains(FirmwareUpdater.ReconnectInstructions, log.RootElement.GetProperty("log").GetString()!, StringComparison.Ordinal);
+        }
+        fake.Reconnect();
+        fake.Calibration = PedalHardwareSettings.Defaults;
+        Assert.True((await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None)).Complete);
+        Assert.Equal(FakeFirmware.InitialCalibration, fake.Calibration);
+        Assert.Equal(1, fake.Programs);
+        Assert.Equal(1, fake.Commands);
+        Assert.Equal(1, fake.CalibrationWrites);
+        Assert.Equal(1, fake.CalibrationSaves);
+        Assert.Null(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        Assert.True(File.Exists(programmed.BackupPath));
     }
 
     [Fact]
@@ -163,8 +198,11 @@ public sealed class FirmwareUpdateTests
     {
         using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults, FailCalibrationSave = true };
         await fake.Flash(await fake.Prepare());
-        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
-        Assert.NotNull(await fake.Updater.ReadPendingAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        var pending = await fake.Updater.ReadPendingAsync(CancellationToken.None);
+        Assert.NotNull(pending);
+        Assert.Equal("Controller check needs attention", pending.Phase);
+        Assert.Contains(failure.Message, pending.Log, StringComparison.Ordinal);
         Assert.False((await fake.Updater.CheckConnectionAsync(false, CancellationToken.None)).Complete);
         fake.FailCalibrationSave = false;
         Assert.True((await fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None)).Complete);
@@ -607,6 +645,56 @@ public sealed class FirmwareUpdateTests
 [Collection("WPF UI")]
 public sealed class FirmwareUpdateUiTests
 {
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task ReplugInstructionsSurviveRestartAndCheckFirmwareFinishesWithoutAnotherFlash(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var fake = new FirmwareUpdateTests.FakeFirmware();
+        fake.Result = new(0, "Upgrade successful !", "", ReadbackRequested: false);
+        await fake.Flash(await fake.Prepare());
+        await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new Progress<string>(), CancellationToken.None));
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services with { Firmware = fake.Updater },
+            profileLibrary: new(Path.Combine(fake.Updater.DirectoryPath, "profiles")));
+        Localizer.Instance.Language = language;
+        await main.CheckFirmwareStartupAsync();
+        var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+        Assert.True(model.Firmware.Blocked);
+        Assert.Equal(FirmwareUpdater.ReconnectInstructions, model.Firmware.Status);
+        var checkedFirmware = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var dialog = new FirmwareUpdateWindow(model.Firmware, main.Resources,
+            () => throw new InvalidOperationException("The reconnect check must not flash firmware."),
+            review: async () => { await main.CheckFirmwareAsync(); checkedFirmware.SetResult(); })
+        { Opacity = 0, ShowInTaskbar = false };
+        try
+        {
+            dialog.Show();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var message = Assert.IsType<TextBlock>(dialog.FindName("FirmwareStatusLabel"));
+            Assert.Equal(Localizer.Translate(FirmwareUpdater.ReconnectInstructions), message.Text);
+            Assert.Contains("5", message.Text, StringComparison.Ordinal);
+            Assert.Contains("USB", message.Text, StringComparison.Ordinal);
+            var check = Assert.IsType<Button>(dialog.FindName("FlashFirmwareButton"));
+            Assert.True(check.IsEnabled);
+            Assert.True(model.Firmware.ProgrammingCompleted);
+            Assert.Equal(Localizer.Translate("Check firmware"), check.Content);
+            Assert.False(Assert.IsType<Button>(dialog.FindName("ReviewFirmwareButton")).IsVisible);
+            dialog.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsAssignableFrom<FrameworkElement>(dialog.Content), $"firmware-reconnect-{language}.png");
+            fake.Reconnect();
+            fake.Calibration = PedalHardwareSettings.Defaults;
+            check.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await checkedFirmware.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(model.Firmware.Completed);
+            Assert.False(model.Firmware.Blocked);
+            Assert.Equal(1, fake.Programs);
+            Assert.Equal(1, fake.Commands);
+            Assert.Equal(FirmwareUpdateTests.FakeFirmware.InitialCalibration, fake.Calibration);
+        }
+        finally { dialog.Close(); Localizer.Instance.Language = "en"; }
+    });
+
     [Fact]
     public Task UnconfirmedProgrammingHasAnInlineRecoveryActionWithoutAModalConfirmation() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
@@ -764,7 +852,7 @@ public sealed class FirmwareUpdateUiTests
             barrier.SetResult(FirmwareUpdateTests.FakeFirmware.Success);
             await flashing;
             Assert.True(model.Firmware.Blocked);
-            Assert.Equal("Retry flash", model.Firmware.FlashLabel);
+            Assert.Equal("Check firmware", model.Firmware.FlashLabel);
             Assert.False(model.Firmware.Running);
             dialog.Close();
         }

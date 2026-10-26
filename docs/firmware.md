@@ -84,9 +84,17 @@ continues while the UI reports the delay.
    controller, USB port, firmware and restored bounds. Click **OK** when the
    success message appears. No separate restoration or firmware check is needed.
 4. If a step fails, output remains paused and the backup and logs are retained.
-   If programming completed but reconnection timed out, reconnect manually and
-   choose **Check firmware** to resume the automatic restoration/check sequence.
+   Manual reconnection is needed only if programming completed and automatic
+   reconnection timed out. Follow the message: unplug the pedal USB cable for
+   five seconds, reconnect it to the same USB port and choose **Check firmware**
+   to resume the automatic restoration/check sequence without another flash.
+   Once programming is confirmed, the main update button becomes **Check firmware**.
    **Restore calibration backup** remains available for manual recovery.
+
+Final controller-check failures are retained in `update-log.json`, including the
+reconnection instructions when the controller does not return. A pending update
+keeps those instructions after restarting the app. Do not unplug the pedals while
+the firmware tool is still programming.
 
 ## Recovery and validation
 
