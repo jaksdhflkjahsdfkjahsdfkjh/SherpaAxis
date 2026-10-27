@@ -51,6 +51,7 @@ public partial class MainWindow
         try
         {
             await RequestPanelModeAsync(viewModel.Tour.Current.Panel);
+            if (viewModel.IsSettingsMode) { SettingsSearchBox.Clear(); }
             if (!viewModel.Tour.IsOpen || closing) { return; }
             TourLayer.ResetContent();
             if (viewModel.Tour.Current.Target == nameof(CurvesSection)) { CurvesSection.IsExpanded = true; }

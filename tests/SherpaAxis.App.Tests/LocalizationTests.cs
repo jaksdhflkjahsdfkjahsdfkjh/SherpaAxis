@@ -100,6 +100,8 @@ public sealed class LocalizationTests
                 Assert.Equal("Throttle", viewModel.ProfileName);
                 Assert.Equal("Brake", viewModel.SelectedAxis.ToString());
                 Assert.Equal("Input vs filtered", viewModel.GraphMode);
+                Assert.IsType<Expander>(main.FindName("FilterDetailsExpander")).IsExpanded = true;
+                main.UpdateLayout();
                 var filter = Descendants(main).OfType<StableComboBox>().Single(combo => ReferenceEquals(combo.ItemsSource, DashboardViewModel.FilterKinds));
                 filter.SelectedValue = "MovingAverage";
                 Assert.Equal("MovingAverage", viewModel.Editor.FilterKind);

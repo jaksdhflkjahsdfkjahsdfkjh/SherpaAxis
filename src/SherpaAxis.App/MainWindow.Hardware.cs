@@ -246,7 +246,7 @@ public partial class MainWindow
         await session.View.ActivateAsync();
         MainSignalPlot.ResetZoom();
         viewModel.SourceName = "Calibration · live controller counts";
-        viewModel.ShowMessage("Calibration connected. The same graph now displays controller counts. Save to device is separate.");
+        viewModel.ShowMessage("Calibration connected. The graph displays controller counts. Save to controller keeps hardware changes.");
     }
 
     private void DisplayCalibrationView(HardwareCalibrationView view)
