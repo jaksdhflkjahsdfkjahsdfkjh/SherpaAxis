@@ -25,19 +25,19 @@ public sealed class UiRefinementTests
         var label = Assert.IsType<TextBlock>(main.FindName("AppVersionLabel"));
         var footer = Assert.IsType<Border>(main.FindName("FooterBar"));
         var link = Assert.IsType<System.Windows.Documents.Hyperlink>(main.FindName("BugReportLink"));
-        Assert.Equal("v1.3.0", label.Text);
+        Assert.Equal("v1.4.0", label.Text);
         Assert.Equal("https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues", link.NavigateUri.AbsoluteUri);
         Assert.Contains(label, Descendants(footer));
         try
         {
             Localizer.Instance.Language = "en";
-            Assert.Equal("SherpaAxis — Pedals Utility · v1.3.0", main.Title);
+            Assert.Equal("SherpaAxis — Pedals Utility · v1.4.0", main.Title);
             Assert.Equal("Report a bug", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
             main.ShowInTaskbar = false; main.Opacity = 0; main.Show(); main.UpdateLayout();
             CapturePreview(footer, "release-footer-en.png");
             Localizer.Instance.Language = "uk";
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
-            Assert.Equal("SherpaAxis — утиліта педалей · v1.3.0", main.Title);
+            Assert.Equal("SherpaAxis — утиліта педалей · v1.4.0", main.Title);
             Assert.Equal("Повідомити про помилку", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
             main.UpdateLayout();
             CapturePreview(footer, "release-footer-uk.png");
@@ -201,7 +201,11 @@ public sealed class UiRefinementTests
         System.IO.Directory.CreateDirectory(folder);
         var visual = new DrawingVisual();
         using (var drawing = visual.RenderOpen())
-        { drawing.DrawRectangle(new VisualBrush(element), null, new Rect(0, 0, element.ActualWidth, element.ActualHeight)); }
+        {
+            var bounds = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
+            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 18, 32)), null, bounds);
+            drawing.DrawRectangle(new VisualBrush(element), null, bounds);
+        }
         var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);
         var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();

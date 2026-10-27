@@ -364,7 +364,7 @@ public sealed class HardwarePedalUiTests
                     capture.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await UntilAsync(() => !model.Busy);
                     Assert.True(model.IsCapturing);
-                    Assert.Equal("Done", capture.Content);
+                    Assert.Equal("Finish capture", capture.Content);
                     Assert.False(model.CanSelect || model.CanSave);
                     await Assert.ThrowsAsync<InvalidOperationException>(() => window.CreateHardwareBackupAsync());
                     model.Accept(Sample(3_300_000));
@@ -392,14 +392,16 @@ public sealed class HardwarePedalUiTests
                     Assert.Equal("Controller output: —", model.RangeInfo);
                     Assert.False(model.GraphPaused);
                     Assert.All(model.Histories, series => Assert.Empty(series.Samples));
-                    var save = FindButton(content, "Save to device");
+                    var save = FindButton(content, "Save to controller");
                     save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await UntilAsync(() => !model.Busy);
                     Assert.False(configuration.IsDirty);
+                    Assert.False(model.CanSave);
+                    Assert.Equal("Controller calibration is saved.", model.SaveState);
                     Assert.Equal(3, device.Writes[^1][1]);
                     capture.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await UntilAsync(() => !model.Busy);
-                    FindButton(content, "Cancel calibration").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    FindButton(content, "Cancel capture").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     await UntilAsync(() => !model.Busy);
                     Assert.False(model.IsCapturing);
                     Assert.Equal(new(3_375_000, 4_725_000), device.State.Brake);

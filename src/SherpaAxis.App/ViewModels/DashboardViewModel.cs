@@ -155,6 +155,9 @@ public sealed partial class DashboardViewModel : ObservableObject
         Status = selected.IsFresh ? "Connected" : "Not connected";
         if (UsesHardwareInput)
         { Status = HardwareDisplay?.CurrentAxes is not null ? "Connected" : "Not connected"; }
+        if (Firmware.Running) { Status = "Updating firmware"; }
+        else if (Firmware.Blocked) { Status = "Firmware recovery required"; }
+        else if (Recovery.IsBlocked) { Status = "Calibration recovery required"; }
         if (frame.Detail?.StartsWith("Source error:", StringComparison.Ordinal) == true)
         {
             ShowMessage(frame.Detail);

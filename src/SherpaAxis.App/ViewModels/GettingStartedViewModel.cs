@@ -19,7 +19,7 @@ public sealed class GettingStartedViewModel : ObservableObject
             "Select a pedal to adjust its response. Drag points on its curve, choose a curve preset or use Clear for a linear response. Profile deadzones trim the released and fully pressed ends.",
             "Try dragging a curve point or choosing a preset. Each pedal keeps its own curve. Your changes apply to the current profile.", "CurvesSection"),
         new("Find the right filtering", "Tuning · Filtering",
-            "Try Off, Sharp, Balanced or Smooth and compare the result on the graph. Open Advanced to adjust the selected algorithm.",
+            "Try Off, Sharp, Balanced or Smooth and compare the result on the graph. Open Filter details to choose an algorithm or adjust its timing.",
             "Start with Balanced filtering, then compare the result. The information button beside Filtering explains every algorithm with recorded examples. More smoothing can add delay.", "FilteringPanel"),
         new("See what changes", "Live graph · above the curves",
             "Show one pedal or all three. Compare Input vs filtered to see smoothing, Filtered vs curved to see the response curve, or Filter difference for small changes. Enter the visible time range in seconds.",

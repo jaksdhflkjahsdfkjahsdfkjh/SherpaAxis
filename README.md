@@ -24,6 +24,13 @@ Make the first part of the throttle easier to control, change how quickly the br
 builds up, or adjust the clutch response. Throttle, brake and clutch each have their
 own curve, deadzones and filtering settings.
 
+**Tuning** groups response presets, deadzones, filtering and drift correction for
+the selected pedal. Changes apply immediately; **Save profile** keeps them.
+**Calibration** guides you through capturing the range, reviewing it and saving
+to the controller. **Settings** groups app preferences and device tools and includes
+search. Drag the divider to resize the controls pane; double-click it to restore
+the default width.
+
 | What you want to do | How SherpaAxis helps |
 | --- | --- |
 | Change the feel of a pedal | Choose a response preset or shape the curve yourself. |
@@ -167,7 +174,7 @@ with that file.
 
 ## Help and common questions
 
-Replay the tour from **Settings → Help → Getting started**, or open **Setup guide**
+Replay the tour from **Settings → Help and diagnostics → Getting started**, or open **Setup guide**
 there for device and game setup instructions.
 
 <details>

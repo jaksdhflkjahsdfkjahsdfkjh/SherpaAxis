@@ -182,7 +182,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
             HardwareCalibrationAction.Defaults => ChangeAsync(async () =>
             {
                 await configuration.ChangeAsync(PedalHardwareSettings.Defaults);
-                model.Status = "All three hardware ranges reset and verified. Save is separate; Restore saved undoes this change.";
+                model.Status = "All three hardware ranges reset and checked. Save to controller keeps the change; Discard changes restores the saved ranges.";
             }),
             HardwareCalibrationAction.Save => ChangeAsync(async () =>
             {
@@ -215,7 +215,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
             if (calibration.Capture is null)
             {
                 await calibration.StartAsync(model.SelectedChannel);
-                model.Status = "Calibration mode is active. Release and press the pedal, adjust hardware deadzones if needed, then Done.";
+                model.Status = "Capture is running. Release and fully press the pedal several times, then choose Finish capture.";
             }
             else
             {
@@ -227,7 +227,7 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
                     await StoreSensorReference(captured.Channel, new(captured.Minimum!.Value, captured.Maximum!.Value),
                         configuration.Current.Range(captured.Channel));
                 }
-                model.Status = "Hardware bounds applied and verified. Save to device to retain them, or Restore saved to undo.";
+                model.Status = "Range applied and checked. Choose Save to controller to keep it, or Discard changes to undo.";
                 model.ReadBounds();
             }
         }

@@ -47,7 +47,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
     {
         { Interrupted: true } => "Capture interrupted · Cancel or restore before continuing · Reconnected input is excluded",
         not null => $"{SelectedChannel}: sensor counts · Other pedals: controller output · No software processing",
-        _ => "Controller output counts · Click Calibrate hardware to expose the selected pedal's sensor counts"
+        _ => "Controller output counts · Start capture to view the selected pedal's sensor input"
     };
     public static IReadOnlyList<PedalHistory> EmptyHistories { get; } = Enum.GetValues<PedalAxis>().Select(axis => new PedalHistory(axis, [], "Controller output")).ToArray();
     public IReadOnlyList<PedalHistory> Histories { get; private set; } = EmptyHistories;
@@ -60,12 +60,20 @@ public sealed class HardwarePedalViewModel : ObservableObject
     public bool IsCapturing => calibration?.Capture is not null;
     public bool CanSelect => !Busy && !IsCapturing && configuration?.NeedsRecovery != true;
     public bool CanCapture => !Busy && configuration?.NeedsRecovery != true && configuration?.PersistenceUncertain != true;
-    public bool CanSave => HasSession && !Busy && !IsCapturing && configuration?.NeedsRecovery != true;
+    public bool CanSave => HasSession && !Busy && !IsCapturing && configuration?.NeedsRecovery != true
+        && (configuration?.IsDirty == true || configuration?.PersistenceUncertain == true);
     public bool CanRestore => !Busy;
     public bool CanBackup => CanSelect && configuration?.PersistenceUncertain != true;
     public bool CanSetMargins => !Busy && IsCapturing;
+    public bool CanEditMargins => !Busy && configuration?.NeedsRecovery != true;
     public bool CanAbandon => !Busy && configuration?.NeedsRecovery == true;
-    public string CaptureButtonText => IsCapturing ? "Done" : "Calibrate hardware";
+    public string CaptureButtonText => IsCapturing ? "Finish capture" : "Start capture";
+    public string SaveState => !HasSession ? "Preview only. Start capture to change controller calibration."
+        : configuration?.NeedsRecovery == true ? "Recovery is required before calibration can be saved."
+        : IsCapturing ? "Capture is running. Move the pedal through its full travel, then finish capture."
+        : configuration?.PersistenceUncertain == true ? "The last save needs confirmation. Review the status before continuing."
+        : configuration?.IsDirty == true ? "Calibration changed. Save to controller to keep it after reconnecting."
+        : "Controller calibration is saved.";
     public string RangeInfo { get; private set; } = "";
     public string DeviceInfo { get; private set; } = "";
     public string StateInfo { get; private set; } = "";
@@ -184,7 +192,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
             : configuration.PersistenceUncertain ? "Save completion uncertain · backup retained. Restore and explicitly Save after review."
             : capture?.Interrupted == true ? "Input connection changed · cancel and restore this capture."
             : capture is not null ? "Temporary full-range hardware calibration · Save is disabled."
-            : configuration.IsDirty ? "Hardware settings changed for this session · Save to device to retain them."
+            : configuration.IsDirty ? "Hardware settings changed for this session · Save to controller to keep them."
             : "No unsaved hardware changes.";
         Changed(nameof(DeviceInfo));
         Changed(nameof(StateInfo));
@@ -210,7 +218,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
     private void NotifyState()
     {
         foreach (var name in new[] { nameof(IsCapturing), nameof(CanSelect), nameof(CanCapture), nameof(CanSave), nameof(CanRestore),
-            nameof(CanSetMargins), nameof(CanAbandon), nameof(CanBackup), nameof(CaptureButtonText) }) { Changed(name); }
+            nameof(CanSetMargins), nameof(CanEditMargins), nameof(CanAbandon), nameof(CanBackup), nameof(CaptureButtonText), nameof(SaveState) }) { Changed(name); }
     }
 
     private static int Integer(string value) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)

@@ -6,6 +6,7 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed partial class DashboardViewModel
 {
+    public string SelectedCurvePreset => Editor.CurveKind == "Power" ? "Custom" : Editor.CurveKind;
     public void RefreshDraftCurve()
     {
         foreach (var panel in PedalCurves) { panel.Refresh(editors[panel.Axis], AppliedCurve(panel.Axis)); }
@@ -19,6 +20,7 @@ public sealed partial class DashboardViewModel
         catch (ArgumentException) { DraftPoints = []; DraftCurve = []; }
         Changed(nameof(DraftPoints));
         Changed(nameof(DraftCurve));
+        Changed(nameof(SelectedCurvePreset));
     }
 
     public void EditCurve(IEnumerable<CurvePoint> points)

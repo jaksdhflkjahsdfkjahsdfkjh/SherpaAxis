@@ -5,6 +5,8 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed class DeviceDiagnosticsViewModel : ObservableObject
 {
+    public DeviceDiagnosticsViewModel() => Checks.CollectionChanged += (_, _) => Changed(nameof(HasIssues));
+    public bool HasIssues => Checks.Any(check => check.NeedsAttention);
     public ObservableCollection<DeviceCheck> Checks { get; } = [];
     private bool busy;
     private bool firmwareWarning;

@@ -105,6 +105,7 @@ public partial class MainWindow
     private async void LanguageChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (preferencesLoaded && viewModel.Preferences.Language != preferences.Language) { await SavePreferencesAsync(); }
+        RefreshSettingsSearch();
     }
 
     internal Task SavePreferencesAsync()

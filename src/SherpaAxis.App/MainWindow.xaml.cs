@@ -58,6 +58,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         source = new(engine);
         source.Log = desktop.Log;
         DataContext = viewModel;
+        InitializeWorkspace();
         refresh = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, RefreshTick, Dispatcher);
         refresh.Start();
         Loaded += LoadLibrary;
