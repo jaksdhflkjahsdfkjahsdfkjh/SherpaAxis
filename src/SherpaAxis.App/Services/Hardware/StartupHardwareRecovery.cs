@@ -41,9 +41,8 @@ public sealed class StartupHardwareRecovery(string directory,
     {
         token.ThrowIfCancellationRequested();
         string[] paths;
-        try { paths = Directory.EnumerateFiles(DirectoryPath, "*.json").Take(129).ToArray(); }
+        try { paths = Directory.EnumerateFiles(DirectoryPath, "*.json").ToArray(); }
         catch (DirectoryNotFoundException) when (!File.Exists(DirectoryPath)) { return []; }
-        if (paths.Length > 128) { throw new IOException("Too many recovery files. Review the recovery folder before continuing."); }
         var pending = new List<PendingHardwareRecovery>();
         foreach (var path in paths.Order(StringComparer.OrdinalIgnoreCase))
         {
@@ -72,6 +71,7 @@ public sealed class StartupHardwareRecovery(string directory,
             }
             catch (Exception failure) when (Expected(failure) && !token.IsCancellationRequested)
             { pending.Add(new(path, snapshot, $"Recovery verification failed: {failure.Message}")); }
+            if (pending.Count > 128) { throw new IOException("Too many unresolved recovery files. Review the recovery folder before continuing."); }
         }
         return pending;
     }

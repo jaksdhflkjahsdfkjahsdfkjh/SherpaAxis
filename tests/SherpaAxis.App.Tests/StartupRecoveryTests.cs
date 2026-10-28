@@ -116,6 +116,25 @@ public sealed class StartupRecoveryTests
     }
 
     [Fact]
+    public async Task AFullBackupArchiveDoesNotHideAnUnfinishedRecoveryOrBlockHealthyStartup()
+    {
+        using var fixture = new Fixture();
+        for (var index = 0; index < 150; index++)
+        {
+            await new HardwareRecoveryStore(System.IO.Path.Combine(fixture.Directory, $"backup-{index}.json"))
+                .WriteAsync(new(2, DateTimeOffset.UtcNow, fixture.Device.Collection, Original, Original, null,
+                    SerialNumber: fixture.Device.Serial, IsManualBackup: true), CancellationToken.None);
+        }
+        Assert.Empty(await fixture.Service.CheckAsync());
+        Assert.Equal(0, fixture.Opens);
+        await fixture.Journal();
+        var pending = Assert.Single(await fixture.Service.CheckAsync());
+        Assert.Equal(fixture.Path, pending.Path);
+        Assert.True(pending.CanRestore);
+        Assert.Empty(fixture.Device.Writes);
+    }
+
+    [Fact]
     public async Task VerifiedOriginalBoundsClearAStaleAutomaticJournalWithoutAnyWrites()
     {
         using var fixture = new Fixture();
