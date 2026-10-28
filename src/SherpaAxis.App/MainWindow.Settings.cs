@@ -83,6 +83,7 @@ public partial class MainWindow
                 try { buttons = desktop.Buttons(activationSource); }
                 catch (System.ComponentModel.Win32Exception failure)
                 { buttons = new ButtonStateBuffer(); viewModel.Preferences.Status = $"Button binding unavailable: {failure.Message}"; }
+                UpdateKeyboardEditing();
             }
             if (Application.Current is { } application) { application.SessionEnding += SessionEnding; }
         }

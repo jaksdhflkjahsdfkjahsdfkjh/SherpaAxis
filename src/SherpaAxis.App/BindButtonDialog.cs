@@ -36,7 +36,8 @@ internal sealed class BindButtonDialog : Window
             if (button.Kind == "keyboard" && button.Code == KeyInterop.VirtualKeyFromKey(Key.Escape)) { DialogResult = false; return; }
             Binding = button; DialogResult = true;
         }
+        Loaded += (_, _) => source.SetBindingCapture(true);
         source.Pressed += Pressed;
-        Closed += (_, _) => source.Pressed -= Pressed;
+        Closed += (_, _) => { source.Pressed -= Pressed; source.SetBindingCapture(false); };
     }
 }

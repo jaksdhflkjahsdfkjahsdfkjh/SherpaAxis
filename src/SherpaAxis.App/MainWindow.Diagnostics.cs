@@ -205,7 +205,7 @@ public partial class MainWindow
             DefaultExt = ".zip",
             FileName = "SherpaAxis-diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".zip"
         };
-        if (dialog.ShowDialog(this) == true) { await RunAsync(() => ExportDiagnosticsAsync(dialog.FileName)); }
+        if (ShowTextEntryDialog(() => dialog.ShowDialog(this)) == true) { await RunAsync(() => ExportDiagnosticsAsync(dialog.FileName)); }
     }
     internal Task ExportDiagnosticsAsync(string path)
     {

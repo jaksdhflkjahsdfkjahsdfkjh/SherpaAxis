@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using SherpaAxis.App.Models;
@@ -34,6 +35,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     private readonly ProfileLibrary library;
     private bool editingCurve;
     private long unsavedRefreshAt;
+    private int textEntryDialogs;
 
     public MainWindow() : this(new DashboardEngine()) { }
 
@@ -48,6 +50,10 @@ public partial class MainWindow : Window, IAsyncDisposable
         createHardwareSession = hardwareSessionFactory ?? ((channel, theme, token) =>
             HardwareCalibrationSession.ConnectAsync(channel, theme, token, cachedCalibrationView));
         InitializeComponent();
+        AddHandler(Keyboard.GotKeyboardFocusEvent, new KeyboardFocusChangedEventHandler((_, _) => UpdateKeyboardEditing()));
+        AddHandler(Keyboard.LostKeyboardFocusEvent, new KeyboardFocusChangedEventHandler((_, _) => UpdateKeyboardEditing()));
+        Activated += (_, _) => UpdateKeyboardEditing();
+        Deactivated += (_, _) => UpdateKeyboardEditing();
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
         var workArea = SystemParameters.WorkArea;
         MinWidth = Math.Min(MinWidth, workArea.Width);
@@ -118,6 +124,15 @@ public partial class MainWindow : Window, IAsyncDisposable
         viewModel.ShowMessage($"Read-only hardware snapshot · Throttle {Range(snapshot.Calibration.Throttle)} · Brake {Range(snapshot.Calibration.Brake)} · Clutch {Range(snapshot.Calibration.Clutch)}");
     });
 
+    private void UpdateKeyboardEditing() => buttons.SetKeyboardEditing(textEntryDialogs > 0 || IsActive
+        && Keyboard.FocusedElement is TextBoxBase or PasswordBox or ComboBox { IsEditable: true });
+    internal bool? ShowTextEntryDialog(Func<bool?> show)
+    {
+        textEntryDialogs++;
+        UpdateKeyboardEditing();
+        try { return show(); }
+        finally { textEntryDialogs--; UpdateKeyboardEditing(); }
+    }
     private void StopHold() { EndDriftHold(); engine.RevokeRelease(); }
     private void WindowDeactivated(object? sender, EventArgs e) => StopHold();
     private void Run(Action action)
