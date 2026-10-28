@@ -27,9 +27,10 @@ public sealed partial class DashboardEngine
     private void ProcessBitePointButton(IButtonStateSource buttons)
     {
         var before = (bitePoint.Enabled, bitePoint.Holding);
-        if (buttonConnectionRevision != buttons.ConnectionRevision)
+        var revision = BiteSettings?.Button is { } button ? buttons.GetConnectionRevision(button) : 0;
+        if (buttonConnectionRevision != revision)
         {
-            buttonConnectionRevision = buttons.ConnectionRevision;
+            buttonConnectionRevision = revision;
             bitePoint.Release();
         }
         if (sourceActive && source.Kind == "live-device-axis" && calibration is not { IsActive: true }

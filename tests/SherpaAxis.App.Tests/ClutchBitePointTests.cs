@@ -141,6 +141,24 @@ public sealed class ClutchBitePointTests
     }
 
     [Fact]
+    public void RemovingAnUnrelatedControllerOrKeyboardPreservesHeldFullClutchOutput()
+    {
+        var rig = new Rig();
+        rig.Configure(.4, mode: ClutchBitePointMode.HoldFullRange);
+        rig.Engine.SetBitePointEnabled(true);
+        rig.Buttons.Set(Rig.Button, true); rig.Poll(); rig.Advance(250, 16384);
+        rig.Buttons.RemoveDevice("other-wheel"); rig.Poll();
+        Assert.True(rig.Engine.BitePointState.Holding);
+        Assert.Equal(1, rig.Sink.Last.Clutch);
+        rig.Buttons.NotifyDeviceRemoved(); rig.Poll();
+        Assert.True(rig.Engine.BitePointState.Holding);
+        Assert.Equal(1, rig.Sink.Last.Clutch);
+        rig.Buttons.RemoveDevice("wheel"); rig.Poll();
+        Assert.False(rig.Engine.BitePointState.Holding);
+        Assert.Equal(.4, rig.Sink.Last.Clutch);
+    }
+
+    [Fact]
     public void RemovingAButtonDeviceCannotCompleteAPendingDoubleTap()
     {
         var rig = new Rig();

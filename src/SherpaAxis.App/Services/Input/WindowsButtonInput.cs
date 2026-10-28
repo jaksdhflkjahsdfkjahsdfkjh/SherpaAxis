@@ -17,6 +17,7 @@ public sealed class WindowsButtonInput : IButtonStateSource
     public event Action<CorrectionButton>? Pressed { add => state.Pressed += value; remove => state.Pressed -= value; }
     public bool IsDown(CorrectionButton button) => state.IsDown(button);
     public long ConnectionRevision => state.ConnectionRevision;
+    public long GetConnectionRevision(CorrectionButton button) => state.GetConnectionRevision(button);
     public WindowsButtonInput(HwndSource source)
     {
         this.source = source;

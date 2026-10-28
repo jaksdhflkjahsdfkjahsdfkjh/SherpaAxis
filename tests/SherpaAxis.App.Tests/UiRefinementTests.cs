@@ -25,19 +25,20 @@ public sealed class UiRefinementTests
         var label = Assert.IsType<TextBlock>(main.FindName("AppVersionLabel"));
         var footer = Assert.IsType<Border>(main.FindName("FooterBar"));
         var link = Assert.IsType<System.Windows.Documents.Hyperlink>(main.FindName("BugReportLink"));
-        Assert.Equal("v1.4.0", label.Text);
+        var version = "v" + typeof(MainWindow).Assembly.GetName().Version!.ToString(3);
+        Assert.Equal(version, label.Text);
         Assert.Equal("https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues", link.NavigateUri.AbsoluteUri);
         Assert.Contains(label, Descendants(footer));
         try
         {
             Localizer.Instance.Language = "en";
-            Assert.Equal("SherpaAxis — Pedals Utility · v1.4.0", main.Title);
+            Assert.Equal($"SherpaAxis — Pedals Utility · {version}", main.Title);
             Assert.Equal("Report a bug", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
             main.ShowInTaskbar = false; main.Opacity = 0; main.Show(); main.UpdateLayout();
             CapturePreview(footer, "release-footer-en.png");
             Localizer.Instance.Language = "uk";
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
-            Assert.Equal("SherpaAxis — утиліта педалей · v1.4.0", main.Title);
+            Assert.Equal($"SherpaAxis — утиліта педалей · {version}", main.Title);
             Assert.Equal("Повідомити про помилку", Assert.IsType<System.Windows.Documents.Run>(link.Inlines.FirstInline).Text);
             main.UpdateLayout();
             CapturePreview(footer, "release-footer-uk.png");
