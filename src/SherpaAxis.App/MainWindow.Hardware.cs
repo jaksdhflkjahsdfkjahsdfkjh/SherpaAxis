@@ -302,7 +302,7 @@ public partial class MainWindow
             Title = Localization.Localizer.Translate("Backup current hardware settings"),
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
-        if (picker.ShowDialog(this) != true) { return; }
+        if (ShowTextEntryDialog(() => picker.ShowDialog(this)) != true) { return; }
         await RunAsync(async () =>
         {
             if (modeOperation is { } pending) { await pending; }
@@ -320,7 +320,7 @@ public partial class MainWindow
     private async void RestoreHardwareBackupClick(object sender, RoutedEventArgs e)
     {
         var picker = new OpenFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis hardware backup (*.json)|*.json"), InitialDirectory = HardwareRecoveryStore.DefaultDirectory, Title = Localization.Localizer.Translate("Restore a hardware calibration backup to the same controller") };
-        if (picker.ShowDialog(this) != true) { return; }
+        if (ShowTextEntryDialog(() => picker.ShowDialog(this)) != true) { return; }
         await RunAsync(async () =>
         {
             if (modeOperation is { } pending) { await pending; }

@@ -182,7 +182,7 @@ public partial class MainWindow
             FileName = $"pedals-backup-{DateTime.Now:yyyyMMdd-HHmmss}.json",
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
-        if (picker.ShowDialog(this) == true) { await BackupFirmwareCalibrationAsync(picker.FileName); }
+        if (ShowTextEntryDialog(() => picker.ShowDialog(this)) == true) { await BackupFirmwareCalibrationAsync(picker.FileName); }
     }
 
     internal Task BackupFirmwareCalibrationAsync(string path) => RunAsync(async () =>

@@ -88,7 +88,7 @@ public partial class MainWindow
     private string? AskProfileName(string title, string initial)
     {
         var dialog = new ProfileNameDialog(this, title, initial);
-        return dialog.ShowDialog() == true ? dialog.ProfileName : null;
+        return ShowTextEntryDialog(dialog.ShowDialog) == true ? dialog.ProfileName : null;
     }
     private async void DeleteProfileClick(object sender, RoutedEventArgs e) => await DeleteSelectedProfileAsync();
     private (ProfileTab Tab, int Index, ProfileLibrary.DeletedFile? File, bool AutoLoad, int Revision)? deletedProfile;
@@ -130,13 +130,13 @@ public partial class MainWindow
     private async void OpenProfileClick(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis profile (*.json)|*.json"), Title = Localization.Localizer.Translate("Import profile") };
-        if (dialog.ShowDialog(this) != true) { return; }
+        if (ShowTextEntryDialog(() => dialog.ShowDialog(this)) != true) { return; }
         await RunAsync(async () => { var profile = await ProfileStore.LoadAsync(dialog.FileName, lifetime.Token); StopHold(); viewModel.Load(profile); });
     }
     private async void SaveProfileClick(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis profile (*.json)|*.json"), DefaultExt = ".json", FileName = "pedals.json", Title = Localization.Localizer.Translate("Export profile"), OverwritePrompt = true };
-        if (dialog.ShowDialog(this) != true) { return; }
+        if (ShowTextEntryDialog(() => dialog.ShowDialog(this)) != true) { return; }
         await RunAsync(async () =>
         {
             var (profile, _) = viewModel.ValidateEditors();

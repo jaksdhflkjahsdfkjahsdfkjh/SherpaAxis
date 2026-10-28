@@ -18,6 +18,8 @@ public sealed class WindowsButtonInput : IButtonStateSource
     public bool IsDown(CorrectionButton button) => state.IsDown(button);
     public long ConnectionRevision => state.ConnectionRevision;
     public long GetConnectionRevision(CorrectionButton button) => state.GetConnectionRevision(button);
+    public void SetKeyboardEditing(bool editing) => state.SetKeyboardEditing(editing);
+    public void SetBindingCapture(bool capturing) => state.SetBindingCapture(capturing);
     public WindowsButtonInput(HwndSource source)
     {
         this.source = source;
