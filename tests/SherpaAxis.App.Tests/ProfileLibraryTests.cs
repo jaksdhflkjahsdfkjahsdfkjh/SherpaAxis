@@ -7,6 +7,29 @@ namespace SherpaAxis.App.Tests;
 public sealed class ProfileLibraryTests
 {
     [Fact]
+    public async Task SelectionMarkerFailureRetainsTheSavedPathAndRetriesDoNotCreateDuplicates()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-save-marker-" + Guid.NewGuid().ToString("N"));
+        var marker = Path.Combine(directory, "active-profile");
+        try
+        {
+            Directory.CreateDirectory(marker);
+            var library = new ProfileLibrary(directory);
+            var first = await library.SaveWithSelectionAsync(DashboardEngine.DefaultProfile());
+            Assert.NotNull(first.SelectionError);
+            Assert.NotNull(await SherpaAxis.Profiles.ProfileStore.LoadAsync(first.Path));
+            var retry = await library.SaveWithSelectionAsync(DashboardEngine.DefaultProfile(), first.Path);
+            Assert.Equal(first.Path, retry.Path);
+            Assert.Single(Directory.GetFiles(directory, "*.json"));
+            Directory.Delete(marker);
+            var recovered = await library.SaveWithSelectionAsync(DashboardEngine.DefaultProfile(), first.Path);
+            Assert.Null(recovered.SelectionError);
+            Assert.Equal(first.Path, await library.SelectedPathAsync());
+        }
+        finally { if (Directory.Exists(directory)) { Directory.Delete(directory, true); } }
+    }
+
+    [Fact]
     public async Task WindowsPathCasingAndTrailingSeparatorsDoNotCreateDuplicateProfiles()
     {
         var directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-path-" + Guid.NewGuid().ToString("N"));
