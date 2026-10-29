@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using SherpaAxis.App.Services.Persistence;
+using SherpaAxis.Devices;
 
 namespace SherpaAxis.App.Services.Output;
 
@@ -8,7 +9,8 @@ public sealed record InputVisibilityResult(bool Ready, string Detail);
 public sealed record HidHideOwnership(string ApplicationPath, bool RegisteredApplication, bool Activated, string[] Devices);
 
 public sealed class HidHideVisibility(string statePath, string applicationPath,
-    Func<IReadOnlyList<string>, CancellationToken, Task<string>> run, Func<bool> outputAvailable) : IDisposable
+    Func<IReadOnlyList<string>, CancellationToken, Task<string>> run, Func<bool> outputAvailable,
+    Func<CancellationToken, Task<IReadOnlyList<string>>>? findDevices = null) : IDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -29,6 +31,8 @@ public sealed class HidHideVisibility(string statePath, string applicationPath,
             {
                 return new(false, "Virtual output is unavailable. Existing physical-pedal visibility was preserved; run Automatic vJoy setup.");
             }
+            var devices = await (findDevices?.Invoke(token) ?? Task.Run(WindowsUsbDevices.FindHidInstances, token)).ConfigureAwait(false);
+            var targets = devices.Where(IsPedalInstance).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var owned = await ReadOwnershipAsync(token).ConfigureAwait(false);
             if (owned is not null && !string.Equals(owned.ApplicationPath, applicationPath, StringComparison.OrdinalIgnoreCase))
             { await ReleaseCoreAsync(token).ConfigureAwait(false); owned = null; }
@@ -41,8 +45,6 @@ public sealed class HidHideVisibility(string statePath, string applicationPath,
                 await SaveAsync(owned, token).ConfigureAwait(false);
                 await run(["--app-reg", applicationPath], token).ConfigureAwait(false);
             }
-            var inventory = await run(["--dev-gaming"], token).ConfigureAwait(false);
-            var targets = PedalInstances(inventory);
             if (targets.Length == 0) { return new(true, "Connect FEEL-VR pedals to enable duplicate-input protection."); }
             var hidden = Entries(state, "--dev-hide");
             if (!HasFlag(state, "--cloak-on") && hidden.Except(owned.Devices, StringComparer.OrdinalIgnoreCase).Any())
@@ -93,19 +95,6 @@ public sealed class HidHideVisibility(string statePath, string applicationPath,
 
     internal static bool IsPedalInstance(string? path) => path is not null && path.StartsWith(@"HID\VID_0483&PID_A2EA&COL01\", StringComparison.OrdinalIgnoreCase)
         && path.Length <= 200 && !path.Any(character => char.IsControl(character) || character == '"');
-    internal static string[] PedalInstances(string inventory)
-    {
-        try
-        {
-            using var json = JsonDocument.Parse(inventory);
-            return json.RootElement.EnumerateArray().SelectMany(container => container.GetProperty("devices").EnumerateArray())
-                .Where(device => device.GetProperty("present").GetBoolean() && device.GetProperty("gamingDevice").GetBoolean())
-                .Select(device => device.GetProperty("deviceInstancePath").GetString() ?? "").Where(IsPedalInstance)
-                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        }
-        catch (Exception failure) when (failure is JsonException or InvalidOperationException or KeyNotFoundException)
-        { throw new InvalidDataException("HidHide returned an invalid device inventory.", failure); }
-    }
     private static bool HasFlag(string text, string flag) => text.Split('\n').Any(line => line.Trim() == flag);
     private static string[] Entries(string text, string command) => text.Split('\n').Select(line => line.Trim())
         .Where(line => line.StartsWith(command + " \"", StringComparison.Ordinal) && line.EndsWith('"'))

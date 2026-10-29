@@ -11,6 +11,27 @@ public sealed record UsbDeviceLocation(string InstanceId, string LocationPath, b
 [SupportedOSPlatform("windows")]
 public static class WindowsUsbDevices
 {
+    public static IReadOnlyList<string> FindHidInstances()
+    {
+        var set = SetupDiGetClassDevsW(0, "HID", 0, 6);
+        if (set == -1) { throw Error(); }
+        try
+        {
+            var instances = new List<string>();
+            for (uint index = 0; ; index++)
+            {
+                var data = new DeviceInfo { Size = Marshal.SizeOf<DeviceInfo>() };
+                if (!SetupDiEnumDeviceInfo(set, index, ref data))
+                { if (Marshal.GetLastPInvokeError() == 259) { break; } throw Error(); }
+                var buffer = new char[1024];
+                if (!SetupDiGetDeviceInstanceIdW(set, ref data, buffer, buffer.Length, out var length)) { throw Error(); }
+                instances.Add(new string(buffer, 0, length - 1));
+            }
+            return instances;
+        }
+        finally { _ = SetupDiDestroyDeviceInfoList(set); }
+    }
+
     public static IReadOnlyList<UsbDeviceLocation> Find(ushort vendor, ushort product)
     {
         var prefix = string.Create(CultureInfo.InvariantCulture, $"USB\\VID_{vendor:X4}&PID_{product:X4}\\");
