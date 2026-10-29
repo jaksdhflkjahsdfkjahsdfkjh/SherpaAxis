@@ -75,6 +75,24 @@ public sealed class ClutchBitePointTests
     }
 
     [Fact]
+    public void RenamingAProfileKeepsLiveOutputFilterHistoryAndHeldBitePoint()
+    {
+        var rig = new Rig(new(new(0, 16384), filter: new(.1)));
+        rig.Engine.SetBitePointEnabled(true);
+        rig.Buttons.Set(Rig.Button, true); rig.Poll(); rig.Advance(250);
+        rig.Clock.Ticks += 10; rig.Sample(8192);
+        var before = rig.Engine.Snapshot(PedalAxis.Clutch);
+        rig.Configure(.4, name: "Renamed launch");
+        var after = rig.Engine.Snapshot(PedalAxis.Clutch);
+        Assert.Equal(0, rig.Sink.Invalidations);
+        Assert.True(rig.Engine.BitePointState.Holding);
+        Assert.Equal(before.SampleCount, after.SampleCount);
+        Assert.Equal(before.Axes.Single(a => a.Axis == PedalAxis.Clutch).Result, after.Axes.Single(a => a.Axis == PedalAxis.Clutch).Result);
+        rig.Clock.Ticks += 10; rig.Sample(8192);
+        Assert.False(rig.Engine.Snapshot(PedalAxis.Clutch).Axes.Single(a => a.Axis == PedalAxis.Clutch).Result!.Value.Processing.FilterReset);
+    }
+
+    [Fact]
     public void OnlyFinalClutchOutputChangesAndLiveEditsKeepTheOutputSinkAndFilterState()
     {
         var rig = new Rig();
@@ -342,11 +360,11 @@ public sealed class ClutchBitePointTests
             Engine = new(Clock); Configure(.4); Engine.Begin(new("live-device-axis"));
             Sample(0); Sample(0); Engine.AttachOutput(Sink);
         }
-        public void Configure(double output, bool bind = true, ClutchBitePointMode mode = ClutchBitePointMode.HoldMinimum)
+        public void Configure(double output, bool bind = true, ClutchBitePointMode mode = ClutchBitePointMode.HoldMinimum, string name = "Launch")
         {
             var axes = DashboardEngine.DefaultProfile().Axes.ToDictionary(pair => pair.Key, pair => pair.Value);
             axes[PedalAxis.Clutch] = clutchProfile.WithBitePoint(new(output, bind ? Button : null, mode));
-            Engine.Configure(new("Launch", axes), limits);
+            Engine.Configure(new(name, axes), limits);
         }
         public void Sample(int clutch) => Engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromMilliseconds(Clock.Ticks), 1, new(4096, 8388608, clutch)));
         public void Poll() => Engine.ProcessCorrectionButtons(Buttons);

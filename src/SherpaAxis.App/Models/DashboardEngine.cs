@@ -56,7 +56,7 @@ public sealed partial class DashboardEngine
             var processing = ProcessingConfiguration(profile);
             if (!completingCalibration && processingConfiguration is not null && processing.AsSpan().SequenceEqual(processingConfiguration)
                 && SameLimits(limits) && profile.Axes.TryGetValue(PedalAxis.Clutch, out var clutch)
-                && clutch.BitePoint != BiteSettings)
+                && (clutch.BitePoint != BiteSettings || profile.Name != activeProfile.Name))
             {
                 var oldBinding = BiteSettings?.Button;
                 activeProfile = new(profile.Name, activeProfile.Axes.ToDictionary(pair => pair.Key,

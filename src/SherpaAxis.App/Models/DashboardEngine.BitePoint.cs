@@ -57,7 +57,7 @@ public sealed partial class DashboardEngine
         if (clutch.History.Count > historyCapacity) { clutch.History.Dequeue(); }
         if (CanPublishOutput) { output?.Submit(CurrentOutput()); }
     }
-    private static byte[] ProcessingConfiguration(PedalProfile profile) => ProfileJson.Serialize(new(profile.Name,
+    private static byte[] ProcessingConfiguration(PedalProfile profile) => ProfileJson.Serialize(new("Processing",
         profile.Axes.ToDictionary(pair => pair.Key, pair => pair.Value.BitePoint is null ? pair.Value : pair.Value.WithBitePoint(null))));
     private bool SameLimits(IReadOnlyDictionary<PedalAxis, AxisSessionSettings> limits) => activeLimits.Count == limits.Count
         && limits.All(pair => activeLimits.TryGetValue(pair.Key, out var old)
