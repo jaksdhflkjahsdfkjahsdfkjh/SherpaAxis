@@ -5,6 +5,7 @@ namespace SherpaAxis.App.Services.Persistence;
 
 public sealed class ProfileLibrary(string directory)
 {
+    public sealed record SaveResult(string Path, string? SelectionError = null);
     public sealed record DeletedFile(string Path, byte[] Content);
     public async Task<DeletedFile> DeleteForUndoAsync(string path, CancellationToken token = default)
     {
@@ -53,13 +54,18 @@ public sealed class ProfileLibrary(string directory)
     }
 
     public async Task<string> SaveAsync(PedalProfile profile, string? existingPath = null, CancellationToken cancellationToken = default)
+        => (await SaveWithSelectionAsync(profile, existingPath, cancellationToken)).Path;
+
+    public async Task<SaveResult> SaveWithSelectionAsync(PedalProfile profile, string? existingPath = null, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(DirectoryPath);
         var path = existingPath is not null && IsLibraryPath(existingPath)
             ? existingPath : Path.Combine(DirectoryPath, Guid.NewGuid().ToString("N") + ".json");
         await ProfileStore.SaveAsync(path, profile, overwrite: true, cancellationToken: cancellationToken);
-        await RememberAsync(path, cancellationToken);
-        return path;
+        try { await RememberAsync(path, cancellationToken); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or OperationCanceledException)
+        { return new(path, failure.Message); }
+        return new(path);
     }
 
     public async Task DeleteAsync(string path, CancellationToken cancellationToken = default)

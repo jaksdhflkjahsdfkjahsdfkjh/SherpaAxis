@@ -64,10 +64,13 @@ public partial class MainWindow
     {
         var (profile, _) = viewModel.ValidateEditors();
         var selected = viewModel.SelectedProfile!;
-        selected.FilePath = await library.SaveAsync(profile, selected.FilePath, lifetime.Token);
+        var saved = await library.SaveWithSelectionAsync(profile, selected.FilePath, lifetime.Token);
+        selected.FilePath = saved.Path;
         viewModel.MarkSelectedSaved();
         viewModel.SetAutoLoadPath(autoLoadProfilePath);
-        viewModel.ShowMessage("Profile saved.");
+        viewModel.ShowMessage(saved.SelectionError is null ? "Profile saved."
+            : $"Profile saved. Startup selection could not be recorded: {saved.SelectionError}");
+        if (saved.SelectionError is not null) { desktop.Log?.Write("profile-selection", saved.SelectionError); }
     }
     private void ProfileMenuClick(object sender, RoutedEventArgs e)
     {

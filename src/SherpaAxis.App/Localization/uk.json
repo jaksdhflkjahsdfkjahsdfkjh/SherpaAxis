@@ -1,4 +1,5 @@
 {
+  "Profile saved. Startup selection could not be recorded: {0}": "Профіль збережено. Не вдалося записати вибір для запуску: {0}",
   "Reset calibration ranges": "Скинути діапазони калібрування",
   "Back up calibration…": "Зберегти копію калібрування…",
   "Restore calibration backup…": "Відновити копію калібрування…",
