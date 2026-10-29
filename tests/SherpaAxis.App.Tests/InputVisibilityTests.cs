@@ -15,6 +15,19 @@ public sealed class InputVisibilityTests
     private const string Other = @"HID\VID_346E&PID_0000&MI_02\wheel";
 
     [Fact]
+    public async Task DeviceDiscoveryFailureDoesNotPartiallyRegisterOrHideAnything()
+    {
+        using var fake = new FakeHide();
+        using var service = new HidHideVisibility(fake.StatePath, fake.Application,
+            (_, _) => throw new InvalidOperationException("Configuration must not run before discovery succeeds"),
+            () => true, _ => throw new IOException("PnP unavailable"));
+        await Assert.ThrowsAsync<IOException>(() => service.ConfigureAsync(true, CancellationToken.None));
+        Assert.False(File.Exists(fake.StatePath));
+        Assert.Empty(fake.Hidden);
+        Assert.Empty(fake.Applications);
+    }
+
+    [Fact]
     public async Task HidingPreservesOtherDevicesAndRestoresOnlyOwnedChanges()
     {
         using var fake = new FakeHide();
@@ -112,7 +125,6 @@ public sealed class InputVisibilityTests
         await File.WriteAllTextAsync(fake.StatePath, JsonSerializer.Serialize(new HidHideOwnership(fake.Application, true, true, [Other]), JsonSerializerOptions.Web));
         await Assert.ThrowsAsync<InvalidDataException>(() => fake.Service.ReleaseAsync(CancellationToken.None));
         Assert.Equal(0, fake.Calls);
-        Assert.Throws<InvalidDataException>(() => HidHideVisibility.PedalInstances("not JSON"));
         Assert.False(HidHideVisibility.IsPedalInstance(@"USB\VID_0483&PID_A2EA\controller"));
         Assert.False(HidHideVisibility.IsPedalInstance(@"HID\VID_0483&PID_A2EA&Col02\configuration"));
         Assert.False(HidHideVisibility.IsPedalInstance(@"HID\VID_0483&PID_A2EA0&Col01\other"));
@@ -162,7 +174,9 @@ public sealed class InputVisibilityTests
         internal int Calls { get; private set; }
         internal HidHideVisibility Service { get; }
         internal FakeHide() { Directory.CreateDirectory(directory); Service = CreateService(); }
-        internal HidHideVisibility CreateService() => new(StatePath, Application, Run, () => OutputReady);
+        internal HidHideVisibility CreateService() => new(StatePath, Application, Run, () => OutputReady,
+            _ => Task.FromResult<IReadOnlyList<string>>([PedalInstance, PedalInstance.ToUpperInvariant(), Other,
+                @"HID\VID_0483&PID_A2EA&Col02\config", @"USB\VID_0483&PID_A2EA\physical"]));
         private Task<string> Run(IReadOnlyList<string> args, CancellationToken token)
         {
             token.ThrowIfCancellationRequested(); Calls++;
@@ -185,14 +199,6 @@ public sealed class InputVisibilityTests
                         Hidden.Add(args[++index]);
                         if (FailAfterHide) { FailAfterHide = false; throw new IOException("Partial configuration failure"); }
                         break;
-                    case "--dev-gaming":
-                        output.Add(JsonSerializer.Serialize(new[] { new { devices = new[]
-                        {
-                            new { present = true, gamingDevice = true, deviceInstancePath = PedalInstance },
-                            new { present = true, gamingDevice = false, deviceInstancePath = @"HID\VID_0483&PID_A2EA&Col02\config" },
-                            new { present = true, gamingDevice = true, deviceInstancePath = Other },
-                            new { present = true, gamingDevice = true, deviceInstancePath = @"HID\HIDCLASS\vjoy" }
-                        } } })); break;
                     default: throw new InvalidOperationException("Unexpected HidHide command: " + args[index]);
                 }
             }
@@ -249,7 +255,7 @@ public sealed class NativeHidHideTests
         string[] inspect = ["--inv-state", "--cloak-state", "--dev-list", "--app-list"];
         var before = await WindowsHidHide.RunAsync(inspect, CancellationToken.None);
         using var visibility = new HidHideVisibility(Path.Combine(directory, "state.json"), Path.Combine(directory, "SherpaAxis.App.exe"),
-            (args, token) => args.Count == 1 && args[0] == "--dev-gaming" ? Task.FromResult("[]") : WindowsHidHide.RunAsync(args, token), () => true);
+            WindowsHidHide.RunAsync, () => true, _ => Task.FromResult<IReadOnlyList<string>>([]));
         try
         {
             Assert.True((await visibility.ConfigureAsync(true, CancellationToken.None)).Ready);
