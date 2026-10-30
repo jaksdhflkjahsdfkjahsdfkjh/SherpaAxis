@@ -54,7 +54,10 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
             { throw new IOException("Saved data cannot be removed while the app is running from its data folder. Move the extracted app elsewhere first."); }
             Inspect(root, root, entries);
         }
-        removeRegistration();
+        foreach (var path in entries.Where(path => (File.GetAttributes(path) & FileAttributes.Directory) == 0))
+        {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        }
         foreach (var path in entries.AsEnumerable().Reverse())
         {
             var root = targets.First(target => path.Equals(target, StringComparison.OrdinalIgnoreCase)
@@ -68,6 +71,7 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
                 File.Delete(path);
             }
         }
+        removeRegistration();
     }
 
     private static void Inspect(string root, string path, List<string> entries)
