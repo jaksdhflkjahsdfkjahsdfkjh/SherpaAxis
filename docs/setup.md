@@ -153,7 +153,8 @@ backups), `%PROGRAMDATA%\SherpaAxis`, and SherpaAxis's own HKCU/HKLM software ke
 The desktop account is resolved separately from the administrator credentials used
 for elevation. If its identity or profile cannot be verified, cleanup stops without
 using the administrator's profile as a fallback.
-Input visibility and the controller display name are restored before removal;
+Input visibility, the controller display name and this copy's startup entry are
+restored or removed for that same desktop account before uninstalling;
 selected driver removal runs before its ownership records are cleared. The fixed
 SherpaAxis deferred setup task is also removed. Exported files outside managed app
 folders and Windows driver configurations remain. Complete pending recovery or

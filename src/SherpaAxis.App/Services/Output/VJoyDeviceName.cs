@@ -6,7 +6,7 @@ namespace SherpaAxis.App.Services.Output;
 public sealed class VJoyDeviceName(RegistryKey root, string oemPath, string backupPath)
 {
     public const string DisplayName = "FEEL-VR Pedals One (SherpaAxis)";
-    public static VJoyDeviceName Default() => new(Registry.CurrentUser,
+    public static VJoyDeviceName Default(RegistryKey? userRoot = null) => new(userRoot ?? Registry.CurrentUser,
         @"System\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_1234&PID_BEAD",
         @"Software\SherpaAxis\VirtualControllerName");
 
