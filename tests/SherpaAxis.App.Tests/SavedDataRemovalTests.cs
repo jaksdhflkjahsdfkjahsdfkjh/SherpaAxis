@@ -71,11 +71,31 @@ public sealed class SavedDataRemovalTests : IDisposable
     }
 
     [Fact]
-    public void AFailedRegistrationCleanupKeepsAllSavedFilesForRetry()
+    public void RegistrationCleanupFailureCanBeRetriedAfterTheFilesAreRemoved()
     {
         var file = AddFile(Local, "SherpaAxis/settings.json");
         Assert.Throws<IOException>(() => Cleanup(removeRegistration: () => throw new IOException("Test failure")).Remove());
-        Assert.True(File.Exists(file));
+        Assert.False(File.Exists(file));
+        Cleanup().Remove();
+        Assert.Equal(1, registrationsRemoved);
+    }
+
+    [Fact]
+    public void LockedSavedFilesKeepOwnershipRegistrationAndOtherDataForRetry()
+    {
+        var locked = AddFile(Local, "SherpaAxis/settings.json");
+        var shared = AddFile(Common, "SherpaAxis/Prerequisites/status.json");
+        using (var file = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            Assert.Throws<IOException>(() => Cleanup().Remove());
+            Assert.Equal(0, registrationsRemoved);
+            Assert.True(File.Exists(locked));
+            Assert.True(File.Exists(shared));
+        }
+        Cleanup().Remove();
+        Assert.Equal(1, registrationsRemoved);
+        Assert.False(File.Exists(locked));
+        Assert.False(File.Exists(shared));
     }
 
     [Fact]

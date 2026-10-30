@@ -146,10 +146,13 @@ the same optional driver removal, restores input visibility and removes this
 copy's startup entry. The ZIP file manifest removes only unchanged packaged
 files, preserves additional/modified files and rejects paths through links.
 
-Both uninstallers offer separate, opt-in saved data removal. It deletes the current
-Windows account's `%LOCALAPPDATA%\SherpaAxis` directory (including profiles,
+Both uninstallers offer separate, opt-in saved data removal. It deletes the signed-in
+desktop account's `%LOCALAPPDATA%\SherpaAxis` directory (including profiles,
 preferences, bindings, sensor references, logs and calibration/firmware recovery
 backups), `%PROGRAMDATA%\SherpaAxis`, and SherpaAxis's own HKCU/HKLM software keys.
+The desktop account is resolved separately from the administrator credentials used
+for elevation. If its identity or profile cannot be verified, cleanup stops without
+using the administrator's profile as a fallback.
 Input visibility and the controller display name are restored before removal;
 selected driver removal runs before its ownership records are cleared. The fixed
 SherpaAxis deferred setup task is also removed. Exported files outside managed app
@@ -163,6 +166,10 @@ independent of `/REMOVEOWNEDDRIVERS=1`. Cleanup validates both fixed data trees
 before deleting anything and refuses filesystem links or an app running inside its
 own data folder. A cleanup error retains the app for retry. ZIP cleanup avoids
 recreating the removed LocalAppData folder for its completion log.
+Locked files are checked before deletion, and ownership registration is retained
+until both data trees have been removed. A later filesystem error may leave a
+partially cleared data folder; retrying completes cleanup without losing the
+remaining ownership records.
 
 Starting with v1.2.1, successful first-time driver installations are recorded in
 the protected machine registry under `HKLM\SOFTWARE\SherpaAxis\Prerequisites`.
