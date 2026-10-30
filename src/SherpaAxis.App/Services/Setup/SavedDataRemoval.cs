@@ -13,12 +13,13 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
     {
         get { using var identity = WindowsIdentity.GetCurrent(); return identity.User?.Value ?? throw new IOException("Cannot identify the Windows account for saved data removal."); }
     }
-    internal static void RequireCurrentUser(string sid)
+    internal static SavedDataRemoval Default(string? expectedUserSid = null)
     {
-        if (sid != CurrentUserSid) { throw new UnauthorizedAccessException("Saved data removal must use the same Windows account as the uninstaller. Data from another account was not removed."); }
-    }
-    internal static SavedDataRemoval Default() => new(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        var user = SavedDataUser.Interactive();
+        user.RequireExpectedUser(expectedUserSid);
+        using (var hive = Registry.Users.OpenSubKey(user.Sid, writable: true))
+        { if (hive is null) { throw new IOException("The desktop account's registry is unavailable. Saved data was kept."); } }
+        return new(user.LocalApplicationData,
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), AppContext.BaseDirectory, () =>
         {
             var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "schtasks.exe"))
@@ -31,10 +32,13 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
             _ = output.GetAwaiter().GetResult(); _ = error.GetAwaiter().GetResult();
             if (task.ExitCode is not (0 or 1) || task.ExitCode == 1 && File.Exists(Path.Combine(Environment.SystemDirectory, "Tasks", "SherpaAxis.DeviceSetup.48CBF14C")))
             { throw new IOException("Could not remove SherpaAxis setup registration."); }
-            Registry.CurrentUser.DeleteSubKeyTree(@"Software\SherpaAxis", false);
+            using var hive = Registry.Users.OpenSubKey(user.Sid, writable: true)
+                ?? throw new IOException("The desktop account's registry is unavailable. Retry uninstalling.");
+            hive.DeleteSubKeyTree(@"Software\SherpaAxis", false);
             using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
             machine.DeleteSubKeyTree(@"Software\SherpaAxis", false);
         });
+    }
 
     internal void Remove()
     {

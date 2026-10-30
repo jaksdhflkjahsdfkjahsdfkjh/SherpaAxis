@@ -39,8 +39,8 @@ public partial class App : Application, IDisposable
                 if (arguments.Length > 2 || arguments.Length == 2 && (!int.TryParse(arguments[1], out var value) || value <= 0)) { Shutdown(1); return; }
                 if (arguments.Length == 2) { parent = int.Parse(arguments[1], System.Globalization.CultureInfo.InvariantCulture); }
                 WindowsPrerequisiteOwnership.RequireAdministrator();
-                if (removeData && dataArgument.StartsWith("--remove-saved-data=", StringComparison.Ordinal))
-                { SavedDataRemoval.RequireCurrentUser(dataArgument["--remove-saved-data=".Length..]); }
+                var dataCleanup = removeData ? SavedDataRemoval.Default(dataArgument.StartsWith("--remove-saved-data=", StringComparison.Ordinal)
+                    ? dataArgument["--remove-saved-data=".Length..] : null) : null;
                 ZipUninstall.RequireApplicationsClosed(parent);
                 var restart = removeDrivers && await WindowsPrerequisiteOwnership.RemoveAsync(new Progress<string>(message =>
                     DiagnosticLog.Default.Write("uninstall", message)), CancellationToken.None);
@@ -52,7 +52,7 @@ public partial class App : Application, IDisposable
                     {
                         if (WindowsPrerequisiteSetup.HasActiveInstaller(WindowsPrerequisiteSetup.ReadProgress()))
                         { throw new System.IO.IOException("Driver setup is still running. Wait for it to finish before uninstalling."); }
-                        SavedDataRemoval.Default().Remove();
+                        dataCleanup!.Remove();
                     }
                     finally { gate.Release(); }
                 }

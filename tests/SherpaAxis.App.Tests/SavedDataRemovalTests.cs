@@ -43,8 +43,23 @@ public sealed class SavedDataRemovalTests : IDisposable
     [Fact]
     public void ElevationCannotRedirectSavedDataRemovalToAnotherWindowsAccount()
     {
-        SavedDataRemoval.RequireCurrentUser(SavedDataRemoval.CurrentUserSid);
-        Assert.Throws<UnauthorizedAccessException>(() => SavedDataRemoval.RequireCurrentUser("S-1-5-21-0-0-0-99999"));
+        var user = new SavedDataUser("S-1-5-21-0-0-0-1001", Local);
+        user.RequireExpectedUser(user.Sid);
+        user.RequireExpectedUser(null);
+        Assert.Throws<UnauthorizedAccessException>(() => user.RequireExpectedUser("S-1-5-21-0-0-0-99999"));
+        Assert.Equal(Local, user.LocalApplicationData);
+    }
+
+    [Fact]
+    public void CleanupUsesTheResolvedDesktopProfileAndPreservesTheElevatedAdministratorsData()
+    {
+        var user = new SavedDataUser("S-1-5-21-0-0-0-1001", Local);
+        var desktopData = AddFile(user.LocalApplicationData, "SherpaAxis/settings.json");
+        var administratorData = AddFile(Path.Combine(directory, "Administrator"), "SherpaAxis/settings.json");
+        new SavedDataRemoval(user.LocalApplicationData, Common, Path.Combine(directory, "Install"), () => registrationsRemoved++).Remove();
+        Assert.False(File.Exists(desktopData));
+        Assert.True(File.Exists(administratorData));
+        Assert.Equal(1, registrationsRemoved);
     }
 
     [Fact]
