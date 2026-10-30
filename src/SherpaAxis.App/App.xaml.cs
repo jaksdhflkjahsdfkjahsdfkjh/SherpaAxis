@@ -121,12 +121,17 @@ public partial class App : Application, IDisposable
         if (e.Args.Length == 1 && e.Args[0] == "--release-input-configuration")
         {
             var result = 0;
-            try { using var visibility = WindowsHidHide.Default(); await visibility.ReleaseAsync(CancellationToken.None); }
+            try
+            {
+                var user = SavedDataUser.Interactive();
+                using var registry = user.OpenRegistry();
+                using var visibility = WindowsHidHide.Default(statePath: user.VisibilityStatePath);
+                await visibility.ReleaseAsync(CancellationToken.None);
+                VJoyDeviceName.Default(registry).Restore();
+                new WindowsStartupRegistration(System.IO.Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe"), registry).RemoveIfOwned();
+            }
             catch (Exception failure) when (OperationErrors.IsExpected(failure))
-            { DiagnosticLog.Default.Write("input-visibility", "Could not release physical pedal hiding.", failure); result = 1; }
-            try { VJoyDeviceName.Default().Restore(); }
-            catch (Exception failure) when (OperationErrors.IsExpected(failure))
-            { DiagnosticLog.Default.Write("vjoy-name", "Could not restore the previous controller display name.", failure); result = 1; }
+            { DiagnosticLog.Default.Write("uninstall-input", "Could not restore the desktop account's input and startup configuration.", failure); result = 1; }
             Shutdown(result);
             return;
         }

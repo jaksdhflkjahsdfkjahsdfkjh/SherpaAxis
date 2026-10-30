@@ -3,12 +3,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
 
 namespace SherpaAxis.App.Services.Setup;
 
 internal sealed record SavedDataUser(string Sid, string LocalApplicationData)
 {
+    internal string VisibilityStatePath => Path.Combine(LocalApplicationData, "SherpaAxis", "physical-pedal-visibility.json");
+    internal RegistryKey OpenRegistry() => Registry.Users.OpenSubKey(Sid, writable: true)
+        ?? throw new IOException("The desktop account's registry is unavailable. Saved data was kept.");
     internal void RequireExpectedUser(string? expectedSid)
     {
         if (expectedSid is not null && !string.Equals(expectedSid, Sid, StringComparison.Ordinal))

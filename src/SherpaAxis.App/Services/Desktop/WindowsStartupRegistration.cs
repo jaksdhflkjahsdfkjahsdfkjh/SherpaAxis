@@ -9,23 +9,24 @@ public interface IStartupRegistration
     void SetEnabled(bool enabled);
 }
 
-public sealed class WindowsStartupRegistration(string executablePath) : IStartupRegistration
+public sealed class WindowsStartupRegistration(string executablePath, RegistryKey? userRoot = null) : IStartupRegistration
 {
+    private RegistryKey UserRoot => userRoot ?? Registry.CurrentUser;
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "SherpaAxis";
     public bool IsEnabled
     {
-        get { using var key = Registry.CurrentUser.OpenSubKey(RunKey); return key?.GetValue(ValueName) is string { Length: > 0 }; }
+        get { using var key = UserRoot.OpenSubKey(RunKey); return key?.GetValue(ValueName) is string { Length: > 0 }; }
     }
     public void SetEnabled(bool enabled)
     {
-        using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
+        using var key = UserRoot.CreateSubKey(RunKey, writable: true);
         if (enabled) { key.SetValue(ValueName, BuildCommand(executablePath), RegistryValueKind.String); }
         else { key.DeleteValue(ValueName, throwOnMissingValue: false); }
     }
     internal void RemoveIfOwned()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+        using var key = UserRoot.OpenSubKey(RunKey, writable: true);
         if (key?.GetValue(ValueName) is string command && command.Equals(BuildCommand(executablePath), StringComparison.OrdinalIgnoreCase))
         { key.DeleteValue(ValueName, false); }
     }

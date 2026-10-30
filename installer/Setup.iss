@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.4.9"
+  #define AppVersion "1.4.10"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"
@@ -461,7 +461,6 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  Command: String;
   ExitCode: Integer;
 begin
   if CurUninstallStep <> usUninstall then
@@ -485,7 +484,4 @@ begin
       ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
       RaiseException(CustomMessage('SavedDataRemovalFailed'));
   end;
-  if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, Command) and
-    (Pos('"' + ExpandConstant('{app}\SherpaAxis.App.exe') + '"', Command) = 1) then
-    RegDeleteValue(HKCU, StartupRegistryKey, StartupValueName);
 end;

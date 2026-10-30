@@ -17,8 +17,7 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
     {
         var user = SavedDataUser.Interactive();
         user.RequireExpectedUser(expectedUserSid);
-        using (var hive = Registry.Users.OpenSubKey(user.Sid, writable: true))
-        { if (hive is null) { throw new IOException("The desktop account's registry is unavailable. Saved data was kept."); } }
+        using (user.OpenRegistry()) { }
         return new(user.LocalApplicationData,
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), AppContext.BaseDirectory, () =>
         {
@@ -32,8 +31,7 @@ internal sealed class SavedDataRemoval(string localApplicationData, string commo
             _ = output.GetAwaiter().GetResult(); _ = error.GetAwaiter().GetResult();
             if (task.ExitCode is not (0 or 1) || task.ExitCode == 1 && File.Exists(Path.Combine(Environment.SystemDirectory, "Tasks", "SherpaAxis.DeviceSetup.48CBF14C")))
             { throw new IOException("Could not remove SherpaAxis setup registration."); }
-            using var hive = Registry.Users.OpenSubKey(user.Sid, writable: true)
-                ?? throw new IOException("The desktop account's registry is unavailable. Retry uninstalling.");
+            using var hive = user.OpenRegistry();
             hive.DeleteSubKeyTree(@"Software\SherpaAxis", false);
             using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
             machine.DeleteSubKeyTree(@"Software\SherpaAxis", false);

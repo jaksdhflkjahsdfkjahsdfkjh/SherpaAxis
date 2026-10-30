@@ -7,7 +7,7 @@ namespace SherpaAxis.App.Services.Output;
 
 public static class WindowsHidHide
 {
-    public static HidHideVisibility Default(AutomaticVJoy? vjoy = null) => new(HidHideVisibility.DefaultStatePath,
+    public static HidHideVisibility Default(AutomaticVJoy? vjoy = null, string? statePath = null) => new(statePath ?? HidHideVisibility.DefaultStatePath,
         Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe"), RunAsync, () =>
         {
             try
