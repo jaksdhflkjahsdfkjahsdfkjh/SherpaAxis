@@ -246,6 +246,31 @@ public sealed class FirmwareUpdateTests
     }
 
     [Fact]
+    public async Task CompletionReportsConflictsImmediatelyAndRetainsTheirCauseInTheJournal()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true };
+        await fake.Flash(await fake.Prepare());
+        fake.ConnectFailure = new IOException(Services.Diagnostics.VendorControl.ConflictMessage);
+        var failure = await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(Services.Diagnostics.VendorControl.ConflictMessage, failure.Message);
+        Assert.Equal(1, fake.FailedConnections);
+        Assert.Contains(failure.Message, (await fake.Updater.ReadPendingAsync(CancellationToken.None))!.Log, StringComparison.Ordinal);
+        Assert.Equal(0, fake.CalibrationWrites);
+    }
+
+    [Fact]
+    public async Task ReconnectTimeoutRetainsTheLastTransientUsbError()
+    {
+        using var fake = new FakeFirmware { AutoReconnectAfterProgram = true };
+        await fake.Flash(await fake.Prepare());
+        fake.ConnectFailure = new FirmwareControllerUnavailableException("USB still reconnecting");
+        var failure = await Assert.ThrowsAsync<IOException>(() => fake.Updater.CompleteUpdateAsync(new InlineProgress(_ => { }), CancellationToken.None));
+        Assert.Equal(FirmwareUpdater.ReconnectInstructions, failure.Message);
+        Assert.Equal("USB still reconnecting", failure.InnerException!.Message);
+        Assert.Contains("USB still reconnecting", (await fake.Updater.ReadPendingAsync(CancellationToken.None))!.Log, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CompletionWaitsForReconnectRestoresCalibrationAndChecksWithoutAnotherFlash()
     {
         using var fake = new FakeFirmware { AutoReconnectAfterProgram = true, AfterFlashCalibration = PedalHardwareSettings.Defaults, TransientConnectFailures = 3 };
@@ -717,6 +742,8 @@ public sealed class FirmwareUpdateTests
         internal PedalCalibration? AfterFlashCalibration { get; set; }
         internal bool FailCalibrationSave { get; set; }
         internal int TransientConnectFailures { get; set; }
+        internal Exception? ConnectFailure { get; set; }
+        internal int FailedConnections { get; private set; }
         internal int NormalControllerCount { get; set; } = 1;
         internal FirmwareToolResult Result { get; set; } = Success;
         internal string ImagePath => Path.Combine(directory, "image.dfu");
@@ -730,9 +757,10 @@ public sealed class FirmwareUpdateTests
             services = new(
                 _ =>
                 {
+                    if (ConnectFailure is { } failure) { FailedConnections++; return Task.FromException<FirmwareConnection>(failure); }
                     if (NormalControllerCount != 1) { throw new InvalidOperationException("More than one pedal controller is connected."); }
                     if (Programs > 0 && !InBootloader && TransientConnectFailures > 0)
-                    { TransientConnectFailures--; return Task.FromException<FirmwareConnection>(new IOException("USB still reconnecting")); }
+                    { TransientConnectFailures--; return Task.FromException<FirmwareConnection>(new FirmwareControllerUnavailableException("USB still reconnecting")); }
                     return Task.FromResult(new FirmwareConnection(new(Device, Serial, this, this), new("usb-pedals", ConnectionPort), Calibration));
                 },
                 () => OtherDfu ? [new("other", "port-2")] : !InBootloader || BootFailure == "missing" ? []

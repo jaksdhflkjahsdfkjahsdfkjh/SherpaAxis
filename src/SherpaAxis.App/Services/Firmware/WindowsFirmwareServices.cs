@@ -28,13 +28,20 @@ public static class WindowsFirmwareServices
 
     private static async Task<FirmwareConnection> ConnectAsync(CancellationToken token)
     {
+        try { return await OpenControllerAsync(token).ConfigureAwait(false); }
+        catch (IOException failure) when (failure.InnerException is Win32Exception { NativeErrorCode: 2 or 6 or 21 or 31 or 1167 })
+        { throw new FirmwareControllerUnavailableException("The pedal USB connection is still becoming available.", failure); }
+    }
+
+    private static async Task<FirmwareConnection> OpenControllerAsync(CancellationToken token)
+    {
         token.ThrowIfCancellationRequested();
         EnsureToolsClosed();
         var collections = new WindowsHidInputSource().Find(PedalInputReport.VendorId, PedalInputReport.ProductId).Where(PedalCalibrationReport.Supports).ToArray();
         var physical = WindowsUsbDevices.Find(PedalInputReport.VendorId, PedalInputReport.ProductId);
         if (collections.Length > 1 || physical.Count > 1)
         { throw new InvalidOperationException("More than one FEEL-VR pedal controller is connected. Disconnect other pedals before checking firmware."); }
-        if (collections.Length != 1 || physical.Count != 1) { throw new IOException("Connect exactly one FEEL-VR pedal controller in normal mode."); }
+        if (collections.Length != 1 || physical.Count != 1) { throw new FirmwareControllerUnavailableException("Connect exactly one FEEL-VR pedal controller in normal mode."); }
         var features = new WindowsHidFeatureConnection(collections[0]);
         try
         {

@@ -10,6 +10,8 @@ using SherpaAxis.FeelVR;
 
 namespace SherpaAxis.App.Services.Firmware;
 
+public sealed class FirmwareControllerUnavailableException(string message, Exception? inner = null) : IOException(message, inner);
+
 public sealed class FirmwareConnection(RecoveryControllerConnection controller, UsbDeviceLocation usb, PedalCalibration calibration) : IAsyncDisposable
 {
     public RecoveryControllerConnection Controller { get; } = controller;
@@ -177,7 +179,8 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             await WriteAsync(latest with
             {
                 Phase = failure.Message == ReconnectInstructions ? "Reconnect pedals" : "Controller check needs attention",
-                Log = Limit(latest.Log + "\nController check: " + failure.Message)
+                Log = Limit(latest.Log + "\nController check: " + failure.Message
+                    + (failure.InnerException is { } cause ? "\nLast connection error: " + cause.Message : ""))
             }, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
@@ -187,6 +190,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
     {
         progress.Report("Firmware programmed. Waiting for the pedals to reconnect automatically…");
         var started = Stopwatch.GetTimestamp();
+        Exception? lastConnectionFailure = null;
         for (var attempt = 0; attempt < 120 && Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(30); attempt++)
         {
             token.ThrowIfCancellationRequested();
@@ -197,7 +201,8 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             {
                 FirmwareConnection? connection = null;
                 try { connection = await services.Connect(token).ConfigureAwait(false); }
-                catch (Exception failure) when (failure is IOException or TimeoutException) { }
+                catch (Exception failure) when (failure is FirmwareControllerUnavailableException or TimeoutException)
+                { lastConnectionFailure = failure; }
                 if (connection is not null)
                 {
                     bool restore;
@@ -223,7 +228,7 @@ public sealed class FirmwareUpdater(string directory, FirmwareUpdateServices ser
             }
             await DelayAsync(TimeSpan.FromMilliseconds(250), token).ConfigureAwait(false);
         }
-        throw new IOException(ReconnectInstructions);
+        throw new IOException(ReconnectInstructions, lastConnectionFailure);
     }
 
     private static bool HasCalibrationRecovery(FirmwareUpdateRecord record) =>
