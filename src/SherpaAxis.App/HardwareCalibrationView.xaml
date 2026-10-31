@@ -13,7 +13,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Margin="0,0,8,0">
+                <StackPanel Margin="0,0,12,0">
                     <GroupBox x:Name="CalibrationCaptureGroup" Header="{loc:Text TD51028ECDB5C}" Tag="">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text TDEEFC64E891A}" />

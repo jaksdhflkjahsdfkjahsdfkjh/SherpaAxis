@@ -17,22 +17,70 @@
         <Setter Property="Background" Value="#0D1828"/>
         <Setter Property="BorderBrush" Value="#2C4058"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Padding" Value="16,14"/>
         <Setter Property="Margin" Value="0,0,0,12"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="GroupBox">
             <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
                 <StackPanel>
-                    <Border Background="#17283D" Padding="12,10" CornerRadius="7,7,0,0">
+                    <Border x:Name="GroupHeaderSurface" Background="#17283D" Padding="16,11" CornerRadius="7,7,0,0">
                         <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
                                           TextElement.FontSize="14" TextElement.FontWeight="SemiBold"/>
                     </Border>
-                    <Border Padding="{TemplateBinding Padding}">
+                    <Border x:Name="GroupContentSurface" Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                     </Border>
                 </StackPanel>
             </Border>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="GroupedExpander" TargetType="Expander">
+        <Setter Property="Foreground" Value="#E8EFF8"/>
+        <Setter Property="Background" Value="#0D1828"/>
+        <Setter Property="BorderBrush" Value="#2C4058"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="16,14"/>
+        <Setter Property="Margin" Value="0,14,0,0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                <StackPanel>
+                    <ToggleButton x:Name="HeaderToggle" Foreground="{TemplateBinding Foreground}" Cursor="Hand" FocusVisualStyle="{DynamicResource FocusRing}"
+                                  Content="{TemplateBinding Header}" HorizontalContentAlignment="Stretch"
+                                  AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
+                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="HeaderSurface" Background="#17283D" CornerRadius="7" Padding="16,11">
+                                <DockPanel>
+                                    <TextBlock Text="⌄" DockPanel.Dock="Right" Margin="12,0,0,0" Foreground="#95A9C1"/>
+                                    <ContentPresenter RecognizesAccessKey="True" TextElement.FontSize="14" TextElement.FontWeight="SemiBold"/>
+                                </DockPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True"><Setter TargetName="HeaderSurface" Property="CornerRadius" Value="7,7,0,0"/></Trigger>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="#223750"/></Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderSurface" Property="Background" Value="#29445A"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate></ToggleButton.Template>
+                    </ToggleButton>
+                    <Border x:Name="ExpandedBody" Padding="{TemplateBinding Padding}" Visibility="Collapsed">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandedBody" Property="Visibility" Value="Visible"/></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="PedalMeter" TargetType="ProgressBar">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ProgressBar">
+            <Grid x:Name="PART_Track" Background="{TemplateBinding Background}" ClipToBounds="True">
+                <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left"/>
+            </Grid>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="SectionNote" TargetType="TextBlock">

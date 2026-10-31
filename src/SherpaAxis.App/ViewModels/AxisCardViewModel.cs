@@ -8,12 +8,18 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
 {
     public PedalAxis Axis { get; } = axis;
     public string Name => Axis.ToString().ToUpperInvariant();
-    public string Input { get; private set; } = "—";
-    public string OutputText { get; private set; } = "—";
-    public string Filtered { get; private set; } = "No samples";
-    public double OutputPercent { get; private set; }
-    public bool IsFresh { get; private set; }
-    public string InputLabel { get; private set; } = "Device input: ";
+    private string input = "—";
+    private string outputText = "—";
+    private string filtered = "No samples";
+    private double outputPercent;
+    private bool isFresh;
+    private string inputLabel = "Device input: ";
+    public string Input { get => input; private set => Set(ref input, value); }
+    public string OutputText { get => outputText; private set => Set(ref outputText, value); }
+    public string Filtered { get => filtered; private set => Set(ref filtered, value); }
+    public double OutputPercent { get => outputPercent; private set => Set(ref outputPercent, value); }
+    public bool IsFresh { get => isFresh; private set => Set(ref isFresh, value); }
+    public string InputLabel { get => inputLabel; private set => Set(ref inputLabel, value); }
 
     public void UpdateControllerInput(int? counts, bool sensorCounts)
     {
@@ -23,7 +29,6 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
         OutputPercent = counts.HasValue && !sensorCounts ? counts.Value / DashboardEngine.DeviceMaximum(Axis) * 100 : 0;
         OutputText = !counts.HasValue ? "—" : sensorCounts ? "Sensor" : OutputPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
         Filtered = "Controller input · no software processing";
-        Notify();
     }
 
     public void Update(AxisFrame frame, bool sensorCounts = false)
@@ -35,16 +40,5 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
         OutputPercent = (frame.FinalOutput ?? frame.Result?.Processing.Output ?? 0) * 100;
         OutputText = frame.Result is null ? "—" : OutputPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
         Filtered = frame.Result is null ? "No samples" : FormattableString.Invariant($"Filtered  {frame.Result.Value.Processing.FilteredNormalized:P1}");
-        Notify();
-    }
-
-    private void Notify()
-    {
-        Changed(nameof(InputLabel));
-        Changed(nameof(IsFresh));
-        Changed(nameof(Input));
-        Changed(nameof(OutputPercent));
-        Changed(nameof(OutputText));
-        Changed(nameof(Filtered));
     }
 }

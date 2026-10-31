@@ -230,7 +230,7 @@
                                                 <TextBlock Text="{loc:Translate Value={Binding Name}}" FontSize="11" Foreground="#95A9C1" />
                                                 <TextBlock Text="{loc:Translate Value={Binding OutputText}}" FontSize="23" Foreground="#78E3C6" HorizontalAlignment="Right" />
                                             </DockPanel>
-                                            <ProgressBar Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,7,0,7" Background="#25364F" Foreground="#45D6BB" BorderThickness="0" />
+                                            <ProgressBar Style="{StaticResource PedalMeter}" Value="{Binding OutputPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,7,0,7" Background="#25364F" Foreground="#45D6BB" BorderThickness="0" />
                                             <TextBlock Foreground="#95A9C1" FontSize="10">
                                                 <Run Text="{loc:Translate Value={Binding InputLabel, Mode=OneWay}}" />
                                                 <Run Text="{loc:Translate Value={Binding Input, Mode=OneWay}}" />
@@ -271,7 +271,7 @@
                                 <TextBlock Grid.Row="3" Text="{loc:Translate Value={Binding DisplaySampleInfo}}" FontSize="10" Foreground="#95A9C1" Margin="0,6,0,0" />
                             </Grid>
                         </Border>
-                        <Expander Grid.Row="2" x:Name="CurvesSection" Header="{loc:Text T59F91F4084CB}" IsExpanded="True">
+                        <Expander Grid.Row="2" x:Name="CurvesSection" Style="{StaticResource GroupedExpander}" Header="{loc:Text T59F91F4084CB}" IsExpanded="True">
                             <StackPanel>
                                 <TextBlock Text="{loc:Text T67662D152A12}" Foreground="#95A9C1" FontSize="10" Margin="0,0,0,8" TextWrapping="Wrap" />
                                 <ItemsControl ItemsSource="{Binding PedalCurves}" IsEnabled="{Binding CanTune}" Height="240">
@@ -399,8 +399,8 @@
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text TE80E997F3DEF}" />
                                 </StackPanel>
-                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                    <StackPanel Margin="14,0,14,14" IsEnabled="{Binding CanEdit}">
+                                <ScrollViewer x:Name="TuningScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel Margin="14,0,12,14" IsEnabled="{Binding CanEdit}">
                                         <GroupBox Tag="" Header="{loc:Text T19BD63034D43}" x:Name="ClutchBitePointGroup">
                                             <StackPanel>
                                                 <StackPanel x:Name="ClutchBitePointPanel" Margin="0">
@@ -427,11 +427,11 @@
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
-                                                        <Button x:Name="BindBitePointButton" Content="{loc:Text T56B9B63D2831}" Click="BindBitePointClick" FontSize="12" Padding="10,8" Margin="0,0,6,0" />
-                                                        <Border Grid.Column="1" Background="#0D1728" BorderBrush="#34465F" BorderThickness="1" CornerRadius="6" Padding="9,7">
+                                                        <Button x:Name="BindBitePointButton" Content="{loc:Text T56B9B63D2831}" Click="BindBitePointClick" FontSize="12" Padding="12,10" MinWidth="84" MinHeight="40" HorizontalContentAlignment="Center" Margin="0,0,8,0" />
+                                                        <Border Grid.Column="1" Background="#0D1728" BorderBrush="#34465F" BorderThickness="1" CornerRadius="6" Padding="10,8" MinHeight="40">
                                                             <TextBlock x:Name="BitePointBindingValue" Text="{loc:Translate Value={Binding BitePointBindingLabel}}" Foreground="#78E3C6" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
                                                         </Border>
-                                                        <Button x:Name="ClearBitePointBindingButton" Grid.Column="2" Click="ClearBitePointBindingClick" IsEnabled="{Binding HasBitePointBinding}" Width="34" Height="34" Padding="0" Margin="6,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip="{loc:Text T3FC2D57DE20D}" AutomationProperties.Name="{loc:Text T3FC2D57DE20D}">
+                                                        <Button x:Name="ClearBitePointBindingButton" Grid.Column="2" Click="ClearBitePointBindingClick" IsEnabled="{Binding HasBitePointBinding}" Width="40" Height="40" Padding="0" Margin="8,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip="{loc:Text T3FC2D57DE20D}" AutomationProperties.Name="{loc:Text T3FC2D57DE20D}">
                                                             <Path Width="12" Height="12" Data="M 2,2 L 10,10 M 10,2 L 2,10" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                         </Button>
                                                     </Grid>
@@ -527,11 +527,11 @@
                                                                 <ColumnDefinition Width="*" />
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
-                                                            <Button x:Name="BindCorrectionButton" Content="{loc:Text T56B9B63D2831}" Click="BindCorrectionClick" FontSize="12" Padding="10,8" Margin="0,0,6,0" ToolTip="{loc:Text T0C0874F7D497}" />
-                                                            <Border Grid.Column="1" Background="#0D1728" BorderBrush="#34465F" BorderThickness="1" CornerRadius="6" Padding="9,7">
+                                                            <Button x:Name="BindCorrectionButton" Content="{loc:Text T56B9B63D2831}" Click="BindCorrectionClick" FontSize="12" Padding="12,10" MinWidth="84" MinHeight="40" HorizontalContentAlignment="Center" Margin="0,0,8,0" ToolTip="{loc:Text T0C0874F7D497}" />
+                                                            <Border Grid.Column="1" Background="#0D1728" BorderBrush="#34465F" BorderThickness="1" CornerRadius="6" Padding="10,8" MinHeight="40">
                                                                 <TextBlock x:Name="CorrectionBindingValue" Text="{loc:Translate Value={Binding CorrectionBindingLabel}}" Foreground="#78E3C6" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
                                                             </Border>
-                                                            <Button x:Name="ClearCorrectionBindingButton" Grid.Column="2" Click="ClearCorrectionBindingClick" IsEnabled="{Binding HasCorrectionBinding}" Width="34" Height="34" Padding="0" Margin="6,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" UseLayoutRounding="True" ToolTip="{loc:Text TE792F94B0C2C}" AutomationProperties.Name="{loc:Text TE792F94B0C2C}">
+                                                            <Button x:Name="ClearCorrectionBindingButton" Grid.Column="2" Click="ClearCorrectionBindingClick" IsEnabled="{Binding HasCorrectionBinding}" Width="40" Height="40" Padding="0" Margin="8,0,0,0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" UseLayoutRounding="True" ToolTip="{loc:Text TE792F94B0C2C}" AutomationProperties.Name="{loc:Text TE792F94B0C2C}">
                                                                 <Path Width="12" Height="12" Data="M 2,2 L 10,10 M 10,2 L 2,10" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                             </Button>
                                                         </Grid>
@@ -561,7 +561,7 @@
                                         </GroupBox>
                                         <GroupBox Tag="" Header="{loc:Text T9208AD65665B}" x:Name="AdvancedMappingGroup">
                                             <StackPanel>
-                                                <Expander x:Name="AdvancedInputMapping" Header="{loc:Text T9208AD65665B}">
+                                                <Expander x:Name="AdvancedInputMapping" Header="{loc:Text T9161F292B2B7}" Margin="0">
                                                     <StackPanel>
                                                         <TextBlock Text="{loc:Text TE945FE8E2CA2}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
                                                         <Grid>
@@ -570,17 +570,17 @@
                                                                 <ColumnDefinition Width="12" />
                                                                 <ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
-                                                            <StackPanel>
-                                                                <TextBlock Text="{loc:Text T948A6F3E7DB3}" Style="{StaticResource Label}" />
-                                                                <TextBox Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T868363F0527B}" ToolTip="{loc:Text TA76B4692EEEC}" AutomationProperties.HelpText="{loc:Text TA76B4692EEEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                                            </StackPanel>
-                                                            <StackPanel Grid.Column="2">
-                                                                <TextBlock Text="{loc:Text T66C9AB177708}" Style="{StaticResource Label}" />
-                                                                <TextBox Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TC3D113259402}" ToolTip="{loc:Text T53A2BD681D4F}" AutomationProperties.HelpText="{loc:Text T53A2BD681D4F}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                                            </StackPanel>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+                                                            <TextBlock Text="{loc:Text T948A6F3E7DB3}" Style="{StaticResource Label}" TextWrapping="Wrap" VerticalAlignment="Bottom" />
+                                                            <TextBox Grid.Row="1" Text="{Binding Editor.Minimum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text T868363F0527B}" ToolTip="{loc:Text TA76B4692EEEC}" AutomationProperties.HelpText="{loc:Text TA76B4692EEEC}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
+                                                            <TextBlock Grid.Column="2" Text="{loc:Text T66C9AB177708}" Style="{StaticResource Label}" TextWrapping="Wrap" VerticalAlignment="Bottom" />
+                                                            <TextBox Grid.Column="2" Grid.Row="1" Text="{Binding Editor.Maximum, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{loc:Text TC3D113259402}" ToolTip="{loc:Text T53A2BD681D4F}" AutomationProperties.HelpText="{loc:Text T53A2BD681D4F}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
                                                         </Grid>
                                                         <CheckBox Content="{loc:Text T239208CFC826}" IsChecked="{Binding Editor.Inverted}" ToolTip="{loc:Text T6B225B2B0307}" AutomationProperties.HelpText="{loc:Text T6B225B2B0307}" ToolTipService.InitialShowDelay="300" ToolTipService.ShowOnDisabled="True" />
-                                                        <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="11" Padding="9,6" HorizontalAlignment="Left" ToolTip="{loc:Text TE4EF64224DD3}" />
+                                                        <Button Content="{loc:Text T6A4A1A6F09B8}" Click="ResetInputMappingClick" FontSize="12" Padding="12,8" MinHeight="36" Margin="0,10,0,0" HorizontalAlignment="Left" ToolTip="{loc:Text TE4EF64224DD3}" />
                                                     </StackPanel>
                                                 </Expander>
                                             </StackPanel>
@@ -614,7 +614,7 @@
                                 <ContentControl x:Name="CalibrationHost" Visibility="Hidden" IsEnabled="{Binding CanEdit}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                             </Grid>
                             <ScrollViewer x:Name="SettingsSidePanel" Visibility="Hidden" Margin="14,12,14,14" IsEnabled="{Binding CanEdit}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <StackPanel DataContext="{Binding Preferences}">
+                                <StackPanel DataContext="{Binding Preferences}" Margin="0,0,12,0">
                                     <TextBlock FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" Text="{loc:Text T74A883A037BC}" />
                                     <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T28B7D72ECB1D}" />
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text T255B076DD828}" />
@@ -636,16 +636,16 @@
                                         </GroupBox>
                                         <GroupBox Tag="window tray startup minimize Windows startup запуск вікно трей" Header="{loc:Text T6EBC2BA25C3B}" x:Name="WindowSettingsGroup">
                                             <StackPanel>
-                                                <CheckBox x:Name="MinimizeOnCloseSetting" Content="{loc:Text TEB92D55C00AE}" IsChecked="{Binding MinimizeOnClose}" Click="PreferenceChanged" ToolTip="{loc:Text T9DD5E0447EDF}" />
-                                                <TextBlock Text="{loc:Text T3A2947EDC3BD}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                                                <CheckBox Content="{loc:Text TAB8C3AF14FB6}" IsChecked="{Binding MinimizeToTray}" Click="PreferenceChanged" ToolTip="{loc:Text T8AC1D68812C2}" />
-                                                <TextBlock Text="{loc:Text T1A70E5BA6283}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                                                <CheckBox Content="{loc:Text T831A2BF28544}" IsChecked="{Binding PauseGraphWhenHidden}" Click="PreferenceChanged" ToolTip="{loc:Text TB1A301C33EA0}" />
-                                                <TextBlock Text="{loc:Text TBD4627BB120A}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                                                <CheckBox x:Name="WindowsStartupSetting" Content="{loc:Text T0BFCD9317D0D}" IsChecked="{Binding StartWithWindows}" Click="PreferenceChanged" ToolTip="{loc:Text T09CF9218E4DF}" />
-                                                <TextBlock Text="{loc:Text T53A83AC14715}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
-                                                <CheckBox Content="{loc:Text TFCCA3CE55CE7}" IsChecked="{Binding StartInTray}" Click="PreferenceChanged" ToolTip="{loc:Text T6F4D8DB65A49}" />
-                                                <TextBlock Text="{loc:Text T6ABDFBF9EE84}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,12" />
+                                                <CheckBox x:Name="MinimizeOnCloseSetting" Content="{loc:Text TEB92D55C00AE}" IsChecked="{Binding MinimizeOnClose}" Click="PreferenceChanged" ToolTip="{loc:Text T9DD5E0447EDF}" Margin="0" />
+                                                <TextBlock Text="{loc:Text T3A2947EDC3BD}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="24,4,0,8" />
+                                                <CheckBox Content="{loc:Text TAB8C3AF14FB6}" IsChecked="{Binding MinimizeToTray}" Click="PreferenceChanged" ToolTip="{loc:Text T8AC1D68812C2}" Margin="0,8,0,0" />
+                                                <TextBlock Text="{loc:Text T1A70E5BA6283}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="24,4,0,8" />
+                                                <CheckBox Content="{loc:Text T831A2BF28544}" IsChecked="{Binding PauseGraphWhenHidden}" Click="PreferenceChanged" ToolTip="{loc:Text TB1A301C33EA0}" Margin="0,8,0,0" />
+                                                <TextBlock Text="{loc:Text TBD4627BB120A}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="24,4,0,8" />
+                                                <CheckBox x:Name="WindowsStartupSetting" Content="{loc:Text T0BFCD9317D0D}" IsChecked="{Binding StartWithWindows}" Click="PreferenceChanged" ToolTip="{loc:Text T09CF9218E4DF}" Margin="0,8,0,0" />
+                                                <TextBlock Text="{loc:Text T53A83AC14715}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="24,4,0,8" />
+                                                <CheckBox Content="{loc:Text TFCCA3CE55CE7}" IsChecked="{Binding StartInTray}" Click="PreferenceChanged" ToolTip="{loc:Text T6F4D8DB65A49}" Margin="0,8,0,0" />
+                                                <TextBlock Text="{loc:Text T6ABDFBF9EE84}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="24,4,0,0" />
                                             </StackPanel>
                                         </GroupBox>
                                         <GroupBox Tag="pedals virtual vJoy HidHide axis controller drivers output педалі драйвер вихід" Header="{loc:Text T267A7F18C3DD}" x:Name="OutputSettingsGroup">

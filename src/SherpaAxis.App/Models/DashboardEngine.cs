@@ -519,13 +519,13 @@ public sealed partial class DashboardEngine
 
     private void Event(string kind, object? details = null) => recording?.RecordEvent(new(kind, sourceElapsed, configurationRevision, details));
 
-    public DashboardFrame Snapshot(PedalAxis selectedAxis)
+    public DashboardFrame Snapshot(PedalAxis selectedAxis, bool includeHistory = true)
     {
         lock (sync)
         {
             var frames = axes.Select(pair => new AxisFrame(pair.Key, pair.Value.Current, IsFresh(pair.Value),
                 double.IsFinite(pair.Value.Minimum) ? pair.Value.Minimum : null,
-                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null, pair.Value.History.ToArray(),
+                double.IsFinite(pair.Value.Maximum) ? pair.Value.Maximum : null, includeHistory ? pair.Value.History.ToArray() : [],
                 pair.Value.Current is { } current ? FinalOutput(pair.Key, current.Processing.Output) : null)).ToArray();
             return new(state, detail, connection, count, elapsed, elapsed > firstTime ? (count - 1) / (elapsed - firstTime) : 0,
                 frames, frames.Single(frame => frame.Axis == selectedAxis).History!);

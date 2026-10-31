@@ -229,6 +229,7 @@ public partial class MainWindow
     private void UpdateRefreshPolicy()
     {
         if (closing || disposed) { return; }
+        SetPedalPreviewRendering(IsVisible && WindowState != WindowState.Minimized);
         if (preferences.PauseGraphWhenHidden && (!IsVisible || WindowState == WindowState.Minimized)) { refresh.Stop(); }
         else { refresh.Start(); }
     }
