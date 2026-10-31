@@ -86,7 +86,7 @@ public partial class MainWindow : Window, IAsyncDisposable
 
         viewModel.OutputInfo = viewModel.Firmware.Blocked || viewModel.Firmware.Running ? "Virtual output paused · firmware update needs review"
             : viewModel.Recovery.IsBlocked ? "Virtual output paused · hardware recovery required" : runtime?.Status ?? "Waiting for live input";
-        viewModel.Refresh();
+        viewModel.Refresh(refreshCards: !pedalPreviewRendering);
         if (!viewModel.UsesHardwareInput && !viewModel.IsSwitchingMode && (viewModel.InputConnection != diagnosedConnection || viewModel.IsReceiving != diagnosedReceiving))
         {
             diagnosedConnection = viewModel.InputConnection;
@@ -230,6 +230,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         StopTour();
         viewModel.CanEdit = false;
         refresh.Stop();
+        SetPedalPreviewRendering(false);
         draftTimer.Stop();
         StopHold();
         engine.SuspendOutput("window closing");

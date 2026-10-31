@@ -129,7 +129,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     public IReadOnlyList<PlotSample> History { get; private set; } = [];
     public IReadOnlyList<PlotSample> Curve { get; private set; } = [];
 
-    public void Refresh(bool force = false)
+    public void Refresh(bool force = false, bool refreshCards = true)
     {
         if (IsSwitchingMode && !force) { return; }
         RefreshDrift();
@@ -137,18 +137,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         var frame = engine.Snapshot(selectedAxis);
         InputConnection = frame.Connection;
         RefreshCalibration();
-        var sensorCounts = engine.DriftState(selectedAxis).RawAvailable;
-        foreach (var card in Cards)
-        {
-            if (UsesHardwareInput)
-            {
-                var input = HardwareDisplay?.CurrentAxes;
-                var count = input.HasValue ? card.Axis switch
-                { PedalAxis.Throttle => input.Value.Throttle, PedalAxis.Brake => input.Value.Brake, _ => input.Value.Clutch } : (int?)null;
-                card.UpdateControllerInput(count, HardwareDisplay?.SensorChannel?.ToString() == card.Axis.ToString());
-            }
-            else { card.Update(frame.Axes.Single(axis => axis.Axis == card.Axis), sensorCounts); }
-        }
+        if (refreshCards) { UpdateCards(frame); }
 
         var selected = frame.Axes.Single(axis => axis.Axis == selectedAxis);
         IsReceiving = selected.IsFresh;
@@ -178,6 +167,28 @@ public sealed partial class DashboardViewModel : ObservableObject
             Changed(nameof(PedalHistories));
         }
         NotifyDisplay();
+    }
+
+    public void RefreshCards()
+    {
+        if (IsSwitchingMode) { return; }
+        UpdateCards(UsesHardwareInput ? null : engine.Snapshot(selectedAxis, includeHistory: false));
+    }
+
+    private void UpdateCards(DashboardFrame? frame)
+    {
+        var input = UsesHardwareInput ? HardwareDisplay?.CurrentAxes : null;
+        var sensorCounts = !UsesHardwareInput && engine.DriftState(selectedAxis).RawAvailable;
+        foreach (var card in Cards)
+        {
+            if (UsesHardwareInput)
+            {
+                var count = input.HasValue ? card.Axis switch
+                { PedalAxis.Throttle => input.Value.Throttle, PedalAxis.Brake => input.Value.Brake, _ => input.Value.Clutch } : (int?)null;
+                card.UpdateControllerInput(count, HardwareDisplay?.SensorChannel?.ToString() == card.Axis.ToString());
+            }
+            else { card.Update(frame!.Axes.Single(axis => axis.Axis == card.Axis), sensorCounts); }
+        }
     }
 
     private void NotifyDisplay()

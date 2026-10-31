@@ -19,6 +19,9 @@ The SDK version is pinned in `global.json`; project references define the depend
 - **App** is a WPF desktop application. View models expose editor and graph state;
   device acquisition runs independently of dispatcher refresh. The processing
   model provides bounded snapshots for drawing.
+  Pedal previews follow window rendering at up to 144 Hz using snapshots without
+  graph history. Graph and status updates keep their 33 ms dispatcher timer.
+  The preview render hook is detached when the window is hidden or closed.
 - **Bridge** owns the dynamically loaded vJoy SDK and a latest-output worker.
   Driver writes run outside the processing lock. Source changes, configuration
   changes and stale input disarm output before the device is released.

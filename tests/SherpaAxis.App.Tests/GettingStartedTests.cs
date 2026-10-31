@@ -238,7 +238,7 @@ public sealed class GettingStartedTests
     });
 
     [Fact]
-    public Task HelpAndSetupToolsUseEqualFullWidthButtonsInBothLanguages() => HardwarePedalUiTests.OnUiAsync(async () =>
+    public Task HelpAndSetupToolsFitTheirOwnPaddedContentInBothLanguages() => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         await using var main = new MainWindow(new(), desktopServices: new SettingsAndTrayTests.FakeDesktop().Services)
         { Opacity = 0, ShowInTaskbar = false, ShowActivated = false, WindowState = WindowState.Normal };
@@ -260,7 +260,7 @@ public sealed class GettingStartedTests
                 Assert.True(guide.IsVisible);
                 Assert.True(guide.ActualWidth > 250);
                 foreach (var button in Assert.IsType<StackPanel>(tools.Content).Children.OfType<Button>())
-                { Assert.Equal(guide.ActualWidth, button.ActualWidth, 1); }
+                { Assert.Equal(guide.ActualWidth - tools.Padding.Left - tools.Padding.Right, button.ActualWidth, 1); }
             }
             if (Environment.GetEnvironmentVariable("SHERPAAXIS_TOUR_PREVIEW") is { Length: > 0 } preview)
             {
