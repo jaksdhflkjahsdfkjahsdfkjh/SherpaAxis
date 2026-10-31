@@ -340,6 +340,13 @@ try {
     Assert-Setup ((Get-Content -LiteralPath $trace -Raw).Trim().EndsWith("release`nremove-owned`nremove-data")) 'Selected data cleanup ran before driver removal.'
     Write-Output 'PASS: driver removal precedes selected data cleanup'
 
+    Reset-Fixture
+    Invoke-Fixture $setup 'auto-update-app-only' 0 -ExtraArgs @('/AUTOUPDATE=1')
+    Assert-Setup (-not (Test-Path -LiteralPath $trace)) 'Automatic app update ran driver or device configuration.'
+    Assert-Setup (Test-Path -LiteralPath (Join-Path $installDirectory 'SherpaAxis.App.exe')) 'Automatic update did not install app files.'
+    Uninstall-Fixture
+    Write-Output 'PASS: automatic app update preserves drivers and skips hardware configuration'
+
 
 }
 finally {

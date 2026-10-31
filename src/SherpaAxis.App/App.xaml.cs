@@ -4,6 +4,7 @@ using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Firmware;
 using SherpaAxis.App.Services.Output;
 using SherpaAxis.App.Services.Setup;
+using SherpaAxis.App.Services.Updates;
 using SherpaAxis.Devices;
 
 namespace SherpaAxis.App;
@@ -123,6 +124,7 @@ public partial class App : Application, IDisposable
             var result = 0;
             try
             {
+                if (AppUpdateHandoff.IsApplying) { throw new System.IO.IOException("An app update is running. Wait for it to finish before uninstalling."); }
                 var user = SavedDataUser.Interactive();
                 using var registry = user.OpenRegistry();
                 using var visibility = WindowsHidHide.Default(statePath: user.VisibilityStatePath);
@@ -150,6 +152,15 @@ public partial class App : Application, IDisposable
             { DiagnosticLog.Default.Write("vjoy-setup", "Automatic vJoy setup failed.", failure); Shutdown(1); }
             return;
         }
+        if (AppUpdateHandoff.IsApplying)
+        {
+            DiagnosticLog.Default.Write("app-update", "An app update is running. SherpaAxis will reopen when it finishes.");
+            Shutdown(); return;
+        }
+        AppUpdateResult? updateResult = null;
+        try { updateResult = AppUpdateResult.FromArguments(e.Args); }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        { DiagnosticLog.Default.Write("app-update", "Could not read the app update result.", failure); }
         instance = new Mutex(initiallyOwned: true, @"Local\SherpaAxis.PedalsUtility", out ownsInstance);
         if (!ownsInstance)
         {
@@ -180,7 +191,8 @@ public partial class App : Application, IDisposable
         var window = new MainWindow();
         MainWindow = window;
         await window.InitializeForLaunchAsync();
-        if (!window.IsDisposed && !window.ShouldStartHidden) { window.Show(); }
+        if (updateResult is not null) { window.ShowAppUpdateResult(updateResult); }
+        if (!window.IsDisposed && (!window.ShouldStartHidden || updateResult is not null)) { window.Show(); }
         if (!window.IsDisposed && window.ShouldOfferTour) { await window.ShowGettingStartedAsync(); }
     }
     protected override void OnExit(ExitEventArgs e)

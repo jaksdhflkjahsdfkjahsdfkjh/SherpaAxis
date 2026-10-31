@@ -54,6 +54,53 @@ public sealed class AppUpdateUiTests : IDisposable
         Assert.Empty(desktop.Tray.UpdateNotifications);
     });
 
+    [Theory]
+    [InlineData("en", 1340, false)]
+    [InlineData("uk", 1340, false)]
+    [InlineData("en", 1100, true)]
+    [InlineData("uk", 1100, true)]
+    public Task HeaderUpdateNoticeIsVisibleLocalizedAndFitsWithoutMovingTheWorkspace(string language, int width, bool longVersion) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        desktop.Store.Value = new(Language: language, CheckForUpdates: false, TourDismissed: true);
+        await using var main = new MainWindow(new(), desktopServices: desktop.Services, profileLibrary: new(Path.Combine(directory, "profiles")))
+        { Width = width, Height = 940, WindowState = WindowState.Normal, Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
+        try
+        {
+            await main.InitializeForLaunchAsync(); main.Show();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            main.UpdateLayout();
+            var model = Assert.IsType<DashboardViewModel>(main.DataContext);
+            var button = Assert.IsType<Button>(main.FindName("HeaderAppUpdateButton"));
+            var label = Assert.IsType<TextBlock>(main.FindName("HeaderAppUpdateLabel"));
+            var header = Assert.IsType<DockPanel>(main.FindName("AppHeader"));
+            var connection = Assert.IsType<StackPanel>(main.FindName("HeaderConnectionInfo"));
+            var graph = Assert.IsAssignableFrom<FrameworkElement>(main.FindName("SignalGraphSection"));
+            var root = Assert.IsAssignableFrom<FrameworkElement>(main.Content);
+            var graphBefore = graph.TransformToAncestor(root).TransformBounds(new Rect(graph.RenderSize));
+            Assert.Equal(Visibility.Collapsed, button.Visibility);
+            var tag = longVersion ? "v2026.1000.123456789" : NewerRelease();
+            model.Updates.Apply(new AppRelease(tag));
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            main.UpdateLayout();
+            Assert.True(button.IsVisible);
+            Assert.Equal(Localizer.Translate($"Update available: {tag}"), label.Text);
+            Assert.Equal(Localizer.Translate(model.Updates.ActionHint), button.ToolTip);
+            Assert.Equal(model.Updates.ReleasePage, Assert.IsType<Hyperlink>(main.FindName("AppUpdateLink")).NavigateUri);
+            Assert.Equal(graphBefore, graph.TransformToAncestor(root).TransformBounds(new Rect(graph.RenderSize)));
+            var right = button.TranslatePoint(new Point(button.ActualWidth, 0), header).X;
+            var statusLeft = connection.TranslatePoint(new Point(), header).X;
+            Assert.True(statusLeft - right >= 16, $"Header gap: {statusLeft - right:F1}");
+            Assert.True(button.ActualWidth <= 300 && button.ActualHeight >= 36);
+            UiRefinementTests.CapturePreview(header, $"update-header-{language}-{width}.png");
+            model.Updates.Apply(new AppRelease(DashboardViewModel.VersionLabel));
+            main.UpdateLayout();
+            Assert.Equal(Visibility.Collapsed, button.Visibility);
+            Assert.Equal(graphBefore, graph.TransformToAncestor(root).TransformBounds(new Rect(graph.RenderSize)));
+        }
+        finally { Localizer.Instance.Language = "en"; }
+    });
+
     [Fact]
     public Task AutoOptOutIsSavedAndManualCheckStillWorksWithOneHiddenTrayNotice() => HardwarePedalUiTests.OnUiAsync(async () =>
     {

@@ -205,7 +205,7 @@ public sealed class UiRefinementTests
         {
             var bounds = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
             drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 18, 32)), null, bounds);
-            drawing.DrawRectangle(new VisualBrush(element), null, bounds);
+            drawing.DrawRectangle(new VisualBrush(element) { ViewboxUnits = BrushMappingMode.Absolute, Viewbox = bounds }, null, bounds);
         }
         var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.4.11"
+  #define AppVersion "1.5.0"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"
@@ -327,6 +327,7 @@ begin
     Exit;
   end;
 #endif
+  if ExpandConstant('{param:AUTOUPDATE|0}') = '1' then Exit;
   if not (DriverInstalled or FileExists(ExpandConstant('{#VJoyLibrary}'))) then
   begin
   PreExisting := DriverPackageExists('vjoy.inf') or
@@ -392,6 +393,7 @@ var
   ExitCode: Integer;
   StartupCommand: String;
 begin
+  if ExpandConstant('{param:AUTOUPDATE|0}') = '1' then Exit;
   if RegQueryStringValue(HKCU, StartupRegistryKey, StartupValueName, StartupCommand) and
     (StartupCommand <> '') then
     if not RegWriteStringValue(HKCU, StartupRegistryKey, StartupValueName,

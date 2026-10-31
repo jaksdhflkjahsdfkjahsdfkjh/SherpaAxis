@@ -27,6 +27,8 @@ jobs:
         run: ./tools/Build-SetupPackage.ps1
       - name: Verify installer lifecycle
         run: ./tools/Test-SetupPackage.ps1
+      - name: Verify app update replacement and recovery
+        run: ./tools/Test-AppUpdateWorker.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SherpaAxis-v${{ steps.version.outputs.version }}-Windows-x64

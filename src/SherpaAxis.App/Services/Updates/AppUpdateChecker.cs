@@ -65,7 +65,7 @@ public sealed class AppUpdateChecker(HttpClient client, string statePath)
     public static bool IsNewer(AppRelease release, Version installed) => TryVersion(release.Tag, out var candidate)
         && candidate > new Version(installed.Major, installed.Minor, Math.Max(0, installed.Build), Math.Max(0, installed.Revision));
 
-    private static bool TryVersion(string? tag, out Version version)
+    internal static bool TryVersion(string? tag, out Version version)
     {
         version = new(0, 0, 0, 0);
         if (string.IsNullOrEmpty(tag) || tag.Length > 64) { return false; }
