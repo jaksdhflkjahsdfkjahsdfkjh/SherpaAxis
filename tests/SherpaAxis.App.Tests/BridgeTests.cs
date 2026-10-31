@@ -84,7 +84,7 @@ public sealed class BridgeTests
     public async Task WriteFailureDoesNotEscapeIntoAcquisitionAndAlwaysReleasesDevice()
     {
         var controller = new Controller { FailNonzero = true };
-        await using var bridge = new OutputBridge(() => controller);
+        await using var bridge = new OutputBridge(() => controller, new ManualClock());
         await bridge.Ready;
         bridge.Submit(new(1, 1, 1));
         await controller.Closed.Task.WaitAsync(TimeSpan.FromSeconds(3));

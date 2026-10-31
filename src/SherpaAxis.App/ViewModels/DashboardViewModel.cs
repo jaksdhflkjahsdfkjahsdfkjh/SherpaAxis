@@ -23,6 +23,9 @@ public sealed partial class DashboardViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(engine);
         this.engine = engine;
+        Updates.PropertyChanged += (_, _) => Changed(nameof(CanUpdateApplication));
+        Firmware.PropertyChanged += (_, _) => Changed(nameof(CanUpdateApplication));
+        Recovery.PropertyChanged += (_, _) => Changed(nameof(CanUpdateApplication));
         Load(applied);
         selectedProfile!.Recoverable = false;
         MarkSelectedSaved();
@@ -33,7 +36,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = PedalDisplayOrder.Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
     private bool canEdit = true;
-    public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); } } }
+    public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); } } }
     private SidePanelMode panelMode;
     private bool isSwitchingMode;
     private sealed record DisplaySnapshot(string Mode, string Legend, IReadOnlyList<PedalHistory> Histories, string SampleInfo);
@@ -45,7 +48,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         set
         {
             if (Set(ref panelMode, value))
-            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(CanTune)); NotifyDisplay(); }
+            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); NotifyDisplay(); }
         }
     }
     public bool IsCalibrationMode { get => PanelMode == SidePanelMode.Calibration; set => PanelMode = value ? SidePanelMode.Calibration : SidePanelMode.Tuning; }
@@ -67,11 +70,13 @@ public sealed partial class DashboardViewModel : ObservableObject
             transitionDisplay = value ? new(DisplayGraphMode, DisplayGraphLegend, DisplayHistories, DisplaySampleInfo) : null;
             Set(ref isSwitchingMode, value);
             Changed(nameof(CanTune));
+            Changed(nameof(CanUpdateApplication));
             if (!value) { NotifyDisplay(); }
         }
     }
     internal void CommitDisplayTransition() => transitionDisplay = null;
     public bool CanTune => CanEdit && !IsCalibrationMode && !IsSwitchingMode;
+    public bool CanUpdateApplication => Updates.CanAct && (Updates.IsUpdating || CanTune && !Firmware.Running && !Firmware.Blocked && !Recovery.IsBlocked);
     public HardwarePedalViewModel? HardwareDisplay { get => hardwareDisplay; set { if (Set(ref hardwareDisplay, value)) { value?.SetGraphWindow(GraphWindow); NotifyDisplay(); } } }
     public bool UsesHardwareInput => IsCalibrationMode && HardwareDisplay?.HasSession == true;
     public string DisplayGraphMode => transitionDisplay?.Mode ?? (UsesHardwareInput ? "Device counts" : GraphMode);

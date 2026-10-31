@@ -182,6 +182,8 @@ public partial class MainWindow : Window, IAsyncDisposable
         }
 
         e.Cancel = true;
+        if (viewModel.Updates.IsInstalling)
+        { viewModel.ShowMessage("The app update is preparing installation. SherpaAxis will close automatically when ready."); return; }
         if (viewModel.Firmware.Running)
         { viewModel.ShowMessage("Firmware updating is active. Keep the pedals connected; closing is available after the operation finishes."); return; }
         if (closing || closeRequestPending)
@@ -240,6 +242,11 @@ public partial class MainWindow : Window, IAsyncDisposable
         try
         {
             await lifetime.CancelAsync();
+            if (appUpdateDownload is { } downloading)
+            {
+                try { await downloading; }
+                catch (Exception failure) when (OperationErrors.IsExpected(failure) || failure is System.Net.Http.HttpRequestException) { }
+            }
             if (desktopInitialization is { } initializing) { await initializing; }
             if (runtimeInitialization is { } startingRuntime) { await startingRuntime; }
             if (recoveryCheck is { } checkingRecovery) { await checkingRecovery; }

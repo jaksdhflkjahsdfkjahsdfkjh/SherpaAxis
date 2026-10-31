@@ -228,12 +228,18 @@ for compatibility and recovery details.
 <summary><strong>How do updates and uninstalling work?</strong></summary>
 
 SherpaAxis checks for a newer stable GitHub release once at each app startup.
-An update link appears in the footer, with a tray notification when the app is
-hidden. **Settings → Updates** offers **Check now** and an option to disable startup
-checks. No pedal data or profiles are sent. Downloads and installation are manual.
+The update button appears beside the app title and in the footer. Click it to
+download, verify, install the update and reopen SherpaAxis. You can cancel while
+it is downloading. Windows may ask for administrator approval for Setup editions.
 
-To update, download the newer `Setup.exe`, exit SherpaAxis from its tray menu,
-close FEEL-VR Control and games, then run Setup. Your profiles and settings are retained.
+ZIP editions update in their existing folder and preserve extra user files.
+Changed application files can prevent an automatic update; use a manual update
+if you have modified the packaged files. Your profiles, settings and bindings
+are retained. Close games and FEEL-VR Control before starting an update.
+
+**Settings → Updates** offers **Check now**, a manual release-page link, update
+logs and an option to disable startup checks. No pedal data or profiles are sent.
+Manual installation through a newer `Setup.exe` remains available.
 
 To uninstall, use Windows **Settings → Apps → SherpaAxis → Uninstall**, or run
 `Uninstall.exe` in the extracted ZIP folder. Saved data and shared drivers remain

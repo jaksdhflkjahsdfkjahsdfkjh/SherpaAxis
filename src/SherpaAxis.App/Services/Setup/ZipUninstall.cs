@@ -4,6 +4,7 @@ using System.Text.Json;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Diagnostics;
 using SherpaAxis.App.Services.Output;
+using SherpaAxis.App.Services.Updates;
 
 namespace SherpaAxis.App.Services.Setup;
 
@@ -37,6 +38,7 @@ internal static class ZipUninstall
 
     internal static void RequireApplicationsClosed(int? parent = null)
     {
+        if (AppUpdateHandoff.IsApplying) { throw new IOException("An app update is running. Wait for it to finish before uninstalling."); }
         VendorControl.RequireClosed();
         foreach (var process in Process.GetProcessesByName("SherpaAxis.App"))
         {

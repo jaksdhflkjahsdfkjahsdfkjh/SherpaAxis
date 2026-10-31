@@ -62,12 +62,21 @@ and an opt-out that takes effect at the next startup. Each check requests fresh
 metadata. `%LOCALAPPDATA%\SherpaAxis\updates.json` deduplicates tray notices across
 restarts without caching release results. Requests have an
 eight-second deadline and are cancelled at shutdown. Network failures stay in the
-Updates section. Release links are constructed for this repository; downloaded
-metadata cannot redirect the user to a different host. The app never downloads or
-executes an installer itself.
+Updates section. Release links and package URLs are constructed for this repository.
+Downloading and installation start only after an explicit user action.
+
+Automatic app updates fetch a pinned stable release and verify GitHub asset
+SHA-256 digests, the release checksum file and package versions before handoff.
+The download runs independently of live input. Draft backup and normal shutdown
+complete before a separate Windows PowerShell worker applies the package.
+Setup updates use the existing installation with hardware reconfiguration
+suppressed. ZIP updates stage a manifest-verified folder beside the original,
+preserve extra files and permissions, then swap folders and retain the old copy.
+Failed replacement or launch restores the old ZIP folder. A separate update
+mutex prevents concurrent startup/uninstall; restarts use the original user token.
 
 To notify users, publish a public, stable GitHub Release with a numeric tag such as
-`v1.2.0` and attach `Setup.exe`. A commit, a tag alone, a draft or a prerelease does
+`v1.5.0` and attach `Setup.exe`, `SherpaAxis-win-x64.zip` and `SHA256SUMS.txt`. A commit, a tag alone, a draft or a prerelease does
 not trigger a notification. Update the project version before building that release.
 New features increment the minor version and reset the patch (for example,
 1.1.1 → 1.2.0); fixes increment the patch (1.1.0 → 1.1.1). Set the version in

@@ -8,8 +8,8 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" MinHeight="34" />
         </Grid.RowDefinitions>
-        <DockPanel Height="70" Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Width="500" HorizontalAlignment="Right">
+        <DockPanel x:Name="AppHeader" Height="70" Margin="0,0,0,12">
+            <StackPanel x:Name="HeaderConnectionInfo" DockPanel.Dock="Right" Width="500" HorizontalAlignment="Right">
                 <TextBlock Text="{loc:Translate Value={Binding Status}}" FontSize="14" HorizontalAlignment="Right" x:Name="ConnectionStatusLabel">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
@@ -32,9 +32,34 @@
                 <TextBlock Text="{loc:Translate Value={Binding OutputInfo}}" ToolTip="{loc:Translate Value={Binding OutputInfo}}" Foreground="#DFBC7A" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" ToolTip="{loc:Translate Value={Binding Diagnostics.FirmwareNotice}}" Foreground="#FFCE83" FontSize="10" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <StackPanel>
-                <TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1" />
+            <StackPanel Orientation="Horizontal">
+                <StackPanel>
+                    <TextBlock Text="{loc:Text T90CF9229B31F}" FontSize="25" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Text T81484AE97371}" FontSize="10" Foreground="#95A9C1" />
+                </StackPanel>
+                <Button x:Name="HeaderAppUpdateButton" Click="InstallAppUpdateClick" IsEnabled="{Binding CanUpdateApplication}" Margin="18,2,0,0" Padding="12,8"
+                        MinHeight="36" MaxWidth="300" VerticalAlignment="Top" HorizontalAlignment="Left"
+                        HorizontalContentAlignment="Stretch" Background="#12332E" BorderBrush="#337B6B" Foreground="#83E4CC"
+                        ToolTip="{loc:Translate Value={Binding Updates.ActionHint}}" AutomationProperties.Name="{loc:Translate Value={Binding Updates.LinkLabel}}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Updates.HasUpdate}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <DockPanel LastChildFill="True">
+                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="#83E4CC" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <Path DockPanel.Dock="Right" Width="10" Height="10" Margin="10,0,0,0" VerticalAlignment="Center"
+                              Data="M 5,0 L 5,7 M 2,4 L 5,7 L 8,4 M 0,8 L 0,10 L 10,10 L 10,8" Stroke="#83E4CC" StrokeThickness="1.4" />
+                        <TextBlock x:Name="HeaderAppUpdateLabel" Text="{loc:Translate Value={Binding Updates.LinkLabel}}"
+                                   FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </DockPanel>
+                </Button>
             </StackPanel>
         </DockPanel>
         <Grid Grid.Row="1" TextElement.Foreground="#E8EFF8">
@@ -708,10 +733,19 @@
                                         <GroupBox Tag="updates release GitHub check automatic оновлення версія" Header="{loc:Text T5808DEAECD58}" x:Name="UpdateSettingsGroup">
                                             <StackPanel>
                                                 <CheckBox x:Name="CheckForUpdatesSetting" Content="{loc:Text T6D4834F783A8}" IsChecked="{Binding CheckForUpdates}" Click="PreferenceChanged" />
-                                                <TextBlock Text="{loc:Text T916D54C3D2C3}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,8" />
+                                                <TextBlock Text="{loc:Text TA915B0D99AC9}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,8" />
                                                 <StackPanel x:Name="AppUpdatesPanel" DataContext="{Binding DataContext.Updates, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,14">
                                                     <Button x:Name="CheckAppUpdatesButton" Content="{loc:Text T2937CFFB37AB}" Click="CheckAppUpdatesClick" IsEnabled="{Binding CanCheck}" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
                                                     <TextBlock x:Name="AppUpdateStatus" Text="{loc:Translate Value={Binding Status}}" Foreground="#95A9C1" FontSize="11" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                                    <Button x:Name="InstallAppUpdateButton" Content="{loc:Translate Value={Binding LinkLabel}}" Click="InstallAppUpdateClick" HorizontalAlignment="Stretch" Margin="0,8,0,0" IsEnabled="{Binding DataContext.CanUpdateApplication, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource Primary}">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers><DataTrigger Binding="{Binding HasUpdate}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+                                                    <Button x:Name="AppUpdateLogsButton" Content="{loc:Text T6E630526415A}" Click="AppUpdateLogsClick" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
                                                     <Button x:Name="ViewAppReleaseButton" Content="{loc:Text TDB51F7282B31}" Click="OpenAppReleaseClick" HorizontalAlignment="Stretch" Margin="0,8,0,0">
                                                         <Button.Style>
                                                             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -761,7 +795,7 @@
                                 </Style.Triggers>
                             </Style>
                         </TextBlock.Style>
-                        <Hyperlink x:Name="AppUpdateLink" NavigateUri="{Binding Updates.ReleasePage}" RequestNavigate="AppReleaseNavigate" Foreground="#78E3C6">
+                        <Hyperlink x:Name="AppUpdateLink" IsEnabled="{Binding CanUpdateApplication}" NavigateUri="{Binding Updates.ReleasePage}" RequestNavigate="AppReleaseNavigate" Foreground="#78E3C6">
                             <Run Text="{loc:Translate Value={Binding Updates.LinkLabel}}" />
                         </Hyperlink>
                     </TextBlock>
