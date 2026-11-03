@@ -348,7 +348,7 @@ public sealed class DeviceDiagnosticsUiTests
             Assert.True(model.VendorControlRunning);
             Assert.False(main.ShouldStartHidden);
             Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
-            Assert.Contains("tray instance", Assert.IsType<System.Windows.Controls.TextBlock>(warning.Child).Text, StringComparison.Ordinal);
+            Assert.Contains("tray icon", Assert.IsType<System.Windows.Controls.TextBlock>(warning.Child).Text, StringComparison.Ordinal);
             await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Settings);
             Assert.Equal(System.Windows.Visibility.Visible, warning.Visibility);
             await main.RequestPanelModeAsync(SherpaAxis.App.Models.SidePanelMode.Calibration);

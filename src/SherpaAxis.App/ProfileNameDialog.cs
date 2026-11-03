@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using SherpaAxis.App.Services.Desktop;
+using SherpaAxis.App.Themes;
 
 namespace SherpaAxis.App;
 
@@ -14,7 +15,7 @@ internal sealed class ProfileNameDialog : Window
         Owner = owner; Title = Localization.Localizer.Translate(title); Width = 420; Height = 190; ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
-        Background = new SolidColorBrush(Color.FromRgb(17, 30, 48)); Foreground = Brushes.White;
+        Background = new SolidColorBrush(AppColors.Panel); Foreground = AppColors.TextBrush;
         Resources.MergedDictionaries.Add(owner.Resources);
         var panel = new StackPanel { Margin = new Thickness(20) };
         name = new TextBox { Text = initial, MaxLength = 80, Margin = new Thickness(0, 0, 0, 18) };

@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Input;
+using SherpaAxis.App.Themes;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App;
@@ -11,13 +12,13 @@ namespace SherpaAxis.App;
 internal sealed class BindButtonDialog : Window
 {
     internal CorrectionButton? Binding { get; private set; }
-    internal BindButtonDialog(Window owner, IButtonStateSource source, string title = "Bind baseline correction",
-        string hint = "Escape cancels. After binding, hold that control only while the pedal is fully released.")
+    internal BindButtonDialog(Window owner, IButtonStateSource source, string title = "Bind drift correction",
+        string hint = "Press Escape to cancel. Use this button only with your foot off the pedal.")
     {
         Owner = owner; Title = Localization.Localizer.Translate(title); Width = 440; Height = 240;
         ResizeMode = ResizeMode.NoResize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
-        Background = new SolidColorBrush(Color.FromRgb(17, 30, 48)); Foreground = Brushes.White;
+        Background = new SolidColorBrush(AppColors.Panel); Foreground = AppColors.TextBrush;
         Resources.MergedDictionaries.Add(owner.Resources);
         var panel = new StackPanel { Margin = new Thickness(22) };
         panel.Children.Add(new TextBlock { Text = Localization.Localizer.Translate("Press a keyboard key or wheel/gamepad button"), FontSize = 16, TextWrapping = TextWrapping.Wrap });
@@ -25,7 +26,7 @@ internal sealed class BindButtonDialog : Window
         {
             Text = Localization.Localizer.Translate(hint),
             FontSize = 12,
-            Foreground = Brushes.LightSlateGray,
+            Foreground = AppColors.MutedBrush,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 14, 0, 18)
         });

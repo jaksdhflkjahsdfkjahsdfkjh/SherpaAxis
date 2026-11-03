@@ -34,14 +34,14 @@ public sealed partial class DashboardViewModel
     public string SelectedFilterKind => Editor.FilterEnabled ? Editor.FilterKind : "Off";
     public bool UsesWindowFilter => Editor.FilterKind is "MovingAverage" or "Median" or "WeightedMovingAverage" or "MedianExponential";
     public bool UsesTimeFilter => Editor.FilterKind is "Exponential" or "TwoStageExponential" or "MedianExponential";
-    public string FilterInfo => !Editor.FilterEnabled ? "Filtering is off. Choose Sharp, Balanced or Smooth, or select an algorithm to enable it." : Editor.FilterKind switch
+    public string FilterInfo => !Editor.FilterEnabled ? "Filtering is off. Choose a preset to reduce sensor noise." : Editor.FilterKind switch
     {
-        "Median" => "Removes isolated spikes. Larger windows reject longer spikes and add delay.",
-        "MovingAverage" => "Averages recent reports. Larger windows smooth more and react more slowly.",
-        "WeightedMovingAverage" => "Averages recent reports with more weight on the newest samples.",
-        "MedianExponential" => "Rejects spikes first, then smooths the result. Uses both window and time constant.",
-        "TwoStageExponential" => "Two smoothing stages. Smooth transitions with more delay than one stage.",
-        _ => "One smoothing stage. A larger time constant reduces noise and slows response."
+        "Median" => "Removes brief spikes. A larger sample window adds delay.",
+        "MovingAverage" => "Averages recent samples. More samples give smoother, slower output.",
+        "WeightedMovingAverage" => "Smooths recent samples, favouring newer input.",
+        "MedianExponential" => "Removes spikes, then smooths the signal.",
+        "TwoStageExponential" => "Smooths twice for steadier output, with more delay.",
+        _ => "Reduces small fluctuations. More smoothing adds delay."
     };
 
     public void SetFilterPreset(string name)
@@ -79,9 +79,9 @@ public sealed partial class DashboardViewModel
     public bool HasCorrectionBinding => Editor.CorrectionButton is not null;
     public string CorrectionModeHint => Editor.CorrectionMode switch
     {
-        BaselineCorrectionMode.Auto => "Requires raw input and five consistent press/release cycles with one-second stable releases. Mismatched cycles do not change correction. Upward drift requires Fix drift with your foot off. Temporary correction never saves hardware automatically.",
-        BaselineCorrectionMode.ByButton => "Hold the bound control with your foot completely off the pedal. One stable second is required before correction starts. Release the control to stop adjustment. Fix drift provides the same check without a binding.",
-        _ => "Baseline adjustment is off. Hardware calibration remains unchanged."
+        BaselineCorrectionMode.Auto => "Calibrate once in SherpaAxis first. Auto checks five matching press/release cycles with stable releases. If the released value rises, use Fix drift. Calibration is not saved automatically.",
+        BaselineCorrectionMode.ByButton => "Take your foot off the pedal. Hold the bound button or Fix drift for at least one stable second. Keep holding until the fix finishes; release to stop.",
+        _ => "Automatic drift correction is off. Hold Fix drift to correct it manually."
     };
     public string CorrectionBindingLabel => ButtonLabel(Editor.CorrectionButton);
     public void SetCorrectionMode(string mode)

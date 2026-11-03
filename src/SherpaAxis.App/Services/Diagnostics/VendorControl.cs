@@ -5,7 +5,7 @@ namespace SherpaAxis.App.Services.Diagnostics;
 
 public static class VendorControl
 {
-    public const string ConflictMessage = "FEEL-VR Control is running. Exit it completely, including its tray instance, to avoid conflicting pedal settings.";
+    public const string ConflictMessage = "Close FEEL-VR Control, including its tray icon, before using SherpaAxis.";
 
     public static bool IsRunning()
     {

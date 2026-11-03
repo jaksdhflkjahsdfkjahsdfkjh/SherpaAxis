@@ -985,7 +985,7 @@ public sealed class FirmwareUpdateUiTests
             Assert.True(model.Firmware.Completed);
             Assert.Equal("OK", flash.Content);
             Assert.Contains("Pedals are ready", model.Firmware.Status, StringComparison.Ordinal);
-            Assert.Equal(Color.FromRgb(0x78, 0xE3, 0xC6), Assert.IsType<SolidColorBrush>(Assert.IsType<TextBlock>(dialog.FindName("FirmwareStatusLabel")).Foreground).Color);
+            Assert.Equal(SherpaAxis.App.Themes.AppColors.Success, Assert.IsType<SolidColorBrush>(Assert.IsType<TextBlock>(dialog.FindName("FirmwareStatusLabel")).Foreground).Color);
             Assert.False(Assert.IsType<Button>(dialog.FindName("RestoreFirmwareCalibrationButton")).IsVisible);
             Assert.False(Assert.IsType<Button>(dialog.FindName("ReviewFirmwareButton")).IsVisible);
             dialog.UpdateLayout();

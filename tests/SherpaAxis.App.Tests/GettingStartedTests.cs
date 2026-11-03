@@ -277,7 +277,7 @@ public sealed class GettingStartedTests
         using (var drawing = visual.RenderOpen())
         {
             var bounds = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
-            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 18, 32)), null, bounds);
+            drawing.DrawRectangle(new SolidColorBrush(SherpaAxis.App.Themes.AppColors.Window), null, bounds);
             drawing.DrawRectangle(new VisualBrush(element) { Stretch = Stretch.Fill }, null, bounds);
         }
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);

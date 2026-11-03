@@ -153,7 +153,7 @@ public sealed class UiRefinementTests
             graphics.Clear(menu.BackColor);
             renderer.DrawItemCheck(new Forms.ToolStripItemImageRenderEventArgs(graphics, selected, null, new System.Drawing.Rectangle(3, 3, 16, 16)));
         }
-        Assert.Equal(System.Drawing.Color.FromArgb(13, 23, 40).ToArgb(), bitmap.GetPixel(7, 7).ToArgb());
+        Assert.Equal(System.Drawing.Color.FromArgb(11, 11, 19).ToArgb(), bitmap.GetPixel(7, 7).ToArgb());
         Assert.NotEqual(menu.BackColor.ToArgb(), bitmap.GetPixel(10, 14).ToArgb());
         menu.PerformLayout();
         profiles.Select();
@@ -162,14 +162,14 @@ public sealed class UiRefinementTests
         using (var graphics = System.Drawing.Graphics.FromImage(highlight))
         {
             renderer.DrawMenuItemBackground(new Forms.ToolStripItemRenderEventArgs(graphics, profiles));
-            Assert.Equal(System.Drawing.Color.FromArgb(41, 66, 85).ToArgb(), highlight.GetPixel(4, 4).ToArgb());
+            Assert.Equal(System.Drawing.Color.FromArgb(12, 52, 109).ToArgb(), highlight.GetPixel(4, 4).ToArgb());
             var text = new Forms.ToolStripItemTextRenderEventArgs(graphics, profiles, profiles.Text!,
                 new System.Drawing.Rectangle(4, 2, profiles.Width - 8, profiles.Height - 4), System.Drawing.Color.Black, profiles.Font, Forms.TextFormatFlags.Left);
             renderer.DrawItemText(text);
             Assert.Equal(menu.ForeColor, text.TextColor);
             profiles.Enabled = false;
             renderer.DrawItemText(text);
-            Assert.Equal(System.Drawing.Color.FromArgb(149, 169, 193), text.TextColor);
+            Assert.Equal(System.Drawing.Color.FromArgb(176, 176, 191), text.TextColor);
             profiles.Enabled = true;
         }
         if (Environment.GetEnvironmentVariable("SHERPAAXIS_UI_CAPTURE_DIR") is { Length: > 0 } folder)
@@ -204,8 +204,8 @@ public sealed class UiRefinementTests
         using (var drawing = visual.RenderOpen())
         {
             var bounds = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
-            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 18, 32)), null, bounds);
-            drawing.DrawRectangle(new VisualBrush(element) { ViewboxUnits = BrushMappingMode.Absolute, Viewbox = bounds }, null, bounds);
+            drawing.DrawRectangle(new SolidColorBrush(SherpaAxis.App.Themes.AppColors.Window), null, bounds);
+            drawing.DrawRectangle(new VisualBrush(element) { ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect((Point)VisualTreeHelper.GetOffset(element), element.RenderSize) }, null, bounds);
         }
         var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);

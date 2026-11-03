@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Themes;
 using Forms = System.Windows.Forms;
 
 namespace SherpaAxis.App.Services.Desktop;
@@ -22,8 +23,8 @@ public sealed class ApplicationTray : IApplicationTray
         using var stream = System.Windows.Application.GetResourceStream(new Uri("/SherpaAxis.App;component/Assets/SherpaAxis.ico", UriKind.Relative))!.Stream;
         image = new Icon(stream);
         menu.Renderer = new TrayRenderer();
-        menu.BackColor = Color.FromArgb(23, 39, 59);
-        menu.ForeColor = Color.FromArgb(232, 239, 248);
+        menu.BackColor = DrawingColor(AppColors.Panel);
+        menu.ForeColor = DrawingColor(AppColors.Text);
         menu.ShowImageMargin = false;
         menu.ShowCheckMargin = false;
         menu.Opening += (_, _) => RebuildMenu();
@@ -83,6 +84,8 @@ public sealed class ApplicationTray : IApplicationTray
         icon.Visible = false; icon.Dispose(); menu.Dispose(); image.Dispose();
         GC.SuppressFinalize(this);
     }
+    private static Color DrawingColor(System.Windows.Media.Color color) => Color.FromArgb(color.A, color.R, color.G, color.B);
+
     private sealed class TrayRenderer() : Forms.ToolStripProfessionalRenderer(new TrayColors())
     {
         protected override void OnRenderMenuItemBackground(Forms.ToolStripItemRenderEventArgs e)
@@ -93,7 +96,7 @@ public sealed class ApplicationTray : IApplicationTray
         }
         protected override void OnRenderItemText(Forms.ToolStripItemTextRenderEventArgs e)
         {
-            e.TextColor = e.Item.Enabled ? Color.FromArgb(232, 239, 248) : Color.FromArgb(149, 169, 193);
+            e.TextColor = e.Item.Enabled ? DrawingColor(AppColors.Text) : DrawingColor(AppColors.Muted);
             base.OnRenderItemText(e);
         }
         protected override void OnRenderItemCheck(Forms.ToolStripItemImageRenderEventArgs e)
@@ -103,9 +106,9 @@ public sealed class ApplicationTray : IApplicationTray
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 var box = new Rectangle(e.ImageRectangle.X + 1, e.ImageRectangle.Y + 1, 14, 14);
-                using var fill = new SolidBrush(Color.FromArgb(13, 23, 40));
-                using var outline = new Pen(Color.FromArgb(69, 214, 187));
-                using var mark = new Pen(Color.FromArgb(120, 227, 198), 2) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                using var fill = new SolidBrush(DrawingColor(AppColors.Window));
+                using var outline = new Pen(DrawingColor(AppColors.Accent));
+                using var mark = new Pen(DrawingColor(AppColors.AccentForeground), 2) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
                 e.Graphics.FillRectangle(fill, box);
                 e.Graphics.DrawRectangle(outline, box);
                 e.Graphics.DrawLines(mark, [new Point(box.Left + 3, box.Top + 7), new Point(box.Left + 6, box.Top + 10), new Point(box.Left + 11, box.Top + 4)]);
@@ -113,17 +116,17 @@ public sealed class ApplicationTray : IApplicationTray
             finally { e.Graphics.Restore(state); }
         }
         protected override void OnRenderArrow(Forms.ToolStripArrowRenderEventArgs e)
-        { e.ArrowColor = Color.FromArgb(180, 196, 216); base.OnRenderArrow(e); }
+        { e.ArrowColor = DrawingColor(AppColors.Muted); base.OnRenderArrow(e); }
     }
 
     private sealed class TrayColors : Forms.ProfessionalColorTable
     {
-        public override Color ToolStripDropDownBackground => Color.FromArgb(23, 39, 59);
-        public override Color MenuItemSelected => Color.FromArgb(41, 66, 85);
+        public override Color ToolStripDropDownBackground => DrawingColor(AppColors.Panel);
+        public override Color MenuItemSelected => DrawingColor(AppColors.Selection);
         public override Color MenuItemSelectedGradientBegin => MenuItemSelected;
         public override Color MenuItemSelectedGradientEnd => MenuItemSelected;
-        public override Color MenuBorder => Color.FromArgb(52, 73, 96);
-        public override Color MenuItemBorder => Color.FromArgb(69, 214, 187);
+        public override Color MenuBorder => DrawingColor(AppColors.Border);
+        public override Color MenuItemBorder => DrawingColor(AppColors.Accent);
         public override Color CheckBackground => MenuItemSelected;
         public override Color CheckSelectedBackground => MenuItemSelected;
         public override Color ImageMarginGradientBegin => ToolStripDropDownBackground;

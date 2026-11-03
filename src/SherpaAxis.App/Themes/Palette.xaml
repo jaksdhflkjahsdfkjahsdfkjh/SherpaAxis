@@ -1,0 +1,25 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:theme="clr-namespace:SherpaAxis.App.Themes">
+    <SolidColorBrush x:Key="WindowBrush" Color="{x:Static theme:AppColors.Window}"/>
+    <SolidColorBrush x:Key="WorkspaceBrush" Color="{x:Static theme:AppColors.Workspace}"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="{x:Static theme:AppColors.Panel}"/>
+    <SolidColorBrush x:Key="HeaderBrush" Color="{x:Static theme:AppColors.Header}"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{x:Static theme:AppColors.Surface}"/>
+    <SolidColorBrush x:Key="InputBrush" Color="{x:Static theme:AppColors.Input}"/>
+    <SolidColorBrush x:Key="CanvasBrush" Color="{x:Static theme:AppColors.Canvas}"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="{x:Static theme:AppColors.Hover}"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="{x:Static theme:AppColors.Border}"/>
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="{x:Static theme:AppColors.ControlBorder}"/>
+    <SolidColorBrush x:Key="TextBrush" Color="{x:Static theme:AppColors.Text}"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="{x:Static theme:AppColors.Muted}"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="{x:Static theme:AppColors.Accent}"/>
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="{x:Static theme:AppColors.AccentForeground}"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{x:Static theme:AppColors.AccentHover}"/>
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{x:Static theme:AppColors.AccentText}"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="{x:Static theme:AppColors.AccentSoft}"/>
+    <SolidColorBrush x:Key="SelectionBrush" Color="{x:Static theme:AppColors.Selection}"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{x:Static theme:AppColors.Success}"/>
+    <SolidColorBrush x:Key="CautionBrush" Color="{x:Static theme:AppColors.Caution}"/>
+    <SolidColorBrush x:Key="ProblemBrush" Color="{x:Static theme:AppColors.Problem}"/>
+</ResourceDictionary>

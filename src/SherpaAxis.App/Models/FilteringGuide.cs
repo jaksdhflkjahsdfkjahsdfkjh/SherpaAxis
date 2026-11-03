@@ -55,6 +55,6 @@ public static class FilteringGuide
         new("Median + exponential", "Removes spikes with a median window, then smooths that result. Both window and time constant matter.",
             "Combines spike rejection and smoothing, with added delay. Spike guard uses 5 reports followed by an 8 ms exponential stage.", "median-exponential")
     ];
-    public const string ExampleSource = "Recorded examples: your October 18 brake capture, 37,684 reports at about 500 Hz. Each filter uses the same two segments. Dashed grey = original input; orange = filtered input. No synthetic noise, curves, deadzones or baseline correction. Example settings may differ from your current settings.";
-    public const string Summary = "Filtering affects deliberate pedal movements as well as noise. Larger settings usually add delay. At 500 reports/s, five reports span about 8 ms. None of these algorithms detects release, repairs baseline drift, or changes hardware calibration. Changes apply automatically. Compare Input vs filtered or Filtered vs curved. Use Filter difference to magnify small changes.";
+    public const string ExampleSource = "Recorded brake input at about 500 Hz. Each filter uses the same recording. Dashed grey = input; orange = filtered. Curves, deadzones and drift correction are off. Example settings may differ from yours.";
+    public const string Summary = "More filtering reduces noise but also delays pedal movement. Start with a low setting and compare Input vs filtered. Use Pedal drift correction for a changing release point.";
 }

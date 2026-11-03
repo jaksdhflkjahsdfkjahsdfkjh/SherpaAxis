@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Themes;
 using SherpaAxis.Core;
 
 namespace SherpaAxis.App.Controls;
@@ -16,6 +17,8 @@ public sealed class CurveEditor : FrameworkElement
         typeof(IReadOnlyList<PlotSample>), typeof(CurveEditor), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty AppliedProperty = DependencyProperty.Register(nameof(Applied),
         typeof(IReadOnlyList<PlotSample>), typeof(CurveEditor), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty StrokeProperty = DependencyProperty.Register(nameof(Stroke),
+        typeof(Brush), typeof(CurveEditor), new FrameworkPropertyMetadata(AppColors.BrakeBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     private int selected = -1;
     public CurveEditor()
     {
@@ -29,6 +32,7 @@ public sealed class CurveEditor : FrameworkElement
     public IReadOnlyList<CurvePoint>? Points { get => (IReadOnlyList<CurvePoint>?)GetValue(PointsProperty); set => SetValue(PointsProperty, value); }
     public IReadOnlyList<PlotSample>? Preview { get => (IReadOnlyList<PlotSample>?)GetValue(PreviewProperty); set => SetValue(PreviewProperty, value); }
     public IReadOnlyList<PlotSample>? Applied { get => (IReadOnlyList<PlotSample>?)GetValue(AppliedProperty); set => SetValue(AppliedProperty, value); }
+    public Brush Stroke { get => (Brush)GetValue(StrokeProperty); set => SetValue(StrokeProperty, value); }
     public event EventHandler? Edited;
     private Rect Plot => new(28, 8, Math.Max(1, ActualWidth - 40), Math.Max(1, ActualHeight - 30));
     private Point Screen(CurvePoint p) => new(Plot.Left + p.Input * Plot.Width, Plot.Bottom - p.Output * Plot.Height);
@@ -38,8 +42,8 @@ public sealed class CurveEditor : FrameworkElement
     {
         base.OnRender(drawingContext);
         drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
-        var grid = new Pen(new SolidColorBrush(Color.FromRgb(48, 65, 87)), 1);
-        var pen = new Pen(new SolidColorBrush(Color.FromRgb(69, 214, 187)), 2);
+        var grid = new Pen(AppColors.GridBrush, 1);
+        var pen = new Pen(Stroke, 2);
         for (var i = 0; i <= 4; i++)
         {
             var x = Plot.Left + Plot.Width * i / 4;
@@ -47,18 +51,18 @@ public sealed class CurveEditor : FrameworkElement
             drawingContext.DrawLine(grid, new(x, Plot.Top), new(x, Plot.Bottom));
             drawingContext.DrawLine(grid, new(Plot.Left, y), new(Plot.Right, y));
         }
-        DrawCurve(drawingContext, Applied, new Pen(Brushes.LightSlateGray, 1) { DashStyle = DashStyles.Dash });
+        DrawCurve(drawingContext, Applied, new Pen(AppColors.MutedBrush, 1) { DashStyle = DashStyles.Dash });
         if (Points is not { Count: >= 2 } points) { return; }
         DrawCurve(drawingContext, Preview, pen);
         for (var i = 0; i < points.Count; i++)
         {
-            drawingContext.DrawEllipse(i == selected ? Brushes.White : pen.Brush, grid, Screen(points[i]), 5, 5);
+            drawingContext.DrawEllipse(i == selected ? AppColors.TextBrush : pen.Brush, grid, Screen(points[i]), 5, 5);
         }
         var text = new FormattedText(Localization.Localizer.Translate("INPUT →"), CultureInfo.InvariantCulture,
-            FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, Brushes.LightSlateGray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, AppColors.MutedBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         drawingContext.DrawText(text, new(Plot.Left + (Plot.Width - text.Width) / 2, Plot.Bottom + 4));
         var end = new FormattedText("100%", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-            new Typeface("Segoe UI"), 10, Brushes.LightSlateGray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            new Typeface("Segoe UI"), 10, AppColors.MutedBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         drawingContext.DrawText(end, new(Plot.Right - end.Width, Plot.Bottom + 4));
     }
 

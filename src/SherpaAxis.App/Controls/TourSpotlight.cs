@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using SherpaAxis.App.Themes;
 
 namespace SherpaAxis.App.Controls;
 
@@ -18,10 +19,10 @@ public sealed class TourSpotlight : FrameworkElement
     {
         var outer = new RectangleGeometry(new Rect(RenderSize));
         if (TargetBounds.IsEmpty)
-        { drawingContext.DrawGeometry(new SolidColorBrush(Color.FromArgb(175, 3, 8, 16)), null, outer); return; }
+        { drawingContext.DrawGeometry(AppColors.OverlayBrush, null, outer); return; }
         var hole = new RectangleGeometry(TargetBounds, 8, 8);
-        drawingContext.DrawGeometry(new SolidColorBrush(Color.FromArgb(175, 3, 8, 16)), null,
+        drawingContext.DrawGeometry(AppColors.OverlayBrush, null,
             new CombinedGeometry(GeometryCombineMode.Exclude, outer, hole));
-        drawingContext.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(Color.FromRgb(69, 214, 187)), 2), TargetBounds, 8, 8);
+        drawingContext.DrawRoundedRectangle(null, new Pen(AppColors.AccentBrush, 2), TargetBounds, 8, 8);
     }
 }

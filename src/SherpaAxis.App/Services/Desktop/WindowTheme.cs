@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using SherpaAxis.App.Themes;
 
 namespace SherpaAxis.App.Services.Desktop;
 
@@ -10,12 +11,12 @@ internal static class WindowTheme
     {
         var handle = new WindowInteropHelper(window).Handle;
         var enabled = 1;
-        var black = 0;
-        var white = 0x00FFFFFF;
+        var caption = AppColors.Window.R | AppColors.Window.G << 8 | AppColors.Window.B << 16;
+        var text = AppColors.Text.R | AppColors.Text.G << 8 | AppColors.Text.B << 16;
         // Older Windows versions may reject caption/text colors; keep the dark-frame request.
         _ = DwmSetWindowAttribute(handle, 20, in enabled, sizeof(int));
-        _ = DwmSetWindowAttribute(handle, 35, in black, sizeof(int));
-        _ = DwmSetWindowAttribute(handle, 36, in white, sizeof(int));
+        _ = DwmSetWindowAttribute(handle, 35, in caption, sizeof(int));
+        _ = DwmSetWindowAttribute(handle, 36, in text, sizeof(int));
     }
 
     [DllImport("dwmapi.dll", ExactSpelling = true)]

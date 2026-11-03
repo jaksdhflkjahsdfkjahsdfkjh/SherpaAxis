@@ -53,7 +53,7 @@ public sealed class WorkspaceSpacingTests
             UiRefinementTests.CapturePreview(drift, $"spacing-drift-{language}-{sidebar}.png");
 
             var mapping = Assert.IsType<Expander>(main.FindName("AdvancedInputMapping"));
-            Assert.Equal(Localizer.Translate("Input range"), mapping.Header);
+            Assert.Equal(Localizer.Translate("Edit input range"), mapping.Header);
             Assert.Equal(0, mapping.Margin.Top);
             mapping.IsExpanded = true;
             main.UpdateLayout();

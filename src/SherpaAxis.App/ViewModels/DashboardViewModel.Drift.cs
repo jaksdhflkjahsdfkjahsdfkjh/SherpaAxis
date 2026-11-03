@@ -18,7 +18,7 @@ public sealed partial class DashboardViewModel
         RefreshUnsavedState();
         engine.RequestFixDrift(SelectedAxis);
         RefreshDrift();
-        ShowMessage("Keep your foot completely off the selected pedal. Fix drift requires one stable second and does not save hardware calibration.");
+        ShowMessage("Keep your foot off and hold until the fix finishes. Save calibration to keep it in the pedals.");
     }
 
     private void RefreshDrift()

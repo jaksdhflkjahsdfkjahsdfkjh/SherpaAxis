@@ -52,7 +52,7 @@ public sealed partial class DashboardEngine
             { throw new InvalidOperationException("Original raw calibration is unavailable. Calibrate this pedal in SherpaAxis first."); }
             fixRequested = axis;
             fixRequestedAt = clock.GetTimestamp();
-            axes[axis].DriftStatus = "Release the pedal completely and keep your foot off while the baseline is checked";
+            axes[axis].DriftStatus = "Keep your foot off the pedal while the release point is checked.";
         }
     }
 
@@ -191,14 +191,14 @@ public sealed partial class DashboardEngine
         {
             var value = axes[axis];
             if (sensorCalibration is null)
-            { return new(false, driftInputError ?? "Drift monitoring needs raw sensor input. Select Auto or By button; close FEEL-VR Control", null, 0, null, null, false); }
+            { return new(false, driftInputError ?? "Waiting for pedal sensor data. Close FEEL-VR Control if it is running.", null, 0, null, null, false); }
             var range = sensorCalibration.Range(axis);
             var reference = sensorCalibration.RawRange(axis);
             var offset = value.Session.BaselineCorrection;
             var status = activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Auto ? value.Automatic.Status : value.DriftStatus;
             if (!IsFresh(value)) { status = "Waiting for fresh pedal input"; }
             if (reference is null) { status = "Original raw calibration is unavailable. Calibrate this pedal in SherpaAxis first."; }
-            if (activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Off) { status = "Baseline adjustment is off. Hardware calibration remains unchanged."; }
+            if (activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Off) { status = "Automatic drift correction is off. Hold Fix drift to correct it manually."; }
             var raw = value.Current?.Processing.Input;
             var ready = reference is not null && IsFresh(value) && value.BaselineApproved && value.Session.BaselineCorrection == value.Session.TargetCorrection
                 && !value.ManualCapture && !value.ManualAdjusting && !(value.BindingWasDown && !value.ButtonCaptured)

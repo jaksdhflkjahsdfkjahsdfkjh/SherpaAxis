@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Themes;
 using SherpaAxis.Profiles;
 
 namespace SherpaAxis.App.Controls;
@@ -118,16 +119,11 @@ public sealed class SignalPlot : FrameworkElement
         {
             var lane = frame.Lanes[index];
             var top = index * laneHeight;
-            var color = new SolidColorBrush(lane.Axis switch
-            {
-                PedalAxis.Throttle => Color.FromRgb(69, 214, 187),
-                PedalAxis.Brake => Color.FromRgb(255, 185, 103),
-                _ => Color.FromRgb(175, 148, 246)
-            });
+            var color = AppColors.ForPedal(lane.Axis);
             Label(drawingContext, $"{lane.Axis}   ·   {lane.FilterLabel}", 0, top, color, ActualWidth - 12);
             var left = Mode == "Device counts" ? 82 : 52;
             var area = new Rect(left, top + 22, Math.Max(1, ActualWidth - left - 8), Math.Max(1, laneHeight - 34));
-            var grid = new Pen(new SolidColorBrush(Color.FromRgb(39, 54, 75)), 1);
+            var grid = new Pen(AppColors.GridBrush, 1);
             for (var tick = 0; tick <= 2; tick++)
             {
                 var y = area.Top + tick * area.Height / 2;
@@ -136,18 +132,18 @@ public sealed class SignalPlot : FrameworkElement
                 var label = Mode == "Device counts" ? value.ToString("N0", CultureInfo.InvariantCulture)
                     : (value * 100).ToString(Mode == "Filter difference" || Zoom ? "0.##" : "0", CultureInfo.InvariantCulture)
                         + (Mode == "Filter difference" ? " pp" : "%");
-                Label(drawingContext, label, 0, y - 6, Brushes.LightSlateGray);
+                Label(drawingContext, label, 0, y - 6, AppColors.MutedBrush);
             }
             drawingContext.PushClip(new RectangleGeometry(area));
             if (Mode == "Input vs filtered")
             {
-                DrawSeries(SignalGraph.Input, new Pen(Brushes.LightSlateGray, 1.3) { DashStyle = DashStyles.Dash });
+                DrawSeries(SignalGraph.Input, new Pen(AppColors.MutedBrush, 1.3) { DashStyle = DashStyles.Dash });
             }
-            else if (Mode == "Filtered vs curved") { DrawSeries(sample => sample.Filtered, new Pen(Brushes.LightSlateGray, 1.3) { DashStyle = DashStyles.Dash }); }
+            else if (Mode == "Filtered vs curved") { DrawSeries(sample => sample.Filtered, new Pen(AppColors.MutedBrush, 1.3) { DashStyle = DashStyles.Dash }); }
             DrawSeries(sample => SignalGraph.Value(sample, Mode), new Pen(color, 1.8));
             if (selectionStart is { } start)
             {
-                drawingContext.DrawRectangle(new SolidColorBrush(Color.FromArgb(50, 69, 214, 187)), new Pen(color, 1),
+                drawingContext.DrawRectangle(AppColors.AccentSoftBrush, new Pen(color, 1),
                     new Rect(area.Left + Math.Min(start, selectionEnd) * area.Width, area.Top, Math.Abs(start - selectionEnd) * area.Width, area.Height));
             }
             drawingContext.Pop();
@@ -170,8 +166,8 @@ public sealed class SignalPlot : FrameworkElement
                 drawingContext.DrawGeometry(null, pen, geometry);
             }
         }
-        Label(drawingContext, FormattableString.Invariant($"{frame.Start:F1} s"), 52, ActualHeight - 16, Brushes.LightSlateGray);
-        Label(drawingContext, FormattableString.Invariant($"{frame.End:F1} s"), ActualWidth - 65, ActualHeight - 16, Brushes.LightSlateGray);
+        Label(drawingContext, FormattableString.Invariant($"{frame.Start:F1} s"), 52, ActualHeight - 16, AppColors.MutedBrush);
+        Label(drawingContext, FormattableString.Invariant($"{frame.End:F1} s"), ActualWidth - 65, ActualHeight - 16, AppColors.MutedBrush);
     }
 
     private void Label(DrawingContext context, string text, double x, double y, Brush brush, double maximumWidth = double.PositiveInfinity)
