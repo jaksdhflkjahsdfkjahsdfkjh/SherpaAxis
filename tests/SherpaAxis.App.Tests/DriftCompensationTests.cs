@@ -10,6 +10,78 @@ public sealed class DriftCompensationTests
 {
     private static readonly PedalCalibration Hardware = new(new(1000, 15000), new(3200500, 4700500), new(1000, 15000));
 
+    [Theory]
+    [InlineData(false, -430147)]
+    [InlineData(true, -430147)]
+    [InlineData(false, 460000)]
+    [InlineData(true, 460000)]
+    public void ManualCorrectionUsesTheOriginalRawSpanBeyondTheLegacyQuarterRange(bool boundButton, int drift)
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        var raw = new HardwareCalibrationRange(3479530, 5079710);
+        var bounds = Hardware.WithRange(PedalChannel.Brake, PedalHardwareSettings.ApplyDeadzones(raw, 5, 5));
+        engine.SetSensorCalibration(new("test-controller", bounds,
+            new Dictionary<PedalAxis, HardwareCalibrationRange> { [PedalAxis.Brake] = raw }));
+        using var buttons = new ButtonStateBuffer();
+        double time = 0;
+        Sample(engine, ref time, raw.Minimum + drift);
+        if (boundButton) { engine.ProcessCorrectionButtons(buttons); buttons.Set(new("keyboard", 65), true); }
+        else { engine.RequestFixDrift(PedalAxis.Brake); }
+        for (var sample = 0; sample < 90; sample++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        for (var sample = 0; sample < 600; sample++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
+        Assert.Equal(drift, engine.DriftState(PedalAxis.Brake).Offset, 5);
+        Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
+        var corrected = engine.CorrectedHardwareCalibration(PedalAxis.Brake);
+        Assert.Equal(raw, corrected.RawOriginal);
+        Assert.Equal(bounds.Brake.Minimum + drift, corrected.Corrected.Brake.Minimum);
+        Assert.Equal(bounds.Brake.Maximum + drift, corrected.Corrected.Brake.Maximum);
+    }
+
+    [Theory]
+    [InlineData(-800000)]
+    [InlineData(800000)]
+    public void ManualCorrectionStillRejectsShiftsBeyondHalfTheRawTravel(int drift)
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        double time = 0;
+        Sample(engine, ref time, Hardware.Brake.Minimum + drift);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        Hold(engine, ref time, Hardware.Brake.Minimum + drift, 600);
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.Contains("manual limit of 750000", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LargerManualAllowanceDoesNotRelaxAutomaticCorrectionLimits()
+    {
+        var engine = Configured(BaselineCorrectionMode.Auto);
+        double time = 0;
+        for (var cycle = 0; cycle < 5; cycle++) { Cycle(engine, ref time, -430147); }
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.Contains("limit", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ManualCorrectionCannotShiftTheRawRangeOutsideThePhysicalSensor()
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        var raw = new HardwareCalibrationRange(16000000, 16700000);
+        engine.SetSensorCalibration(new("test-controller", Hardware.WithRange(PedalChannel.Brake, raw),
+            new Dictionary<PedalAxis, HardwareCalibrationRange> { [PedalAxis.Brake] = raw }));
+        double time = 0;
+        Sample(engine, ref time, raw.Minimum + 100000);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        Hold(engine, ref time, raw.Minimum + 100000, 600);
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.Contains("exceed the sensor range", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RepeatedReleaseJitterDefinesANoiseBandWithoutBeingReportedAsUpwardDrift()
     {

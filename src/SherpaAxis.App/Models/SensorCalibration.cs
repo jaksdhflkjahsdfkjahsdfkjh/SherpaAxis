@@ -16,8 +16,13 @@ public sealed record SensorCalibration(string SerialNumber, PedalCalibration Bou
     {
         var scale = Scale(axis);
         var minimum = Range(axis).Minimum;
-        return new(new(minimum + profile.Calibration.Minimum * scale, minimum + profile.Calibration.Maximum * scale, profile.Calibration.Inverted),
-            profile.Deadzone, profile.Curve, profile.MaximumBaselineCorrection * scale, profile.Filter,
+        var calibration = new AxisCalibration(minimum + profile.Calibration.Minimum * scale, minimum + profile.Calibration.Maximum * scale, profile.Calibration.Inverted);
+        // An explicit foot-off check uses raw travel; automatic correction retains the profile limit.
+        var maximumCorrection = profile.CorrectionMode == BaselineCorrectionMode.ByButton && RawRange(axis) is { } raw
+            ? Math.Min(calibration.Span, (raw.Maximum - (double)raw.Minimum) * .5)
+            : profile.MaximumBaselineCorrection * scale;
+        return new(calibration,
+            profile.Deadzone, profile.Curve, maximumCorrection, profile.Filter,
             profile.Session is { } session ? Map(axis, session) : null, profile.CorrectionMode, profile.CorrectionButton, profile.BitePoint);
     }
     public AxisSessionSettings Map(PedalAxis axis, AxisSessionSettings settings) => new(
