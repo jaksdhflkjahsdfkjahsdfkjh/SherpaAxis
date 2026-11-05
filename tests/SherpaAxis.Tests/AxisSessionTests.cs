@@ -5,6 +5,32 @@ namespace SherpaAxis.Tests;
 
 public sealed class AxisSessionTests
 {
+    [Theory]
+    [InlineData(-400)]
+    [InlineData(400)]
+    public void ExplicitAuthorizationAllowsShiftsLargerThanTheCalibrationTravel(double correction)
+    {
+        var session = new AxisSession(new(500, 600), new(10000, 100), maximumBaselineCorrection: 10,
+            maximumAuthorizedCorrection: 400);
+        var released = 500 + correction;
+        session.Process(released, 0, 1);
+        session.ConfirmReleasedBaseline(released);
+        Assert.Equal(0, session.Process(released, .01, 1).Processing.BaselineCorrection);
+        var corrected = session.Process(released, .1, 1, releaseConfirmed: true);
+        Assert.Equal(correction, corrected.Processing.BaselineCorrection);
+        Assert.Equal(0, corrected.Processing.Output);
+        session.RestoreBaselineCorrection(correction);
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.RestoreBaselineCorrection(401));
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.ConfirmReleasedBaseline(901));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void ExplicitAuthorizationStillRequiresAFiniteNonnegativeLimit(double maximum) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AxisSession(new(0, 100), new(1, 1), maximumAuthorizedCorrection: maximum));
+
     [Fact]
     public void RestoringKnownCorrectionRequiresAStartedSessionAndHonorsItsLimit()
     {

@@ -38,6 +38,6 @@ public sealed class AxisProfile
 
     public AxisProcessor CreateProcessor() => new(Calibration, Deadzone, Curve.Curve, MaximumBaselineCorrection, Filter);
 
-    public AxisSession CreateSession(AxisSessionSettings settings) => new(Calibration, settings, Deadzone, Curve.Curve,
-        MaximumBaselineCorrection, Filter);
+    public AxisSession CreateSession(AxisSessionSettings settings, double? maximumAuthorizedCorrection = null) =>
+        new(Calibration, settings, Deadzone, Curve.Curve, MaximumBaselineCorrection, Filter, maximumAuthorizedCorrection);
 }

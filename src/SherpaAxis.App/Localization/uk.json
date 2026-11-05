@@ -1075,6 +1075,5 @@
   "Waiting for pedal sensor data. Close FEEL-VR Control if it is running.": "Очікуємо дані датчика педалі. Закрийте FEEL-VR Control, якщо його запущено.",
   "Keep your foot off the pedal while the release point is checked.": "Не торкайтеся педалі, доки перевіряється положення відпускання.",
   "Keep your foot off and hold until the fix finishes. Save calibration to keep it in the pedals.": "Приберіть ногу й тримайте до завершення. Збережіть калібрування, щоб залишити виправлення в педалях.",
-  "The shifted calibration would exceed the sensor range. Recalibrate this pedal.": "Зміщене калібрування вийде за межі датчика. Відкалібруйте педаль знову.",
-  "Measured drift {0} counts exceeds the manual limit of {1} counts. Recalibrate this pedal.": "Виміряний дрейф {0} відліків перевищує ручне обмеження {1} відліків. Відкалібруйте педаль знову."
+  "The shifted calibration would exceed the sensor range. Recalibrate this pedal.": "Зміщене калібрування вийде за межі датчика. Відкалібруйте педаль знову."
 }

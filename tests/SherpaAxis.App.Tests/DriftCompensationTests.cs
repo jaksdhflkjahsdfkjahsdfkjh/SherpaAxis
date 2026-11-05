@@ -15,7 +15,17 @@ public sealed class DriftCompensationTests
     [InlineData(true, -430147)]
     [InlineData(false, 460000)]
     [InlineData(true, 460000)]
-    public void ManualCorrectionUsesTheOriginalRawSpanBeyondTheLegacyQuarterRange(bool boundButton, int drift)
+    [InlineData(false, -1000000)]
+    [InlineData(true, -1000000)]
+    [InlineData(false, 1000000)]
+    [InlineData(true, 1000000)]
+    [InlineData(false, -2000000)]
+    [InlineData(true, -2000000)]
+    [InlineData(false, 2000000)]
+    [InlineData(true, 2000000)]
+    [InlineData(false, 10000000)]
+    [InlineData(true, 10000000)]
+    public void ManualCorrectionAcceptsAnyShiftThatKeepsTheRawAndAppliedRangesInsideTheSensor(bool boundButton, int drift)
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         var raw = new HardwareCalibrationRange(3479530, 5079710);
@@ -30,7 +40,7 @@ public sealed class DriftCompensationTests
         for (var sample = 0; sample < 90; sample++)
         { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
         Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
-        for (var sample = 0; sample < 600; sample++)
+        for (var sample = 0; sample < 12000; sample++)
         { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
         Assert.Equal(drift, engine.DriftState(PedalAxis.Brake).Offset, 5);
         Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
@@ -41,9 +51,9 @@ public sealed class DriftCompensationTests
     }
 
     [Theory]
-    [InlineData(-800000)]
-    [InlineData(800000)]
-    public void ManualCorrectionStillRejectsShiftsBeyondHalfTheRawTravel(int drift)
+    [InlineData(12100000)]
+    [InlineData(13000000)]
+    public void ManualCorrectionRejectsShiftsThatWouldMoveAnEndpointOutsideTheSensor(int drift)
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         double time = 0;
@@ -52,7 +62,7 @@ public sealed class DriftCompensationTests
         Hold(engine, ref time, Hardware.Brake.Minimum + drift, 600);
         Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
         Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
-        Assert.Contains("manual limit of 750000", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+        Assert.Contains("exceed the sensor range", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
     }
 
     [Fact]

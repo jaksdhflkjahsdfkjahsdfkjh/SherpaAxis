@@ -112,8 +112,9 @@ shift both calibration endpoints together while preserving the range and deadzon
 First calibrate the affected pedal in SherpaAxis so the app can retain its original
 raw range. If the checks disagree, no new correction is applied. Keep your foot
 completely off for manual checks: steady foot pressure can also look stable.
-Manual correction supports shifts up to half the original raw pedal travel, provided
-the shifted range still fits the sensor. Automatic mode retains its stricter limits.
+Manual correction has no travel-percentage limit: both the original raw range and
+the calibrated range must still fit within the sensor limits after shifting. The
+one-second stability check still applies. Automatic mode retains its stricter limits.
 Corrections last for the current session unless you choose **Save calibration**.
 The original hardware calibration is backed up before a corrected calibration is saved.
 

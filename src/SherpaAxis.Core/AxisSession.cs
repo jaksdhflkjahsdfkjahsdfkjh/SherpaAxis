@@ -11,7 +11,8 @@ public sealed class AxisSession
     private long connection;
 
     public AxisSession(AxisCalibration calibration, AxisSessionSettings settings, AxisDeadzone? deadzone = null,
-        ResponseCurve? curve = null, double maximumBaselineCorrection = 0, LowPassFilterSettings? filterSettings = null)
+        ResponseCurve? curve = null, double maximumBaselineCorrection = 0, LowPassFilterSettings? filterSettings = null,
+        double? maximumAuthorizedCorrection = null)
     {
         ArgumentNullException.ThrowIfNull(calibration);
         ArgumentNullException.ThrowIfNull(settings);
@@ -19,13 +20,15 @@ public sealed class AxisSession
         {
             throw new ArgumentOutOfRangeException(nameof(maximumBaselineCorrection));
         }
+        if (maximumAuthorizedCorrection is { } authorized && (!double.IsFinite(authorized) || authorized < 0))
+        { throw new ArgumentOutOfRangeException(nameof(maximumAuthorizedCorrection)); }
 
         this.calibration = calibration;
         this.settings = settings;
         this.deadzone = deadzone ?? new AxisDeadzone();
         this.curve = curve ?? ResponseCurve.Linear;
         filter = filterSettings is null ? null : new AxisSignalFilter(filterSettings);
-        MaximumBaselineCorrection = maximumBaselineCorrection;
+        MaximumBaselineCorrection = maximumAuthorizedCorrection ?? maximumBaselineCorrection;
     }
 
     public double MaximumBaselineCorrection { get; }

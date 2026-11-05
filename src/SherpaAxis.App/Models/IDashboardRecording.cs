@@ -21,7 +21,7 @@ public sealed record RecordedEvent(string Kind, double ElapsedSeconds, long Conf
 public sealed record RecordingSource(string Kind, string? CaptureFileName = null, double? PlaybackSpeed = null);
 
 public sealed record RecordedAxisLimits(PedalAxis Axis, double MaximumCorrectionPerSecond,
-    double MaximumCorrectionOutputPerSecond, double ResetAfterSeconds);
+    double MaximumCorrectionOutputPerSecond, double ResetAfterSeconds, double? MaximumBaselineCorrection = null);
 
 public sealed record RecordedConfiguration(JsonElement Profile, IReadOnlyList<RecordedAxisLimits> SessionLimits);
 

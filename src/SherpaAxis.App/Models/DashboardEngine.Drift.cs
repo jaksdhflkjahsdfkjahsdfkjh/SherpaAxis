@@ -153,12 +153,10 @@ public sealed partial class DashboardEngine
         values.DriftStatus = FormattableString.Invariant($"Checking released baseline: {values.ReleaseWindow.StableSeconds:F1}/1.0 s stable. Keep your foot off");
         if (captured is not { } released) { return false; }
         var correction = released - physical.Minimum;
-        if (Math.Abs(correction) > maximum || !ValidShift(axis, correction))
+        if (!ValidShift(axis, correction))
         {
             values.ManualCapture = false; values.ReleaseWindow.Reset(); values.BindingReady = false;
-            values.DriftStatus = Math.Abs(correction) > maximum
-                ? FormattableString.Invariant($"Measured drift {correction:+0;-0;0} counts exceeds the manual limit of {maximum:0} counts. Recalibrate this pedal.")
-                : "The shifted calibration would exceed the sensor range. Recalibrate this pedal.";
+            values.DriftStatus = "The shifted calibration would exceed the sensor range. Recalibrate this pedal.";
             return false;
         }
         values.Session.ConfirmReleasedBaseline(ProfileForInput(axis, settings).Calibration.ReleasedReference + correction);

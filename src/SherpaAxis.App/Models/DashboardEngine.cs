@@ -76,10 +76,11 @@ public sealed partial class DashboardEngine
             var inputProfiles = Enum.GetValues<PedalAxis>().ToDictionary(axis => axis, axis => ProfileForInput(axis,
                 profile.Axes.TryGetValue(axis, out var value) ? value : new AxisProfile(new(0, DeviceMaximum(axis)))));
             var inputLimits = limits.ToDictionary(pair => pair.Key, pair => sensorCalibration?.Map(pair.Key, pair.Value) ?? pair.Value);
-            var replacements = inputProfiles.ToDictionary(pair => pair.Key, pair => pair.Value.CreateSession(inputLimits[pair.Key]));
+            var replacements = inputProfiles.ToDictionary(pair => pair.Key, pair =>
+                sensorCalibration?.CreateSession(pair.Key, pair.Value, inputLimits[pair.Key]) ?? pair.Value.CreateSession(inputLimits[pair.Key]));
             var snapshot = new RecordedConfiguration(JsonSerializer.Deserialize<JsonElement>(ProfileJson.Serialize(new(profile.Name, inputProfiles))),
                 Array.AsReadOnly(inputLimits.Select(pair => new RecordedAxisLimits(pair.Key, pair.Value.MaximumCorrectionPerSecond,
-                    pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds)).ToArray()));
+                    pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds, replacements[pair.Key].MaximumBaselineCorrection)).ToArray()));
             if (!completingCalibration) { InvalidateCalibration("Processing settings changed. Start calibration again."); }
             SuspendOutput("processing settings changed");
             foreach (var (axis, session) in replacements)

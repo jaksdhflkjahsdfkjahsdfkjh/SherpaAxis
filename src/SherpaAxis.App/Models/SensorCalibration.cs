@@ -17,13 +17,16 @@ public sealed record SensorCalibration(string SerialNumber, PedalCalibration Bou
         var scale = Scale(axis);
         var minimum = Range(axis).Minimum;
         var calibration = new AxisCalibration(minimum + profile.Calibration.Minimum * scale, minimum + profile.Calibration.Maximum * scale, profile.Calibration.Inverted);
-        // An explicit foot-off check uses raw travel; automatic correction retains the profile limit.
-        var maximumCorrection = profile.CorrectionMode == BaselineCorrectionMode.ByButton && RawRange(axis) is { } raw
-            ? Math.Min(calibration.Span, (raw.Maximum - (double)raw.Minimum) * .5)
-            : profile.MaximumBaselineCorrection * scale;
         return new(calibration,
-            profile.Deadzone, profile.Curve, maximumCorrection, profile.Filter,
+            profile.Deadzone, profile.Curve, profile.MaximumBaselineCorrection * scale, profile.Filter,
             profile.Session is { } session ? Map(axis, session) : null, profile.CorrectionMode, profile.CorrectionButton, profile.BitePoint);
+    }
+    public AxisSession CreateSession(PedalAxis axis, AxisProfile mappedProfile, AxisSessionSettings settings)
+    {
+        // Manual capture checks both shifted ranges before authorizing a target; no travel-percentage cap applies.
+        double? maximum = mappedProfile.CorrectionMode == BaselineCorrectionMode.ByButton && RawRange(axis) is { } raw
+            ? Math.Max(raw.Minimum, DashboardEngine.DeviceMaximum(axis) - raw.Maximum) : null;
+        return mappedProfile.CreateSession(settings, maximumAuthorizedCorrection: maximum);
     }
     public AxisSessionSettings Map(PedalAxis axis, AxisSessionSettings settings) => new(
         settings.MaximumCorrectionPerSecond * Scale(axis), settings.MaximumCorrectionOutputPerSecond, settings.ResetAfterSeconds);
