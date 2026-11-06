@@ -1075,5 +1075,13 @@
   "Waiting for pedal sensor data. Close FEEL-VR Control if it is running.": "Очікуємо дані датчика педалі. Закрийте FEEL-VR Control, якщо його запущено.",
   "Keep your foot off the pedal while the release point is checked.": "Не торкайтеся педалі, доки перевіряється положення відпускання.",
   "Keep your foot off and hold until the fix finishes. Save calibration to keep it in the pedals.": "Приберіть ногу й тримайте до завершення. Збережіть калібрування, щоб залишити виправлення в педалях.",
-  "The shifted calibration would exceed the sensor range. Recalibrate this pedal.": "Зміщене калібрування вийде за межі датчика. Відкалібруйте педаль знову."
+  "The shifted calibration would exceed the sensor range. Recalibrate this pedal.": "Зміщене калібрування вийде за межі датчика. Відкалібруйте педаль знову.",
+  "The backup does not match the connected controller's identity and HID capabilities.": "Копія не відповідає ідентифікатору та HID-параметрам підключеного контролера.",
+  "Backup restored. Save to controller to keep it, or Discard changes to undo.": "Копію відновлено. Збережіть у контролер, щоб залишити її, або скасуйте зміни.",
+  "Calibration backup restored and verified. Save to controller to keep it, or Discard changes to undo.": "Копію калібрування відновлено та перевірено. Збережіть її в контролер або скасуйте зміни.",
+  "A connected calibration session is required to restore a backup.": "Для відновлення копії потрібен підключений сеанс калібрування.",
+  "Open Calibration before restoring a hardware backup.": "Відкрийте Калібрування перед відновленням копії налаштувань педалей.",
+  "Connect the controller before restoring a backup.": "Підключіть контролер перед відновленням копії.",
+  "Original calibration restored. Use Save restored calibration in the recovery panel to resolve the earlier uncertain save.": "Початкове калібрування відновлено. Натисніть Зберегти відновлене калібрування на панелі відновлення, щоб підтвердити збереження в контролер.",
+  "Save the restored calibration to the controller before loading another backup.": "Збережіть відновлене калібрування в контролер перед завантаженням іншої копії."
 }

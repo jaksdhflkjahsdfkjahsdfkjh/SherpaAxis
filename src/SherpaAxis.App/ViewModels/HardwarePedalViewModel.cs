@@ -33,6 +33,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
         : this(timeProvider) => Connect(configuration, calibration);
 
     public bool HasSession => configuration is not null;
+    internal bool RestoredBackupPendingSave { get; set; }
     public PedalAxes? CurrentAxes => HasSession && clock.GetElapsedTime(Volatile.Read(ref lastInputAt)) < TimeSpan.FromMilliseconds(250)
         && calibration?.Capture?.Interrupted != true ? Volatile.Read(ref latest)?.Axes : null;
     public PedalChannel? SensorChannel => calibration?.Capture is { Interrupted: false } capture ? capture.Channel : null;
@@ -61,7 +62,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
     public bool CanSelect => !Busy && !IsCapturing && configuration?.NeedsRecovery != true;
     public bool CanCapture => !Busy && configuration?.NeedsRecovery != true && configuration?.PersistenceUncertain != true;
     public bool CanSave => HasSession && !Busy && !IsCapturing && configuration?.NeedsRecovery != true
-        && (configuration?.IsDirty == true || configuration?.PersistenceUncertain == true);
+        && (configuration?.IsDirty == true || configuration?.PersistenceUncertain == true || RestoredBackupPendingSave);
     public bool CanRestore => !Busy;
     public bool CanBackup => CanSelect && configuration?.PersistenceUncertain != true;
     public bool CanSetMargins => !Busy && IsCapturing;
@@ -72,6 +73,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
         : configuration?.NeedsRecovery == true ? "Recovery is required before calibration can be saved."
         : IsCapturing ? "Capture is running. Move the pedal through its full travel, then finish capture."
         : configuration?.PersistenceUncertain == true ? "The last save needs confirmation. Review the status before continuing."
+        : RestoredBackupPendingSave ? "Backup restored. Save to controller to keep it, or Discard changes to undo."
         : configuration?.IsDirty == true ? "Calibration changed. Save to controller to keep it after reconnecting."
         : "Controller calibration is saved.";
     public string RangeInfo { get; private set; } = "";
@@ -85,6 +87,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
         var sameBounds = preserveEdits && previewBounds == transaction.Current;
         configuration = transaction;
         calibration = capture;
+        RestoredBackupPendingSave = false;
         previewBounds = transaction.Current;
         if (!sameBounds) { ReadBounds(); }
         Changed(nameof(HasSession));
@@ -96,6 +99,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
         previewBounds = configuration?.Current ?? previewBounds;
         configuration = null;
         calibration = null;
+        RestoredBackupPendingSave = false;
         ClearInput();
         Changed(nameof(HasSession));
     }
@@ -192,7 +196,7 @@ public sealed class HardwarePedalViewModel : ObservableObject
             : configuration.PersistenceUncertain ? "Save completion uncertain · backup retained. Restore and explicitly Save after review."
             : capture?.Interrupted == true ? "Input connection changed · cancel and restore this capture."
             : capture is not null ? "Temporary full-range hardware calibration · Save is disabled."
-            : configuration.IsDirty ? "Hardware settings changed for this session · Save to controller to keep them."
+            : configuration.IsDirty || RestoredBackupPendingSave ? "Hardware settings changed for this session · Save to controller to keep them."
             : "No unsaved hardware changes.";
         Changed(nameof(DeviceInfo));
         Changed(nameof(StateInfo));

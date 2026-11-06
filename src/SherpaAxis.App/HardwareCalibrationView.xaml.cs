@@ -188,11 +188,13 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
             {
                 if (calibration.Capture is not null) { throw new InvalidOperationException("Finish or cancel calibration before Save."); }
                 await configuration.SaveAsync();
+                model.RestoredBackupPendingSave = false;
                 model.Status = "Controller Save command completed and current bounds were verified. Reconnect to verify persistence.";
             }),
             HardwareCalibrationAction.Restore => ChangeAsync(async () =>
             {
                 await calibration.RestoreSavedAsync();
+                model.RestoredBackupPendingSave = false;
                 model.Status = configuration.PersistenceUncertain ? "Volatile bounds restored. Save completion is still uncertain; the backup is retained."
                     : "Saved hardware bounds restored and verified.";
             }),
@@ -234,21 +236,51 @@ public partial class HardwareCalibrationView : UserControl, IAsyncDisposable
         finally { if (!configuration.NeedsRecovery) { await RestartInputAsync(); } }
     });
 
-    private Task ChangeAsync(Func<Task> action, bool restartInput = true) => RunAsync(async () =>
+    internal Task RestoreHardwareBackupAsync(HardwareRecoverySnapshot backup, CancellationToken token)
+    {
+        if (disposed || ended || model.Busy || !model.HasSession)
+        { throw new InvalidOperationException("A connected calibration session is required to restore a backup."); }
+        return ChangeAsync(async () =>
+        {
+            if (configuration.NeedsRecovery)
+            {
+                await calibration.RestoreSavedAsync(token);
+                model.RestoredBackupPendingSave = false;
+            }
+            if (configuration.PersistenceUncertain)
+            { throw new InvalidOperationException("Save the restored calibration to the controller before loading another backup."); }
+            if (calibration.Capture is not null) { await calibration.CancelAsync(token); }
+            await configuration.RestoreHardwareBackupAsync(backup, token);
+            model.RestoredBackupPendingSave = true;
+            model.Status = "Calibration backup restored and verified. Save to controller to keep it, or Discard changes to undo.";
+        }, propagateFailure: true);
+    }
+
+    private Task ChangeAsync(Func<Task> action, bool restartInput = true, bool propagateFailure = false) => RunAsync(async () =>
     {
         await StopInputAsync();
         try { await action(); model.ReadBounds(); }
+        catch
+        {
+            if (propagateFailure) { model.ReadBounds(); }
+            throw;
+        }
         finally { if (restartInput && !configuration.NeedsRecovery) { await RestartInputAsync(); } }
-    });
+    }, propagateFailure);
 
-    private async Task RunAsync(Func<Task> action)
+    private async Task RunAsync(Func<Task> action, bool propagateFailure = false)
     {
         if (model.Busy || disposed || ended) { return; }
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         operationFinished = finished;
         model.Busy = true;
         try { await action(); }
-        catch (Exception failure) when (OperationErrors.IsExpected(failure)) { Log?.Write("calibration", "A hardware operation failed.", failure); model.Status = failure.Message; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        {
+            Log?.Write("calibration", "A hardware operation failed.", failure);
+            model.Status = failure.Message;
+            if (propagateFailure) { throw; }
+        }
         finally { model.Busy = false; model.Refresh(); operationFinished = null; finished.SetResult(); }
     }
 

@@ -273,6 +273,7 @@ public partial class MainWindow
         if (hardwareSession is null) { return true; }
         if (!await hardwareSession.View.TryCloseAsync()) { return false; }
         var session = hardwareSession;
+        engine.RecordHardware(session.CurrentSnapshot);
         // Switch away before releasing the display model, avoiding a frame of empty calibration history.
         if (switchToTuning && !closing && !viewModel.IsSwitchingMode) { SetPanelMode(WantsCalibration ? SidePanelMode.Tuning : requestedPanel); }
         await session.DisposeAsync();
@@ -321,33 +322,53 @@ public partial class MainWindow
     {
         var picker = new OpenFileDialog { Filter = Localization.Localizer.Translate("SherpaAxis hardware backup (*.json)|*.json"), InitialDirectory = HardwareRecoveryStore.DefaultDirectory, Title = Localization.Localizer.Translate("Restore a hardware calibration backup to the same controller") };
         if (ShowTextEntryDialog(() => picker.ShowDialog(this)) != true) { return; }
-        await RunAsync(async () =>
-        {
-            if (modeOperation is { } pending) { await pending; }
-            if (!await EndCalibrationAsync(switchToTuning: false)) { throw new InvalidOperationException("Restore this session or keep its recovery backup before loading another backup."); }
-            await PrepareHardwareAsync();
-            var backup = await HardwareRecoveryStore.ReadAsync(picker.FileName, lifetime.Token);
-            if (string.IsNullOrWhiteSpace(backup.SerialNumber)) { throw new InvalidOperationException("Backup has no verified controller serial identity and requires manual review."); }
-            await using var features = new WindowsHidFeatureConnection(backup.Device);
-            using var identityDeadline = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-            identityDeadline.CancelAfter(TimeSpan.FromSeconds(2));
-            var identity = await features.ReadIdentityAsync(identityDeadline.Token);
-            var actual = await new CalibrationSnapshotReader(new WindowsHidInputSource(), features).ReadAsync(TimeSpan.FromSeconds(2), backup.Device.Path, lifetime.Token);
-            if (actual.Device != backup.Device) { throw new InvalidOperationException("Backup belongs to a different controller collection."); }
-            using var transaction = backup.IsManualBackup
-                ? new PedalConfigurationTransaction(actual, features, features,
-                    new HardwareRecoveryStore(Path.Combine(HardwareRecoveryStore.DefaultDirectory, $"restore-{Guid.NewGuid():N}.json")), TimeSpan.FromSeconds(2), identity.SerialNumber)
-                : PedalConfigurationTransaction.FromRecovery(backup, features, features, new HardwareRecoveryStore(picker.FileName), TimeSpan.FromSeconds(2), identity.SerialNumber);
-            if (backup.IsManualBackup) { await transaction.RestoreHardwareBackupAsync(backup, lifetime.Token); }
-            else { await transaction.RestoreSavedAsync(lifetime.Token); }
-            viewModel.HardwareInfo = "Backup hardware bounds restored and read back successfully.";
-            viewModel.ShowMessage(transaction.PersistenceUncertain ? "Volatile hardware bounds restored. Persistent Save remains uncertain; backup retained. Review and Save explicitly in Hardware settings."
-                : backup.IsManualBackup ? "Hardware backup restored and verified. Connect to review, then Save to device to persist. The manual backup was retained."
-                : "Hardware recovery completed and verified. Review profiles before Start live.");
-        });
+        await RestoreHardwareBackupFromFileAsync(picker.FileName);
     }
 
-    private async Task PrepareHardwareAsync()
+    internal Task RestoreHardwareBackupFromFileAsync(string path) => RunAsync(async () =>
+    {
+        var backup = await HardwareRecoveryStore.ReadAsync(path, lifetime.Token);
+        if (string.IsNullOrWhiteSpace(backup.SerialNumber))
+        { throw new InvalidOperationException("Backup has no verified controller serial identity and requires manual review."); }
+        if (modeOperation is { } pending) { await pending; }
+        if (!WantsCalibration) { throw new InvalidOperationException("Open Calibration before restoring a hardware backup."); }
+        var createdSession = hardwareSession is null;
+        var prepared = false;
+        try
+        {
+            if (hardwareSession is null)
+            {
+                prepared = true;
+                await PrepareHardwareAsync(selectedRecoveryPath: path);
+                await ConnectCalibrationAsync(lifetime.Token);
+            }
+            if (hardwareSession is null) { throw new InvalidOperationException("Connect the controller before restoring a backup."); }
+            await hardwareSession.RestoreBackupAsync(backup, lifetime.Token);
+            viewModel.HardwareInfo = "Calibration backup restored and verified. Save to controller to keep it, or Discard changes to undo.";
+            viewModel.ShowMessage(viewModel.HardwareInfo);
+        }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure))
+        {
+            if (createdSession && prepared && !closing)
+            {
+                try
+                {
+                    var closed = hardwareSession is null || await EndCalibrationAsync(switchToTuning: false);
+                    if (closed)
+                    {
+                        await CheckStartupRecoveryAsync();
+                        await ResumeLiveAfterRecoveryAsync();
+                    }
+                }
+                catch (Exception recoveryFailure) when (OperationErrors.IsExpected(recoveryFailure))
+                { desktop.Log?.Write("calibration-restore", "Restore failed and controller recovery could not finish. Output remains paused.", recoveryFailure); }
+            }
+            if (viewModel.HardwareDisplay is { } model) { model.Status = failure.Message; }
+            throw;
+        }
+    });
+
+    private async Task PrepareHardwareAsync(string? selectedRecoveryPath = null)
     {
         if (viewModel.Firmware.Blocked || viewModel.Firmware.Running)
         { throw new InvalidOperationException("Finish the firmware update or recovery before changing hardware calibration."); }
@@ -357,6 +378,22 @@ public partial class MainWindow
         if (runtime is not null) { await runtime.PauseAsync(); }
         await source.StopAsync();
         if (hardwareSession is null) { await CheckStartupRecoveryAsync(); }
+        if (viewModel.Recovery.IsBlocked && selectedRecoveryPath is not null && desktop.Recovery is not null)
+        {
+            var selected = viewModel.Recovery.Records.FirstOrDefault(record => string.Equals(
+                Path.GetFullPath(record.Path), Path.GetFullPath(selectedRecoveryPath), StringComparison.OrdinalIgnoreCase));
+            if (selected is { CanRestore: true, Snapshot: { } snapshot })
+            {
+                var retained = Path.Combine(desktop.Recovery.DirectoryPath, $"manual-restore-source-{Guid.NewGuid():N}.json");
+                await new HardwareRecoveryStore(retained).WriteAsync(new(2, snapshot.CreatedAtUtc, snapshot.Device,
+                    snapshot.Saved, snapshot.Saved, null, SerialNumber: snapshot.SerialNumber, IsManualBackup: true), lifetime.Token);
+                await desktop.Recovery.RestoreAsync(selected.Path, lifetime.Token);
+                desktop.Log?.Write("calibration-restore", $"Original calibration backup retained: {retained}");
+                await CheckStartupRecoveryAsync();
+                if (viewModel.Recovery.Records.Any(record => record.CanSave))
+                { throw new InvalidOperationException("Original calibration restored. Use Save restored calibration in the recovery panel to resolve the earlier uncertain save."); }
+            }
+        }
         if (viewModel.Recovery.IsBlocked) { throw new InvalidOperationException("Resolve the interrupted calibration before opening a new hardware session."); }
         engine.End("Calibration mode · main input stopped");
     }

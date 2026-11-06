@@ -10,6 +10,20 @@ public sealed class HardwareCalibrationSession(PedalConfigurationTransaction con
     private bool disposed;
     public HardwareCalibrationView View { get; } = view;
     public string? BackupPath { get; } = backupPath;
+    internal CalibrationSnapshot CurrentSnapshot => new(1, DateTimeOffset.UtcNow, configuration.Device, configuration.Current);
+
+    public Task RestoreBackupAsync(HardwareRecoverySnapshot backup, CancellationToken token = default)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        HardwareRecoveryStore.Validate(backup);
+        if (string.IsNullOrWhiteSpace(backup.SerialNumber) || string.IsNullOrWhiteSpace(View.ControllerSerial)
+            || !PedalDeviceIdentity.SameController(backup.SerialNumber, View.ControllerSerial)
+            || backup.Device with { Path = configuration.Device.Path } != configuration.Device)
+        { throw new IOException("The backup does not match the connected controller's identity and HID capabilities."); }
+        var imported = new HardwareRecoverySnapshot(2, backup.CreatedAtUtc, configuration.Device,
+            backup.Saved, backup.Saved, null, SerialNumber: backup.SerialNumber, IsManualBackup: true);
+        return View.RestoreHardwareBackupAsync(imported, token);
+    }
 
     public static async Task<HardwareCalibrationSession> ConnectAsync(PedalChannel selectedChannel, ResourceDictionary theme, CancellationToken token,
         HardwareCalibrationView? cachedView = null)

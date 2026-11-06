@@ -39,7 +39,7 @@ public sealed class HardwareRecoveryStore(string filePath) : IHardwareRecoverySt
         return snapshot;
     }
 
-    private static void Validate(HardwareRecoverySnapshot snapshot)
+    internal static void Validate(HardwareRecoverySnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if ((snapshot.IsManualBackup ? snapshot.SchemaVersion != 2 : snapshot.SchemaVersion != 1) || snapshot.Device is null || !PedalCalibrationReport.Supports(snapshot.Device)

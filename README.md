@@ -212,6 +212,10 @@ See the [installation and device guide](docs/setup.md) for more detail.
 <summary><strong>Can I back up calibration and update pedal firmware?</strong></summary>
 
 Use **Calibration → Device tools** for hardware calibration backups and restoration.
+After restoring a file, review the ranges and choose **Save to controller** to keep
+them, or **Discard changes** to return to the previous calibration. A different
+USB port is supported when the controller identity and HID capabilities match.
+
 In **Settings → Firmware update**, you can check firmware, back up calibration,
 open update logs or update the supported firmware.
 
