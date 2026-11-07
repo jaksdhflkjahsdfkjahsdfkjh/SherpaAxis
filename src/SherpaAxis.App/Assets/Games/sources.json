@@ -1,0 +1,34 @@
+[
+  {
+    "game": "Assetto Corsa",
+    "steam_app_id": 244210,
+    "file": "assetto-corsa.jpg",
+    "source": "https://shared.akamai.steamstatic.com/community_assets/images/apps/244210/c35922c480816b55f18b2843c6d838ccbc8ff825.jpg",
+    "page": "https://steamcommunity.com/app/244210",
+    "sha256": "3f0c4ddbdb07269b5448ebf6fcdfebaf5a21768309182a38e9849be6e574e540"
+  },
+  {
+    "game": "Assetto Corsa Competizione",
+    "steam_app_id": 805550,
+    "file": "assetto-corsa-competizione.jpg",
+    "source": "https://shared.akamai.steamstatic.com/community_assets/images/apps/805550/413dfe7829dd6e2776b7daef24c45b6f8f1f9ae5.jpg",
+    "page": "https://steamcommunity.com/app/805550",
+    "sha256": "2b417b6f309f205329dcdbbcd1a8daab007342516c9e19c0794e56b9dd5209d2"
+  },
+  {
+    "game": "iRacing",
+    "steam_app_id": 266410,
+    "file": "iracing.jpg",
+    "source": "https://shared.fastly.steamstatic.com/community_assets/images/apps/266410/45d108b7559a1f9ce011d093022a5c3b84560baf.jpg",
+    "page": "https://steamcommunity.com/app/266410",
+    "sha256": "dff82e22606738cef9f873e450be6dba232ca09c2349a7fdbe5d00d89f9669e0"
+  },
+  {
+    "game": "Le Mans Ultimate",
+    "steam_app_id": 2399420,
+    "file": "le-mans-ultimate.jpg",
+    "source": "https://shared.fastly.steamstatic.com/community_assets/images/apps/2399420/aa7f73aa4c412fc0fa8d6b1921e8d8ac471cd2c2.jpg",
+    "page": "https://steamcommunity.com/app/2399420",
+    "sha256": "d37c8e41dd42e395c384acff729f18a94729fe06a7a101e61eddf08fb8923657"
+  }
+]

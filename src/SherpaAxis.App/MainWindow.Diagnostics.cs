@@ -131,7 +131,7 @@ public partial class MainWindow
         };
         AddGuideSection(document, "Close FEEL-VR Control",
             "Exit FEEL-VR Control, including its tray icon. Close games before calibrating or changing device setup.");
-        AddGuideSection(document, "Game bindings", "X = throttle · Y = brake · Z = clutch", emphasizeBody: true);
+        AddGuideSection(document, "Pedal axes in game", "X = throttle · Y = brake · Z = clutch", emphasizeBody: true);
         AddGuideSection(document, "Virtual output and HidHide",
             "Keep SherpaAxis running while playing; minimizing to the tray is fine. HidHide hides the physical pedals so games receive only the tuned virtual input. Keep the physical HID driver installed. You can turn hiding off in Settings.");
         AddGuideSection(document, "Device setup",

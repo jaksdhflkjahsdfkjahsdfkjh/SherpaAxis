@@ -13,6 +13,9 @@
     <InternalsVisibleTo Include="SherpaAxis.App.Tests" />
     <Resource Include="Assets/SherpaAxis.ico" />
     <Resource Include="Assets/FilterExamples/**/*.png" />
+    <Resource Include="Assets/Games/*.jpg" />
+    <Content Include="Assets/Games/README.md" Link="licenses/Game-icons.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/Games/sources.json" Link="licenses/Game-icons.sources.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <EmbeddedResource Include="Localization/uk.json" />
     <EmbeddedResource Include="Services/Updates/Apply-AppUpdate.ps1" LogicalName="SherpaAxis.App.ApplyAppUpdate.ps1" />
     <EmbeddedResource Include="../../vendor/dfuse/sha256.json" LogicalName="SherpaAxis.App.DfuSeHashes.json" />

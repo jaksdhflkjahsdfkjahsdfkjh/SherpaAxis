@@ -125,6 +125,37 @@ Enable **Auto-load** on the profile you want at startup; only one profile can ha
 enabled. Tuning changes apply immediately, and the saved/unsaved indicator tells you
 whether they are stored in your profile.
 
+Click **Game bindings** beside the profile selector to apply a profile when a game
+starts. Choose **Assetto Corsa**, **Assetto Corsa Competizione**, **iRacing** or
+**Le Mans Ultimate**, or select another game's `.exe`. One profile can cover several
+games; each game can be assigned to one profile. Unsaved profiles are saved when
+you first bind a game. Bindings are stored locally and survive app restarts.
+
+Click a game card to select it; a highlighted card and check mark show your choice.
+Game icons are included with the app and work offline. Use **Add game…** for another
+game, or expand **Executable names** to edit names manually. Added games appear in
+a separate list with a remove button. Choose **Save** to keep the selection.
+
+If a game is assigned to another profile, its card shows that profile's name.
+Choose **Reassign here** to prepare a move to the selected profile. **Save** moves
+the binding in one operation; **Cancel** keeps the previous assignment. Other game
+bindings and both profiles' pedal settings are preserved. If the assignment changes
+while the dialog is open, reopen it to review the current owner before saving.
+
+SherpaAxis checks for games every two seconds, including while in the tray. It
+detects the actual game process, so opening Steam, Content Manager or the iRacing
+launcher alone does not switch profiles. A game already running when SherpaAxis
+starts is detected too. Switching waits until all pedals have been released for
+300 ms and calibration, firmware work and dialogs have finished. Your current
+profile's unsaved edits remain available.
+
+Selecting a profile manually overrides that game's automatic selection until
+another bound game starts. If several bound games are running, the most recently
+detected one takes priority; when it closes, another running bound game can take
+over. Closing the last game keeps the current profile. To remove a binding, clear
+its selections and executable names in **Game bindings**, then choose **Save**.
+**Auto-load** remains your separate choice of profile at SherpaAxis startup.
+
 ## Get started
 
 You need **Windows 10 22H2 or Windows 11 on an x64 Intel/AMD PC** and **FEEL-VR Pedals One**.

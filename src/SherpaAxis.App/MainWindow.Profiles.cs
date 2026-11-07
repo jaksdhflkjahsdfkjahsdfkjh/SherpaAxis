@@ -17,7 +17,7 @@ public partial class MainWindow
     private void ProfileSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (viewModel is not null && viewModel.CanEdit && sender is ComboBox { SelectedItem: ProfileTab tab })
-        { Run(() => { StopHold(); viewModel.SwitchProfile(tab); }); }
+        { Run(() => { StopHold(); viewModel.SwitchProfile(tab); UpdateGameBindingInfo(); }); }
     }
     private async void LoadLibrary(object sender, RoutedEventArgs e)
     { Loaded -= LoadLibrary; await InitializeLibraryAsync(); }
@@ -35,6 +35,7 @@ public partial class MainWindow
             viewModel.ShowMessage("Some profiles could not be loaded: " + string.Join("; ", library.LoadErrors));
         }
         await InitializeDraftsAsync();
+        await InitializeGameProfilesAsync();
     });
     private async void AutoLoadProfileClick(object sender, RoutedEventArgs e)
     {

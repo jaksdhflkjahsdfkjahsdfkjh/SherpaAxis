@@ -232,6 +232,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         StopTour();
         viewModel.CanEdit = false;
         refresh.Stop();
+        gameProfileTimer.Stop();
         SetPedalPreviewRendering(false);
         draftTimer.Stop();
         StopHold();
@@ -300,6 +301,7 @@ public partial class MainWindow : Window, IAsyncDisposable
             }
             if (hardwareSession is null) { SetPanelMode(false); viewModel.HardwareDisplay = null; }
             refresh.Start();
+            if (gameBindingsLoaded && desktop.GameProcesses is not null) { gameProfileTimer.Start(); }
             if (draftsInitialized) { draftTimer.Start(); }
             throw;
         }

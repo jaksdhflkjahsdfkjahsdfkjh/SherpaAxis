@@ -10,6 +10,10 @@ public sealed partial class DashboardViewModel
     public ObservableCollection<ProfileTab> ProfileTabs { get; } = [];
     public ProfileTab? SelectedProfile => selectedProfile;
     private string? autoLoadPath;
+    private string gameBindingInfo = "Choose games that automatically apply this profile.";
+    public string GameBindingInfo { get => gameBindingInfo; internal set => Set(ref gameBindingInfo, value); }
+    private string gameProfileStatus = "";
+    public string GameProfileStatus { get => gameProfileStatus; internal set => Set(ref gameProfileStatus, value); }
     public bool SelectedAutoLoad => selectedProfile?.FilePath is { } path && string.Equals(path, autoLoadPath, StringComparison.OrdinalIgnoreCase);
     public void SetAutoLoadPath(string? path)
     {

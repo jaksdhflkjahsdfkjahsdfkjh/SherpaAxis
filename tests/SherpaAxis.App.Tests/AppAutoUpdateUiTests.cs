@@ -12,6 +12,7 @@ namespace SherpaAxis.App.Tests;
 [Collection("WPF UI")]
 public sealed class AppAutoUpdateUiTests : IDisposable
 {
+    private static readonly string NewerReleaseTag = $"v{typeof(MainWindow).Assembly.GetName().Version!.Major + 1}.0.0";
     private readonly string directory = Path.Combine(Path.GetTempPath(), "SherpaAxis-auto-update-ui-" + Guid.NewGuid().ToString("N"));
     private AppUpdateInstallation Installation() => new(Path.Combine(directory, "app"), AppUpdateKind.Zip, new Version(1, 5, 0));
     private PreparedAppUpdate Package(AppRelease release) => new(release, Installation(), directory, Path.Combine(directory, "package.zip"), new string('0', 64));
@@ -34,7 +35,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
         { Opacity = 0, ShowActivated = false, ShowInTaskbar = false, WindowState = WindowState.Normal };
         await main.InitializeForLaunchAsync(); main.Show();
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
-        model.Updates.Apply(new("v1.6.0"));
+        model.Updates.Apply(new(NewerReleaseTag));
         var first = main.InstallAvailableAppUpdateAsync();
         await downloading.Task.WaitAsync(TimeSpan.FromSeconds(3));
         await Dispatcher.Yield(DispatcherPriority.ContextIdle);
@@ -64,7 +65,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
                 (_, _, _) => Task.FromResult<IAppUpdateHandoff>(new Handoff()))
         }, profileLibrary: new(Path.Combine(directory, "profiles")));
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
-        model.Updates.Apply(new("v1.6.0"));
+        model.Updates.Apply(new(NewerReleaseTag));
         if (state == "calibration") { model.IsCalibrationMode = true; }
         else if (state == "firmware") { model.Firmware.Running = true; }
         else { model.Recovery.Fail("Pending recovery"); }
@@ -93,7 +94,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
             }, (_, _, _) => { starts++; return Task.FromResult<IAppUpdateHandoff>(new Handoff()); })
         }, profileLibrary: new(Path.Combine(directory, "profiles")));
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
-        model.Updates.Apply(new("v1.6.0"));
+        model.Updates.Apply(new(NewerReleaseTag));
         var operation = main.InstallAvailableAppUpdateAsync();
         await downloading.Task;
         await main.DisposeAsync();
@@ -124,7 +125,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
         await main.InitializeForLaunchAsync(); main.Show();
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
         model.Editor.LowerDeadzone = "7"; model.RefreshUnsavedState();
-        model.Updates.Apply(new("v1.6.0"));
+        model.Updates.Apply(new(NewerReleaseTag));
         handoff.OnCommit = () => Assert.True(main.IsDisposed);
         await main.InstallAvailableAppUpdateAsync();
         Assert.True(main.IsDisposed && handoff.Committed && handoff.Disposed);
@@ -149,7 +150,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
         Directory.CreateDirectory(draftPath);
         try
         {
-            model.Updates.Apply(new("v1.6.0"));
+            model.Updates.Apply(new(NewerReleaseTag));
             await main.InstallAvailableAppUpdateAsync();
             Assert.Equal(0, starts);
             Assert.False(main.IsDisposed || model.Updates.IsUpdating);
@@ -171,7 +172,7 @@ public sealed class AppAutoUpdateUiTests : IDisposable
         { Opacity = 0, ShowActivated = false, ShowInTaskbar = false, WindowState = WindowState.Normal };
         await main.InitializeForLaunchAsync(); main.Show();
         var model = Assert.IsType<DashboardViewModel>(main.DataContext);
-        model.Updates.Apply(new("v1.6.0"));
+        model.Updates.Apply(new(NewerReleaseTag));
         var updating = main.InstallAvailableAppUpdateAsync();
         Assert.True(model.Updates.IsInstalling);
         main.UpdateLayout();

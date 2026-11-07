@@ -244,6 +244,7 @@ public sealed partial class DashboardEngine
                 }
             }
 
+            ObserveReleasedPedalsForProfiles();
             recording?.RecordSample(new(elapsed, connection, configurationRevision, input,
                 axes[PedalAxis.Throttle].Current!.Value, axes[PedalAxis.Brake].Current!.Value, axes[PedalAxis.Clutch].Current!.Value,
                 FinalOutput(PedalAxis.Clutch, axes[PedalAxis.Clutch].Current!.Value.Processing.Output)));
@@ -538,6 +539,7 @@ public sealed partial class DashboardEngine
 
     private void ClearConnection()
     {
+        gameProfileReleasedSince = gameProfileLastSample = null;
         bitePoint.Release();
         InvalidateCalibration("Connection changed. Start calibration again.");
         SuspendOutput("connection changed");
