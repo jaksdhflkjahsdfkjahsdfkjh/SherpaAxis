@@ -4,6 +4,7 @@ namespace SherpaAxis.App.ViewModels;
 
 public sealed class PreferencesViewModel : ObservableObject
 {
+    public PedalOverlaySettingsViewModel Overlay { get; } = new();
     public sealed record LanguageChoice(string Code, string Name);
     public static IReadOnlyList<LanguageChoice> Languages { get; } = [new("en", "English"), new("uk", "Українська")];
     private string language = "en";

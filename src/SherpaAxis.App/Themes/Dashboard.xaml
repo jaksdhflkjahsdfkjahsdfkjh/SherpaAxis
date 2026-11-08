@@ -2,6 +2,7 @@
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="ToolTips.xaml" />
         <ResourceDictionary Source="Workspace.xaml" />
+        <ResourceDictionary Source="Overlay.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <SolidColorBrush x:Key="Muted" Color="{x:Static theme:AppColors.Muted}" />
     <SolidColorBrush x:Key="EditorSurface" Color="{x:Static theme:AppColors.Workspace}" />

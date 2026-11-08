@@ -156,6 +156,35 @@ over. Closing the last game keeps the current profile. To remove a binding, clea
 its selections and executable names in **Game bindings**, then choose **Save**.
 **Auto-load** remains your separate choice of profile at SherpaAxis startup.
 
+### Pedal overlay
+
+Click **Pedal overlay** beside the profile selector to show or hide a clean panel
+above your game: a narrow, translucent telemetry panel with a shared graph on the
+left and three vertical pedal meters on the right. Throttle is green, brake is red
+and clutch is blue. The rectangular panel uses SherpaAxis colors. Configure it in
+**Settings → Pedal overlay**, away from the racing screen. Change the time window
+from **1 to 60 seconds**, choose **RAW**, **Filtered** and **Curve / output**, pause
+the graph, or adjust the panel width and height. These settings apply while SherpaAxis is running.
+
+Each pedal keeps the same color in its graph and meter. Dashed, dotted and solid lines identify the signal
+stages. RAW is normalized input after drift correction and before filtering;
+output includes deadzones, response curves and clutch bite-point behavior. Short
+spikes are retained when reducing history for display. **Pause graph** freezes only
+the plot; the indicators and game output keep updating.
+
+The panel has no title bar, tabs or settings buttons. Drag the panel to move it;
+hide it using the toolbar button or **Settings → Pedal overlay → Hide overlay**.
+It continues updating while SherpaAxis is minimized or hidden in the tray. It opens
+only when requested, and closing SherpaAxis closes the panel too.
+
+History stays in memory for up to 60 seconds while the panel is open. It does not
+change the main graph's time range. Reconnection and processing changes start a
+new history segment. Paused/stale input clears the indicators and shows a status
+notice rather than leaving old values presented as live.
+
+Use a windowed or borderless game mode; visibility over exclusive fullscreen games
+depends on the game's display mode and Windows composition.
+
 ## Get started
 
 You need **Windows 10 22H2 or Windows 11 on an x64 Intel/AMD PC** and **FEEL-VR Pedals One**.

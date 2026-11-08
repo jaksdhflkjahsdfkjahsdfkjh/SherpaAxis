@@ -72,7 +72,8 @@ public sealed class WorkspaceUiTests
             await main.RequestPanelModeAsync(SidePanelMode.Settings);
             main.UpdateLayout();
             var groups = Assert.IsType<StackPanel>(main.FindName("SettingsGroups")).Children.OfType<GroupBox>().ToArray();
-            Assert.Equal(6, groups.Length);
+            Assert.Equal(7, groups.Length);
+            Assert.Single(groups, group => group.Name == "OverlaySettingsGroup");
             Assert.All(groups, group => Assert.True(group.ActualWidth > 300));
             UiRefinementTests.CapturePreview(root, $"workspace-settings-{language}-{width}.png");
             await main.RequestPanelModeAsync(SidePanelMode.Tuning);

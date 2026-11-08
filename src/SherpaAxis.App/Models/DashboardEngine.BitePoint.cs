@@ -52,8 +52,10 @@ public sealed partial class DashboardEngine
         Event("clutch-bite-point", BitePointState);
         var clutch = axes[PedalAxis.Clutch];
         if (!IsFresh(clutch) || clutch.Current is not { } result) { return; }
-        clutch.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized,
-            FinalOutput(PedalAxis.Clutch, result.Processing.Output), result.Processing.Input, result.Processing.CorrectedNormalized));
+        var plotted = new PlotSample(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized,
+            FinalOutput(PedalAxis.Clutch, result.Processing.Output), result.Processing.Input, result.Processing.CorrectedNormalized);
+        clutch.History.Enqueue(plotted);
+        AddTelemetry(clutch, plotted);
         if (clutch.History.Count > historyCapacity) { clutch.History.Dequeue(); }
         if (CanPublishOutput) { output?.Submit(CurrentOutput()); }
     }

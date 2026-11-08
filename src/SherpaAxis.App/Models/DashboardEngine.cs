@@ -59,6 +59,7 @@ public sealed partial class DashboardEngine
                 && (clutch.BitePoint != BiteSettings || profile.Name != activeProfile.Name))
             {
                 var oldBinding = BiteSettings?.Button;
+                if (profile.Name != activeProfile.Name) { ResetTelemetryHistory(); }
                 activeProfile = new(profile.Name, activeProfile.Axes.ToDictionary(pair => pair.Key,
                     pair => pair.Key == PedalAxis.Clutch ? pair.Value.WithBitePoint(clutch.BitePoint) : pair.Value));
                 if (clutch.BitePoint?.Button is null) { bitePoint.SetEnabled(false); }
@@ -82,6 +83,7 @@ public sealed partial class DashboardEngine
                 Array.AsReadOnly(inputLimits.Select(pair => new RecordedAxisLimits(pair.Key, pair.Value.MaximumCorrectionPerSecond,
                     pair.Value.MaximumCorrectionOutputPerSecond, pair.Value.ResetAfterSeconds, replacements[pair.Key].MaximumBaselineCorrection)).ToArray()));
             if (!completingCalibration) { InvalidateCalibration("Processing settings changed. Start calibration again."); }
+            ResetTelemetryHistory();
             SuspendOutput("processing settings changed");
             foreach (var (axis, session) in replacements)
             {
@@ -216,6 +218,7 @@ public sealed partial class DashboardEngine
                 {
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap) { SuspendOutput("sampling gap"); }
                     values.History.Clear();
+                    values.Telemetry.Clear(); values.LastTelemetryTime = null; telemetryGeneration++;
                     values.LastPlotAt = null;
                     values.AuthorizedAt = null;
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap)
@@ -233,10 +236,12 @@ public sealed partial class DashboardEngine
                 {
                     calibration = capture.Include(raw);
                 }
+                var plotted = new PlotSample(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, FinalOutput(axis, result.Processing.Output), raw, result.Processing.CorrectedNormalized);
+                AddTelemetry(values, plotted);
                 if (!values.LastPlotAt.HasValue || elapsed - values.LastPlotAt.Value >= .02)
                 {
                     values.LastPlotAt = elapsed;
-                    values.History.Enqueue(new(elapsed, result.Processing.Normalized, result.Processing.FilteredNormalized, FinalOutput(axis, result.Processing.Output), raw, result.Processing.CorrectedNormalized));
+                    values.History.Enqueue(plotted);
                     if (values.History.Count > historyCapacity)
                     {
                         values.History.Dequeue();
@@ -539,6 +544,7 @@ public sealed partial class DashboardEngine
 
     private void ClearConnection()
     {
+        ResetTelemetryHistory();
         gameProfileReleasedSince = gameProfileLastSample = null;
         bitePoint.Release();
         InvalidateCalibration("Connection changed. Start calibration again.");
@@ -588,5 +594,7 @@ public sealed partial class DashboardEngine
         public double Minimum { get; set; } = double.PositiveInfinity;
         public double Maximum { get; set; } = double.NegativeInfinity;
         public Queue<PlotSample> History { get; } = new();
+        public TelemetryBuffer Telemetry { get; } = new();
+        public double? LastTelemetryTime { get; set; }
     }
 }

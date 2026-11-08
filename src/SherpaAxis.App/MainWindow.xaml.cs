@@ -229,6 +229,7 @@ public partial class MainWindow : Window, IAsyncDisposable
         // Refuse a lossy exit before stopping input or changing the window's lifecycle state.
         await FlushDraftsAsync(requireBackup: true);
         closing = true;
+        CloseCompactView();
         StopTour();
         viewModel.CanEdit = false;
         refresh.Stop();
