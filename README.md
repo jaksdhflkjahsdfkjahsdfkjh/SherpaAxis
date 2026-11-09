@@ -164,7 +164,7 @@ left and three vertical pedal meters on the right. Throttle is green, brake is r
 and clutch is blue. The rectangular panel uses SherpaAxis colors. Configure it in
 **Settings → Pedal overlay**, away from the racing screen. Change the time window
 from **1 to 60 seconds**, choose **RAW**, **Filtered** and **Curve / output**, pause
-the graph, or adjust the panel width and height. These settings apply while SherpaAxis is running.
+the graph, or adjust the panel width and height. These settings are saved automatically.
 
 Each pedal keeps the same color in its graph and meter. Dashed, dotted and solid lines identify the signal
 stages. RAW is normalized input after drift correction and before filtering;

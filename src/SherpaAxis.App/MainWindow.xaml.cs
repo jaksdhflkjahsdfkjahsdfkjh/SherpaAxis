@@ -226,6 +226,7 @@ public partial class MainWindow : Window, IAsyncDisposable
     private async Task DisposeCoreAsync()
     {
         if (libraryInitialization is { } loadingLibrary) { await loadingLibrary; }
+        if (overlaySaveTimer.IsEnabled) { await SavePreferencesAsync(); }
         // Refuse a lossy exit before stopping input or changing the window's lifecycle state.
         await FlushDraftsAsync(requireBackup: true);
         closing = true;

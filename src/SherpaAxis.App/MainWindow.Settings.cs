@@ -111,6 +111,7 @@ public partial class MainWindow
 
     internal Task SavePreferencesAsync()
     {
+        overlaySaveTimer.Stop();
         if (closing) { return settingsOperation ?? Task.CompletedTask; }
         savePreferencesAgain = true;
         if (settingsOperation is { IsCompleted: false }) { return settingsOperation; }
@@ -137,9 +138,10 @@ public partial class MainWindow
                     await desktop.Preferences.SaveAsync(preferences, CancellationToken.None);
                     throw;
                 }
+                var visibilityChanged = preferences.HidePhysicalPedals != next.HidePhysicalPedals;
                 preferences = next;
                 Localization.Localizer.Instance.Language = preferences.Language;
-                await UpdateInputVisibilityAsync();
+                if (visibilityChanged) { await UpdateInputVisibilityAsync(); }
             } while (savePreferencesAgain);
             viewModel.Preferences.Status = "Settings saved.";
             UpdateRefreshPolicy();

@@ -25,9 +25,10 @@ public sealed class PreferencesViewModel : ObservableObject
     public bool PauseGraphWhenHidden { get => pauseGraphWhenHidden; set => Set(ref pauseGraphWhenHidden, value); }
     public bool Saving { get => saving; set => Set(ref saving, value); }
     public string Status { get => status; set => Set(ref status, value); }
-    public ApplicationPreferences Snapshot() => new(1, MinimizeOnClose, StartWithWindows, StartInTray, MinimizeToTray, PauseGraphWhenHidden, Language, HidePhysicalPedals, TourDismissed, CheckForUpdates);
+    public ApplicationPreferences Snapshot() => new(1, MinimizeOnClose, StartWithWindows, StartInTray, MinimizeToTray, PauseGraphWhenHidden, Language, HidePhysicalPedals, TourDismissed, CheckForUpdates, Overlay.Snapshot());
     public void Load(ApplicationPreferences preferences)
     {
+        Overlay.Load(preferences.Overlay);
         Language = preferences.Language;
         CheckForUpdates = preferences.CheckForUpdates;
         TourDismissed = preferences.TourDismissed;

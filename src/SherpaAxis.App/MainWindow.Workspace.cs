@@ -9,6 +9,7 @@ public partial class MainWindow
 {
     private void InitializeWorkspace()
     {
+        InitializeOverlaySettings();
         PropertyChangedEventManager.AddHandler(viewModel.Firmware, FirmwareSearchStateChanged, nameof(ViewModels.FirmwareUpdateViewModel.Blocked));
         RefreshSettingsSearch();
     }

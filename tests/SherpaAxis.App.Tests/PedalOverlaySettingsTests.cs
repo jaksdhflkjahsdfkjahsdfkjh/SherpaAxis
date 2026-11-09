@@ -1,0 +1,168 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using SherpaAxis.App.Localization;
+using SherpaAxis.App.Models;
+using SherpaAxis.App.ViewModels;
+
+namespace SherpaAxis.App.Tests;
+
+[Collection("WPF UI")]
+public sealed class PedalOverlaySettingsTests
+{
+    [Fact]
+    public void DefaultsAndInvalidSavedNumbersLoadSafely()
+    {
+        var settings = new PedalOverlaySettingsViewModel();
+        Assert.Null(settings.Snapshot()); Assert.False(settings.IsVisible);
+        settings.Load(new(double.NaN, true, true, false, -1, 10000));
+        Assert.Equal(10, settings.WindowSeconds); Assert.Equal(640, settings.Width); Assert.Equal(140, settings.Height);
+        Assert.True(settings.ShowRaw && settings.ShowFiltered); Assert.False(settings.ShowOutput);
+        Assert.Throws<ArgumentOutOfRangeException>(() => settings.WindowSeconds = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => settings.Width = double.PositiveInfinity);
+        Assert.Throws<ArgumentOutOfRangeException>(() => settings.Height = 10);
+    }
+
+    [Fact]
+    public void MouseActivationIsRejectedForTheOverlay()
+    {
+        var handled = false;
+        Assert.Equal(3, CompactPedalWindow.PreventMouseActivation(0, 0x21, 0, 0, ref handled)); Assert.True(handled);
+        handled = false;
+        Assert.Equal(0, CompactPedalWindow.PreventMouseActivation(0, 0x20, 0, 0, ref handled)); Assert.False(handled);
+    }
+
+    [Fact]
+    public Task SettingsPersistButTheOverlayAndPauseDoNotAutomaticallyStart() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop();
+        var folder = TempFolder();
+        try
+        {
+            await using (var main = new MainWindow(new(), desktopServices: desktop.Services, profileLibrary: new(folder)))
+            {
+                await main.InitializeForLaunchAsync();
+                var model = (DashboardViewModel)main.DataContext;
+                model.Preferences.Overlay.WindowSeconds = 25; model.Preferences.Overlay.Width = 680; model.Preferences.Overlay.Height = 180;
+                model.Preferences.Overlay.ShowRaw = model.Preferences.Overlay.ShowFiltered = true;
+                model.Preferences.Overlay.GraphPaused = true;
+                main.OpenCompactView();
+                await main.SavePreferencesAsync();
+                Assert.NotNull(desktop.Store.Value.Overlay);
+            }
+            await using var restarted = new MainWindow(new(), desktopServices: desktop.Services, profileLibrary: new(folder));
+            await restarted.InitializeForLaunchAsync();
+            var settings = ((DashboardViewModel)restarted.DataContext).Preferences.Overlay;
+            Assert.Equal(25, settings.WindowSeconds); Assert.Equal(680, settings.Width); Assert.Equal(180, settings.Height);
+            Assert.True(settings.ShowRaw && settings.ShowFiltered);
+            Assert.False(settings.IsVisible); Assert.False(settings.GraphPaused);
+            var view = restarted.OpenCompactView();
+            Assert.Equal(680, view.Width); Assert.Equal(180, view.Height);
+        }
+        finally { Directory.Delete(folder, true); }
+    });
+
+    [Fact]
+    public Task ExitFlushesTheLastOverlayChangeBeforeTheDebounceFires() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
+        try
+        {
+            await using var main = new MainWindow(new(), desktopServices: desktop.Services, profileLibrary: new(folder));
+            await main.InitializeForLaunchAsync();
+            ((DashboardViewModel)main.DataContext).Preferences.Overlay.WindowSeconds = 42;
+            await main.DisposeAsync();
+            Assert.Equal(42, desktop.Store.Value.Overlay!.WindowSeconds);
+        }
+        finally { Directory.Delete(folder, true); }
+    });
+
+    [Fact]
+    public Task AFailedSaveRestoresThePreviousSettingsAndTheLiveOverlaySize() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
+        try
+        {
+            await using var main = new MainWindow(new(), desktopServices: desktop.Services, profileLibrary: new(folder));
+            await main.InitializeForLaunchAsync();
+            var settings = ((DashboardViewModel)main.DataContext).Preferences.Overlay;
+            var view = main.OpenCompactView();
+            settings.Width = 750; settings.WindowSeconds = 30;
+            desktop.Store.Fail = true;
+            await main.SavePreferencesAsync();
+            Assert.Equal(640, settings.Width); Assert.Equal(640, view.Width); Assert.Equal(10, settings.WindowSeconds);
+            Assert.True(settings.IsVisible);
+            desktop.Store.Fail = false;
+        }
+        finally { Directory.Delete(folder, true); }
+    });
+
+    [Fact]
+    public Task ChangingOverlaySettingsDoesNotReconfigureHidHide() => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        using var hide = new InputVisibilityTests.FakeHide();
+        var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
+        try
+        {
+            await using var main = new MainWindow(new(), desktopServices: desktop.Services with { InputVisibility = hide.Service }, profileLibrary: new(folder));
+            await main.InitializeForLaunchAsync();
+            var calls = hide.Calls;
+            ((DashboardViewModel)main.DataContext).Preferences.Overlay.WindowSeconds = 15;
+            await main.SavePreferencesAsync();
+            Assert.Equal(calls, hide.Calls);
+        }
+        finally { Directory.Delete(folder, true); }
+    });
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task MainSettingsControlTheDisplayAndTheToolbarTogglesIt(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
+        try
+        {
+            Localizer.Instance.Language = language;
+            var engine = new DashboardEngine();
+            await using var main = new MainWindow(engine, desktopServices: desktop.Services, profileLibrary: new(folder));
+            await main.InitializeForLaunchAsync(); Localizer.Instance.Language = language;
+            await main.RequestPanelModeAsync(SidePanelMode.Settings);
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            var show = Assert.IsType<Button>(main.FindName("ShowOverlayButton"));
+            var hide = Assert.IsType<Button>(main.FindName("HideOverlayButton"));
+            var settings = ((DashboardViewModel)main.DataContext).Preferences.Overlay;
+            Assert.True(show.IsEnabled); Assert.False(hide.IsEnabled);
+            show.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            Assert.True(settings.IsVisible); Assert.True(hide.IsEnabled);
+            var view = main.OpenCompactView();
+            Assert.Equal(WindowStyle.None, view.WindowStyle); Assert.False(view.ShowActivated);
+            Assert.Empty(WorkspaceSpacingTests.Descendants(view).OfType<System.Windows.Controls.Primitives.ButtonBase>());
+            Assert.Empty(WorkspaceSpacingTests.Descendants(view).OfType<Slider>());
+            var slider = Assert.IsType<Slider>(main.FindName("OverlayWindowSlider"));
+            slider.Value = 12;
+            Assert.Equal(12, settings.WindowSeconds);
+            var raw = Assert.IsType<CheckBox>(main.FindName("OverlayRawCheck")); raw.IsChecked = true;
+            settings.WindowSeconds = 5; settings.ShowFiltered = true;
+            view.UpdateLayout();
+            Assert.True(settings.ShowRaw);
+            var group = Assert.IsType<GroupBox>(main.FindName("OverlaySettingsGroup"));
+            group.Measure(new Size(390, double.PositiveInfinity)); group.Arrange(new Rect(0, 0, 390, group.DesiredSize.Height)); group.UpdateLayout();
+            Assert.Equal(Localizer.Translate("Pedal overlay"), group.Header);
+            UiRefinementTests.CapturePreview(group, "overlay-settings-" + language + ".png");
+            hide.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(settings.IsVisible);
+            var toolbar = Assert.IsType<Button>(main.FindName("CompactViewButton"));
+            toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.True(settings.IsVisible);
+            toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.False(settings.IsVisible);
+        }
+        finally { Localizer.Instance.Language = "en"; Directory.Delete(folder, true); }
+    });
+
+    private static string TempFolder()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "SherpaAxis-overlay-settings-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path); return path;
+    }
+}
