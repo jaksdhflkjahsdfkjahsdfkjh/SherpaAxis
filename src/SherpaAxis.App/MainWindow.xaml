@@ -683,7 +683,7 @@
                                                 <Slider x:Name="OverlayWidthSlider" Style="{StaticResource OverlaySlider}" Minimum="360" Maximum="1000" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Width, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T534B1DC6864B}" />
                                                 <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Height, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text TDC8DAA7BBA01}" /></DockPanel>
                                                 <Slider x:Name="OverlayHeightSlider" Style="{StaticResource OverlaySlider}" Minimum="110" Maximum="220" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Height, Mode=TwoWay}" Margin="0,2,0,12" AutomationProperties.Name="{loc:Text TDC8DAA7BBA01}" />
-                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text TD37604CB927C}" />
+                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T125E117EA15A}" />
                                             </StackPanel>
                                         </GroupBox>
                                         <GroupBox Tag="language interface English Ukrainian мова" Header="{loc:Text TA4FE65264EF7}" x:Name="LanguageSettingsGroup">

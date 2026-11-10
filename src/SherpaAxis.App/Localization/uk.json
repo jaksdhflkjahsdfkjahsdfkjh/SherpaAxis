@@ -1161,7 +1161,7 @@
   "Hide overlay": "Приховати оверлей",
   "Overlay width": "Ширина оверлею",
   "Overlay height": "Висота оверлею",
-  "Drag the overlay to move it. Use a windowed or borderless game mode.": "Перетягніть оверлей, щоб перемістити його. Використовуйте віконний або безрамковий режим гри.",
+  "Drag the middle to move; drag an edge or corner to resize. Use a windowed or borderless game mode.": "Перетягуйте середину для переміщення, край або кут — для зміни розміру. Використовуйте віконний або безрамковий режим гри.",
   "Graph paused": "Графік призупинено",
   "Choose a signal in Settings → Pedal overlay.": "Виберіть сигнал у Налаштування → Оверлей педалей.",
   "TELEMETRY": "ТЕЛЕМЕТРІЯ"

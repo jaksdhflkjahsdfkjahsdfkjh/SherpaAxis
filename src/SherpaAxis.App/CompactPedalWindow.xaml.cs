@@ -60,7 +60,7 @@ internal sealed partial class CompactPedalWindow : Window
     private void OverlaySettingsChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (closed) { return; }
-        if (args.PropertyName is nameof(PedalOverlaySettingsViewModel.Width) or nameof(PedalOverlaySettingsViewModel.Height)) { ApplySize(); }
+        if (!updatingSize && args.PropertyName is (nameof(PedalOverlaySettingsViewModel.Width) or nameof(PedalOverlaySettingsViewModel.Height))) { ApplySize(); }
         if (args.PropertyName == nameof(PedalOverlaySettingsViewModel.GraphPaused) && model.Settings.GraphPaused)
         { model.GraphFrame = engine.TelemetrySnapshot(60, maximumPoints: 24008); }
         else if (args.PropertyName is nameof(PedalOverlaySettingsViewModel.GraphPaused) or nameof(PedalOverlaySettingsViewModel.WindowSeconds)) { RefreshGraph(); }

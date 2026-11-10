@@ -15,6 +15,11 @@
                     </Grid>
                 </ControlTemplate></Setter.Value></Setter>
             </Style>
+            <Style x:Key="OverlayResizeGrip" TargetType="Thumb">
+                <Setter Property="Focusable" Value="False" /><Setter Property="IsTabStop" Value="False" />
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Thumb"><Border Background="Transparent" /></ControlTemplate></Setter.Value></Setter>
+                <EventSetter Event="DragStarted" Handler="BeginResize" /><EventSetter Event="DragDelta" Handler="ResizeOverlay" /><EventSetter Event="DragCompleted" Handler="EndResize" />
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
     <Grid x:Name="OverlaySurface" MouseLeftButtonDown="MoveOverlay" Cursor="SizeAll">
@@ -64,5 +69,15 @@
                 </Style.Triggers></Style></TextBlock.Style>
             </TextBlock>
         </Grid>
+        <Path Data="M 0,8 L 8,0 M 4,8 L 8,4" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1" Opacity="0.45"
+              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4" IsHitTestVisible="False" />
+        <Thumb x:Name="ResizeLeft" Style="{StaticResource OverlayResizeGrip}" Width="6" HorizontalAlignment="Left" Margin="0,10" Cursor="SizeWE" />
+        <Thumb x:Name="ResizeRight" Style="{StaticResource OverlayResizeGrip}" Width="6" HorizontalAlignment="Right" Margin="0,10" Cursor="SizeWE" />
+        <Thumb x:Name="ResizeTop" Style="{StaticResource OverlayResizeGrip}" Height="6" VerticalAlignment="Top" Margin="10,0" Cursor="SizeNS" />
+        <Thumb x:Name="ResizeBottom" Style="{StaticResource OverlayResizeGrip}" Height="6" VerticalAlignment="Bottom" Margin="10,0" Cursor="SizeNS" />
+        <Thumb x:Name="ResizeTopLeft" Style="{StaticResource OverlayResizeGrip}" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE" />
+        <Thumb x:Name="ResizeTopRight" Style="{StaticResource OverlayResizeGrip}" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW" />
+        <Thumb x:Name="ResizeBottomLeft" Style="{StaticResource OverlayResizeGrip}" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" />
+        <Thumb x:Name="ResizeBottomRight" Style="{StaticResource OverlayResizeGrip}" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" />
     </Grid>
 </Window>
