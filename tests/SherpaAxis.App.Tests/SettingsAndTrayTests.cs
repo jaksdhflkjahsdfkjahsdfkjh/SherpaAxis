@@ -15,8 +15,8 @@ namespace SherpaAxis.App.Tests;
 [Collection("WPF UI")]
 public sealed class SettingsAndTrayTests
 {
-    private static readonly TrayCommand[] ExpectedTrayCommands = [TrayCommand.Show, TrayCommand.Tune, TrayCommand.Calibrate, TrayCommand.Settings, TrayCommand.Exit];
-    private static readonly string[] TrayLabels = ["Open SherpaAxis", "Tune", "Calibrate", "Settings", "Exit"];
+    private static readonly TrayCommand[] ExpectedTrayCommands = [TrayCommand.Show, TrayCommand.Tune, TrayCommand.Calibrate, TrayCommand.ToggleOverlay, TrayCommand.Settings, TrayCommand.Exit];
+    private static readonly string[] TrayLabels = ["Open SherpaAxis", "Tune", "Calibrate", "Pedal overlay", "Settings", "Exit"];
     [Fact]
     public async Task PreferencesRoundTripAndFailedOrCancelledSavesPreserveTheLastFile()
     {

@@ -131,13 +131,13 @@ public sealed class UiRefinementTests
     });
 
     [Fact]
-    public Task TrayUsesAppColorsAndOnlyChecksTheSelectedProfile() => HardwarePedalUiTests.OnUiAsync(() =>
+    public Task TrayUsesAppColorsAndDoesNotCheckNavigationActions() => HardwarePedalUiTests.OnUiAsync(() =>
     {
         var profile = new ProfileTab { Name = "Racing" };
         using var tray = new ApplicationTray(() => new([profile], profile, SidePanelMode.Tuning, true, true));
         tray.RebuildMenu();
         var menu = Assert.IsType<Forms.ContextMenuStrip>(typeof(ApplicationTray).GetField("menu", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tray));
-        Assert.False(menu.ShowCheckMargin);
+        Assert.True(menu.ShowCheckMargin);
         Assert.All(menu.Items.OfType<Forms.ToolStripMenuItem>(), item => Assert.False(item.Checked));
         Assert.DoesNotContain(menu.Items.OfType<Forms.ToolStripMenuItem>(), item => item.Text?.StartsWith("Fix drift", StringComparison.Ordinal) == true);
         var profiles = menu.Items.OfType<Forms.ToolStripMenuItem>().Single(item => item.Text == "Switch profile");

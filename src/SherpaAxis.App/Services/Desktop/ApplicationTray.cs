@@ -26,7 +26,7 @@ public sealed class ApplicationTray : IApplicationTray
         menu.BackColor = DrawingColor(AppColors.Panel);
         menu.ForeColor = DrawingColor(AppColors.Text);
         menu.ShowImageMargin = false;
-        menu.ShowCheckMargin = false;
+        menu.ShowCheckMargin = true;
         menu.Opening += (_, _) => RebuildMenu();
         icon = new Forms.NotifyIcon { Icon = image, Text = Localization.Localizer.Translate("SherpaAxis · Pedals Utility"), ContextMenuStrip = menu, Visible = true };
         icon.DoubleClick += (_, _) => CommandRequested?.Invoke(TrayCommand.Show);
@@ -65,6 +65,10 @@ public sealed class ApplicationTray : IApplicationTray
             profiles.DropDownItems.Add(item);
         }
         menu.Items.Add(profiles);
+        var overlay = new Forms.ToolStripMenuItem(Localization.Localizer.Translate("Pedal overlay"))
+        { Checked = current.OverlayVisible, Enabled = current.CanToggleOverlay, ForeColor = menu.ForeColor };
+        overlay.Click += (_, _) => { CommandRequested?.Invoke(TrayCommand.ToggleOverlay); overlay.Checked = state().OverlayVisible; };
+        menu.Items.Add(overlay);
         Add("Settings", TrayCommand.Settings, current.CanSelectMode);
         menu.Items.Add(new Forms.ToolStripSeparator());
         Add("Exit", TrayCommand.Exit);

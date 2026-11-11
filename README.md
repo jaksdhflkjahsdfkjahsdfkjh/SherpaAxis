@@ -174,7 +174,8 @@ the plot; the indicators and game output keep updating.
 
 The panel has no title bar, tabs or settings buttons. Drag the middle to move it,
 or drag any edge or corner to resize it. The size is saved automatically;
-hide it using the toolbar button or **Settings → Pedal overlay → Hide overlay**.
+toggle it using **Pedal overlay** in the tray menu or the toolbar button, or
+hide it in **Settings → Pedal overlay → Hide overlay**.
 It continues updating while SherpaAxis is minimized or hidden in the tray. It opens
 only when requested, and closing SherpaAxis closes the panel too.
 

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using SherpaAxis.App.Localization;
 using SherpaAxis.App.Models;
+using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.ViewModels;
 
 namespace SherpaAxis.App.Tests;
@@ -156,6 +157,47 @@ public sealed class PedalOverlaySettingsTests
             var toolbar = Assert.IsType<Button>(main.FindName("CompactViewButton"));
             toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.True(settings.IsVisible);
             toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.False(settings.IsVisible);
+        }
+        finally { Localizer.Instance.Language = "en"; Directory.Delete(folder, true); }
+    });
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("uk")]
+    public Task TrayCheckboxTracksTheOverlayWithoutRestoringTheMainWindow(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    {
+        var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
+        ApplicationTray? tray = null;
+        try
+        {
+            await using var main = new MainWindow(new(), desktopServices: desktop.Services with
+            { CreateTray = state => tray = new ApplicationTray(state) }, profileLibrary: new(folder));
+            await main.InitializeForLaunchAsync();
+            Localizer.Instance.Language = language;
+            Assert.True(await main.HideToTrayAsync());
+            Assert.NotNull(tray);
+            var menu = Assert.IsType<System.Windows.Forms.ContextMenuStrip>(typeof(ApplicationTray)
+                .GetField("menu", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(tray));
+            System.Windows.Forms.ToolStripMenuItem Checkbox()
+            {
+                tray.RebuildMenu();
+                return menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().Single(item => item.Text == Localizer.Translate("Pedal overlay"));
+            }
+            Assert.True(menu.ShowCheckMargin);
+            var checkbox = Checkbox(); Assert.False(checkbox.Checked);
+            checkbox.PerformClick(); Assert.True(checkbox.Checked);
+            Assert.True(main.GetTrayState().OverlayVisible); Assert.False(main.IsVisible);
+            var view = main.OpenCompactView();
+            Assert.True(view.IsVisible); Assert.False(view.ShowActivated);
+            checkbox = Checkbox(); Assert.True(checkbox.Checked);
+            checkbox.PerformClick(); Assert.False(checkbox.Checked);
+            Assert.False(main.GetTrayState().OverlayVisible); Assert.False(main.IsVisible);
+            Assert.False(view.IsVisible);
+            Assert.IsType<Button>(main.FindName("CompactViewButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(Checkbox().Checked);
+            main.OpenCompactView().Close();
+            Assert.False(Checkbox().Checked);
+            Assert.False(main.IsVisible);
         }
         finally { Localizer.Instance.Language = "en"; Directory.Delete(folder, true); }
     });
