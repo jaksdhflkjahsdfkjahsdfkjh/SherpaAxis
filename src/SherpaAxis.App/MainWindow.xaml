@@ -649,6 +649,8 @@
                                         <StackPanel>
                                             <CheckBox x:Name="OverlayEnabledCheck" Content="{loc:Text TB0E1604563D6}" IsChecked="{Binding IsVisible, Mode=OneWay}" Click="EnableOverlayClick" Margin="0" />
                                             <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T6190554403B5}" Margin="0,8,0,0" />
+                                            <CheckBox x:Name="OverlayLockedCheck" Content="{loc:Text T7B26CEAA2395}" IsChecked="{Binding IsLocked, Mode=TwoWay}" Margin="0,14,0,0" />
+                                            <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text TFAD759840A2D}" Margin="0,8,0,0" />
                                         </StackPanel>
                                     </GroupBox>
                                     <GroupBox x:Name="OverlaySettingsGroup" Header="{loc:Text T32AB018FD38A}">
@@ -661,7 +663,7 @@
                                                 <CheckBox x:Name="OverlayPauseCheck" Content="{loc:Text TF89AF32D631F}" IsChecked="{Binding GraphPaused, Mode=TwoWay}" Margin="0,0,0,16" ToolTip="{loc:Text TC86914C371B3}" />
                                         </StackPanel>
                                     </GroupBox>
-                                    <GroupBox x:Name="OverlaySizeGroup" Header="{loc:Text T69ABEB4E8083}">
+                                    <GroupBox x:Name="OverlaySizeGroup" Header="{loc:Text T69ABEB4E8083}" IsEnabled="{Binding CanEditPlacement}">
                                         <StackPanel>
                                                 <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Width, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text T534B1DC6864B}" /></DockPanel>
                                                 <Slider x:Name="OverlayWidthSlider" Style="{StaticResource OverlaySlider}" Minimum="360" Maximum="1000" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Width, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T534B1DC6864B}" />

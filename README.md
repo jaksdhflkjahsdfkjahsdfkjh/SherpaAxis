@@ -177,6 +177,10 @@ throttle. The meters show the current pedal positions.*
 3. Drag the middle of the overlay to move it. Drag any edge or corner to resize it,
    or use the width and height sliders in the tab.
 
+Check **Lock pedal overlay** to prevent moving or resizing it and let mouse clicks
+pass through to your game. Unlock it from the same checkbox or the tray menu.
+The lock state is saved too. Graph settings remain available while locked.
+
 Your position, size and graph settings are saved automatically. Reopening the
 overlay restores them, including after restarting SherpaAxis. If its saved monitor
 is no longer available, the panel is brought back onto an available screen.

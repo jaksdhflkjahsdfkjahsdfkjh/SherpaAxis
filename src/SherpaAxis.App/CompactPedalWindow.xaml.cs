@@ -30,6 +30,7 @@ internal sealed partial class CompactPedalWindow : Window
             WindowTheme.Apply(this);
             nativeSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             nativeSource?.AddHook(PreventMouseActivation);
+            ApplyMouseTransparency();
         };
         IsVisibleChanged += (_, _) => UpdateRendering();
         StateChanged += (_, _) => UpdateRendering();
@@ -55,12 +56,13 @@ internal sealed partial class CompactPedalWindow : Window
 
     private void MoveOverlay(object sender, MouseButtonEventArgs args)
     {
-        if (args.LeftButton == MouseButtonState.Pressed) { DragMove(); args.Handled = true; }
+        if (!model.Settings.IsLocked && args.LeftButton == MouseButtonState.Pressed) { DragMove(); args.Handled = true; }
     }
 
     private void OverlaySettingsChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (closed) { return; }
+        if (args.PropertyName == nameof(PedalOverlaySettingsViewModel.IsLocked)) { ApplyMouseTransparency(); }
         if (!updatingSize && args.PropertyName is (nameof(PedalOverlaySettingsViewModel.Width) or nameof(PedalOverlaySettingsViewModel.Height))) { ApplySize(); }
         if (!capturingPlacement && !model.Settings.Loading && placementReady
             && args.PropertyName is (nameof(PedalOverlaySettingsViewModel.Left) or nameof(PedalOverlaySettingsViewModel.Top) or nameof(PedalOverlaySettingsViewModel.Loading))) { RestorePlacement(); }

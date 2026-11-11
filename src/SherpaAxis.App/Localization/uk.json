@@ -1173,5 +1173,7 @@
   "Choose a signal in the Pedal overlay tab.": "Виберіть сигнал на вкладці Оверлей педалей.",
   "Bind to: {0}": "Прив’язати до: {0}",
   "Not bound": "Не прив’язано",
-  "Choose a game executable (.exe).": "Виберіть виконуваний файл гри (.exe)."
+  "Choose a game executable (.exe).": "Виберіть виконуваний файл гри (.exe).",
+  "Lock pedal overlay": "Закріпити оверлей педалей",
+  "Locked: mouse clicks reach the game. Unlock here or in the tray to move or resize.": "У закріпленому режимі натискання миші проходять у гру. Для переміщення чи зміни розміру зніміть закріплення тут або в треї."
 }

@@ -97,7 +97,7 @@ public partial class MainWindow
     }
 
     internal TrayMenuState GetTrayState() => new(viewModel.ProfileTabs.ToArray(), viewModel.SelectedProfile, viewModel.PanelMode,
-        viewModel.CanEdit && !closing, viewModel.CanTune && !closing, compactView?.IsVisible == true, !closing && !disposed);
+        viewModel.CanEdit && !closing, viewModel.CanTune && !closing, compactView?.IsVisible == true, !closing && !disposed, viewModel.Preferences.Overlay.IsLocked);
 
     private async void SettingsModeClick(object sender, RoutedEventArgs e) => await RequestPanelModeAsync(SidePanelMode.Settings);
     private async void HideToTrayClick(object sender, RoutedEventArgs e) => await HideToTrayAsync();
@@ -181,6 +181,7 @@ public partial class MainWindow
         if (command == TrayCommand.Exit) { RequestExit(); return; }
         if (command == TrayCommand.ViewUpdate) { OpenAppRelease(); return; }
         if (command == TrayCommand.ToggleOverlay) { if (!closing && !disposed) { ToggleCompactView(); } return; }
+        if (command == TrayCommand.ToggleOverlayLock) { if (!closing && !disposed) { ToggleOverlayLock(); } return; }
         RestoreFromTray();
         if (command == TrayCommand.Tune) { await RequestPanelModeAsync(SidePanelMode.Tuning); }
         else if (command == TrayCommand.Calibrate) { await RequestPanelModeAsync(SidePanelMode.Calibration); }

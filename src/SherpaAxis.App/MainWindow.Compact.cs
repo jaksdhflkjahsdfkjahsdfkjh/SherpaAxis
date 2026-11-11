@@ -12,6 +12,7 @@ public partial class MainWindow
     private void ToggleCompactView() => Run(() => { if (compactView is null) { OpenCompactView(); } else { CloseCompactView(); } });
     private async void PedalOverlayModeClick(object sender, RoutedEventArgs e) => await RequestPanelModeAsync(SidePanelMode.PedalOverlay);
     private void EnableOverlayClick(object sender, RoutedEventArgs e) => ToggleCompactView();
+    private void ToggleOverlayLock() => Run(() => viewModel.Preferences.Overlay.IsLocked = !viewModel.Preferences.Overlay.IsLocked);
 
     private void InitializeOverlaySettings()
     {
@@ -22,7 +23,8 @@ public partial class MainWindow
             if (args.PropertyName is not (nameof(PedalOverlaySettingsViewModel.WindowSeconds) or nameof(PedalOverlaySettingsViewModel.Width)
                 or nameof(PedalOverlaySettingsViewModel.Height) or nameof(PedalOverlaySettingsViewModel.ShowRaw)
                 or nameof(PedalOverlaySettingsViewModel.ShowFiltered) or nameof(PedalOverlaySettingsViewModel.ShowOutput)
-                or nameof(PedalOverlaySettingsViewModel.Left) or nameof(PedalOverlaySettingsViewModel.Top))) { return; }
+                or nameof(PedalOverlaySettingsViewModel.Left) or nameof(PedalOverlaySettingsViewModel.Top)
+                or nameof(PedalOverlaySettingsViewModel.IsLocked))) { return; }
             overlaySaveTimer.Stop(); overlaySaveTimer.Start();
         };
     }

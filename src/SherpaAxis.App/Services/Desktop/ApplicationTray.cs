@@ -69,6 +69,10 @@ public sealed class ApplicationTray : IApplicationTray
         { Checked = current.OverlayVisible, Enabled = current.CanToggleOverlay, ForeColor = menu.ForeColor };
         overlay.Click += (_, _) => { CommandRequested?.Invoke(TrayCommand.ToggleOverlay); overlay.Checked = state().OverlayVisible; };
         menu.Items.Add(overlay);
+        var overlayLock = new Forms.ToolStripMenuItem(Localization.Localizer.Translate("Lock pedal overlay"))
+        { Checked = current.OverlayLocked, Enabled = current.OverlayVisible && current.CanToggleOverlay, ForeColor = menu.ForeColor };
+        overlayLock.Click += (_, _) => { CommandRequested?.Invoke(TrayCommand.ToggleOverlayLock); overlayLock.Checked = state().OverlayLocked; };
+        menu.Items.Add(overlayLock);
         Add("Settings", TrayCommand.Settings, current.CanSelectMode);
         menu.Items.Add(new Forms.ToolStripSeparator());
         Add("Exit", TrayCommand.Exit);

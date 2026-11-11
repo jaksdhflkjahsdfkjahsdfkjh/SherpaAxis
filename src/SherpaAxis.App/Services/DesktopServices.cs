@@ -12,9 +12,9 @@ using SherpaAxis.App.Services.Updates;
 
 namespace SherpaAxis.App.Services;
 
-public enum TrayCommand { Show, Tune, Calibrate, Settings, Exit, ViewUpdate, ToggleOverlay }
+public enum TrayCommand { Show, Tune, Calibrate, Settings, Exit, ViewUpdate, ToggleOverlay, ToggleOverlayLock }
 public sealed record TrayMenuState(IReadOnlyList<ProfileTab> Profiles, ProfileTab? SelectedProfile,
-    SidePanelMode Mode, bool CanSelectMode, bool CanSwitchProfile, bool OverlayVisible = false, bool CanToggleOverlay = true);
+    SidePanelMode Mode, bool CanSelectMode, bool CanSwitchProfile, bool OverlayVisible = false, bool CanToggleOverlay = true, bool OverlayLocked = false);
 public interface IApplicationTray : IDisposable
 {
     event Action<TrayCommand>? CommandRequested;

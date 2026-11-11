@@ -10,13 +10,14 @@ internal sealed partial class CompactPedalWindow
 
     private void BeginResize(object sender, DragStartedEventArgs args)
     {
+        if (model.Settings.IsLocked) { args.Handled = true; return; }
         resizeStart = new Rect(Left, Top, Width, Height);
         args.Handled = true;
     }
 
     private void ResizeOverlay(object sender, DragDeltaEventArgs args)
     {
-        if (closed || sender is not Thumb grip || resizeStart is null) { return; }
+        if (closed || model.Settings.IsLocked || sender is not Thumb grip || resizeStart is null) { return; }
         var bounds = new Rect(Left, Top, Width, Height);
         var width = bounds.Width; var height = bounds.Height;
         var left = bounds.Left; var top = bounds.Top;
@@ -38,7 +39,7 @@ internal sealed partial class CompactPedalWindow
 
     private void EndResize(object sender, DragCompletedEventArgs args)
     {
-        if (!closed && args.Canceled && resizeStart is { } original) { SetOverlayBounds(original); }
+        if (!closed && !model.Settings.IsLocked && args.Canceled && resizeStart is { } original) { SetOverlayBounds(original); }
         resizeStart = null;
         args.Handled = true;
     }

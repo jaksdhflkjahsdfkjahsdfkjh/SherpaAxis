@@ -5,7 +5,7 @@ namespace SherpaAxis.App.ViewModels;
 public sealed class PedalOverlaySettingsViewModel : ObservableObject
 {
     private double windowSeconds = 10, width = 640, height = 140;
-    private bool showRaw, showFiltered, showOutput = true, graphPaused, visible;
+    private bool showRaw, showFiltered, showOutput = true, graphPaused, visible, locked;
     private double? left, top;
     internal bool Loading { get; private set; }
     public double WindowSeconds { get => windowSeconds; set => Set(ref windowSeconds, Valid(value, 1, 60)); }
@@ -15,6 +15,8 @@ public sealed class PedalOverlaySettingsViewModel : ObservableObject
     public bool ShowFiltered { get => showFiltered; set => Set(ref showFiltered, value); }
     public bool ShowOutput { get => showOutput; set => Set(ref showOutput, value); }
     public bool GraphPaused { get => graphPaused; set => Set(ref graphPaused, value); }
+    public bool IsLocked { get => locked; set { if (Set(ref locked, value)) { Changed(nameof(CanEditPlacement)); } } }
+    public bool CanEditPlacement => !IsLocked;
     public bool IsVisible
     {
         get => visible;
@@ -34,7 +36,7 @@ public sealed class PedalOverlaySettingsViewModel : ObservableObject
     }
     internal PedalOverlayPreferences? Snapshot()
     {
-        var value = new PedalOverlayPreferences(WindowSeconds, ShowRaw, ShowFiltered, ShowOutput, Width, Height, Left, Top);
+        var value = new PedalOverlayPreferences(WindowSeconds, ShowRaw, ShowFiltered, ShowOutput, Width, Height, Left, Top, IsLocked);
         return value == new PedalOverlayPreferences() ? null : value;
     }
     internal void Load(PedalOverlayPreferences? value)
@@ -47,6 +49,7 @@ public sealed class PedalOverlaySettingsViewModel : ObservableObject
             Width = InRange(value.Width, 360, 1000) ? value.Width : 640;
             Height = InRange(value.Height, 110, 220) ? value.Height : 140;
             ShowRaw = value.ShowRaw; ShowFiltered = value.ShowFiltered; ShowOutput = value.ShowOutput;
+            IsLocked = value.Locked;
             var validPosition = value.Left is { } x && ValidCoordinate(x) && value.Top is { } y && ValidCoordinate(y);
             left = validPosition ? value.Left : null; top = validPosition ? value.Top : null;
             Changed(nameof(Left)); Changed(nameof(Top));
