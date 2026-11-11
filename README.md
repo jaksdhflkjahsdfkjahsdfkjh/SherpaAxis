@@ -132,13 +132,16 @@ games; each game can be assigned to one profile. Unsaved profiles are saved when
 you first bind a game. Bindings are stored locally and survive app restarts.
 
 Click a game card to select it; a highlighted card and check mark show your choice.
-Game icons are included with the app and work offline. Use **Add game…** for another
-game, or expand **Executable names** to edit names manually. Added games appear in
-a separate list with a remove button. Choose **Save** to keep the selection.
+Game icons are included with the app and work offline. Use **Add game…** to select
+another game’s `.exe`. Added games appear in a separate list with a remove button.
+Choose **Save** to keep the selection.
 
-If a game is assigned to another profile, its card shows that profile's name.
-Choose **Reassign here** to prepare a move to the selected profile. **Save** moves
-the binding in one operation; **Cancel** keeps the previous assignment. Other game
+A small label at the bottom of each card shows its current profile binding.
+**Reassign here** appears only for another game that is currently running while
+the selected profile is already bound to a different game.
+Selecting a game assigned to another profile prepares a move; its label changes to
+**Bind to:** followed by the selected profile. **Save** applies the move; **Cancel**
+keeps the previous assignment. Other game
 bindings and both profiles' pedal settings are preserved. If the assignment changes
 while the dialog is open, reopen it to review the current owner before saving.
 
@@ -153,39 +156,45 @@ Selecting a profile manually overrides that game's automatic selection until
 another bound game starts. If several bound games are running, the most recently
 detected one takes priority; when it closes, another running bound game can take
 over. Closing the last game keeps the current profile. To remove a binding, clear
-its selections and executable names in **Game bindings**, then choose **Save**.
+its game-card selections or remove its added games in **Game bindings**, then choose **Save**.
 **Auto-load** remains your separate choice of profile at SherpaAxis startup.
 
 ### Pedal overlay
 
-Click **Pedal overlay** beside the profile selector to show or hide a clean panel
-above your game: a narrow, translucent telemetry panel with a shared graph on the
-left and three vertical pedal meters on the right. Throttle is green, brake is red
-and clutch is blue. The rectangular panel uses SherpaAxis colors. Configure it in
-**Settings → Pedal overlay**, away from the racing screen. Change the time window
-from **1 to 60 seconds**, choose **RAW**, **Filtered** and **Curve / output**, pause
-the graph, or adjust the panel width and height. These settings are saved automatically.
+Keep an eye on your pedal inputs while driving. The overlay shows clutch, brake and
+throttle meters beside a shared history graph, and keeps updating while SherpaAxis
+is minimized to the tray.
 
-Each pedal keeps the same color in its graph and meter. Dashed, dotted and solid lines identify the signal
-stages. RAW is normalized input after drift correction and before filtering;
-output includes deadzones, response curves and clutch bite-point behavior. Short
-spikes are retained when reducing history for display. **Pause graph** freezes only
-the plot; the indicators and game output keep updating.
+![SherpaAxis pedal overlay showing clutch, brake and throttle input](docs/screenshots/pedal-overlay.png)
 
-The panel has no title bar, tabs or settings buttons. Drag the middle to move it,
-or drag any edge or corner to resize it. The size is saved automatically;
-toggle it using **Pedal overlay** in the tray menu or the toolbar button, or
-hide it in **Settings → Pedal overlay → Hide overlay**.
-It continues updating while SherpaAxis is minimized or hidden in the tray. It opens
-only when requested, and closing SherpaAxis closes the panel too.
+*Pedal-input history in the overlay. Blue is clutch, red is brake and green is
+throttle. The meters show the current pedal positions.*
 
-History stays in memory for up to 60 seconds while the panel is open. It does not
-change the main graph's time range. Reconnection and processing changes start a
-new history segment. Paused/stale input clears the indicators and shows a status
-notice rather than leaving old values presented as live.
+1. Open the **Pedal overlay** tab between **Tuning** and **Calibration**, then check
+   **Enable pedal overlay**. The tray menu also lets you show or hide it.
+2. Choose a **1–60 second** time window and the signals you want to compare:
+   **RAW** (dashed), **Filtered** (dotted) and **Curve / output** (solid).
+3. Drag the middle of the overlay to move it. Drag any edge or corner to resize it,
+   or use the width and height sliders in the tab.
 
-Use a windowed or borderless game mode; visibility over exclusive fullscreen games
-depends on the game's display mode and Windows composition.
+Your position, size and graph settings are saved automatically. Reopening the
+overlay restores them, including after restarting SherpaAxis. If its saved monitor
+is no longer available, the panel is brought back onto an available screen.
+The overlay opens when you enable it; visiting the tab does not turn it on.
+
+**Pause graph** freezes only the plot. Pedal meters and game output keep updating.
+RAW is normalized input after drift correction and before filtering; final output
+includes deadzones, response curves and clutch bite point. Short spikes are retained
+when reducing history for display.
+
+All settings stay in the app, leaving only the pedals and graph above your game.
+History stays in memory for up to 60 seconds while the overlay is open, independently
+of the main graph. Reconnection and processing changes start a new history segment;
+lost or paused input clears the meters instead of showing stale values as live.
+
+Use a windowed or borderless game mode. Visibility over exclusive fullscreen games
+depends on the game's display mode and Windows composition. Closing SherpaAxis
+also closes the overlay.
 
 ## Get started
 

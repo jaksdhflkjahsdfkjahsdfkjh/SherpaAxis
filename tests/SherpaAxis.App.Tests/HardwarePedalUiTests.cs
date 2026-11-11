@@ -580,6 +580,13 @@ public sealed class HardwarePedalUiTests
         var thread = new Thread(() =>
         {
             var dispatcher = Dispatcher.CurrentDispatcher;
+            // Animated previews may never become idle. Keep queued background edits and
+            // UI-settle yields in FIFO render order, without waiting for sampling to stop.
+            dispatcher.Hooks.OperationPosted += (_, posted) =>
+            {
+                if (posted.Operation.Priority is DispatcherPriority.ContextIdle or DispatcherPriority.Background)
+                { posted.Operation.Priority = DispatcherPriority.Render; }
+            };
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
             dispatcher.BeginInvoke(async () =>
             {
@@ -693,7 +700,7 @@ public sealed class HardwarePedalUiTests
         try
         {
             await runtime.ResumeAsync();
-            await Task.Delay(30);
+            await controller.Written.Task.WaitAsync(TimeSpan.FromSeconds(2));
             var first = main.DisposeAsync().AsTask();
             var repeated = main.DisposeAsync().AsTask();
             await inputStopped.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -750,11 +757,12 @@ public sealed class HardwarePedalUiTests
 
     private sealed class ClosingController : IVirtualController
     {
+        public TaskCompletionSource Written { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Closing { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int CloseCount { get; private set; }
         public PedalOutput Last { get; private set; }
-        public void Write(PedalOutput output) => Last = output;
+        public void Write(PedalOutput output) { Last = output; Written.TrySetResult(); }
         public void Dispose() { CloseCount++; Closing.TrySetResult(); Release.Task.GetAwaiter().GetResult(); }
     }
 

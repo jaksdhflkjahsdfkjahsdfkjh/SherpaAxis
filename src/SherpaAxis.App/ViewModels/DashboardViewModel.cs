@@ -48,12 +48,13 @@ public sealed partial class DashboardViewModel : ObservableObject
         set
         {
             if (Set(ref panelMode, value))
-            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); NotifyDisplay(); }
+            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(IsPedalOverlayMode)); Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); NotifyDisplay(); }
         }
     }
     public bool IsCalibrationMode { get => PanelMode == SidePanelMode.Calibration; set => PanelMode = value ? SidePanelMode.Calibration : SidePanelMode.Tuning; }
     public bool IsSettingsMode => PanelMode == SidePanelMode.Settings;
     public bool IsTuningMode => PanelMode == SidePanelMode.Tuning;
+    public bool IsPedalOverlayMode => PanelMode == SidePanelMode.PedalOverlay;
     public PreferencesViewModel Preferences { get; } = new();
     public StartupRecoveryViewModel Recovery { get; } = new();
     public DeviceDiagnosticsViewModel Diagnostics { get; } = new();

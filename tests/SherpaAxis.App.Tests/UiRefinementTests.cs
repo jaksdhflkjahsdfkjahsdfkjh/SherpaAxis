@@ -96,7 +96,7 @@ public sealed class UiRefinementTests
             root.Measure(new Size(1100, 760)); root.Arrange(new Rect(0, 0, 1100, 760)); root.UpdateLayout();
             var tabs = Assert.IsType<System.Windows.Controls.Primitives.UniformGrid>(main.FindName("PanelModeTabs"));
             var items = tabs.Children.OfType<Button>().ToArray();
-            Assert.Equal(3, items.Length);
+            Assert.Equal(4, items.Length);
             Assert.All(items, item => Assert.Equal(items[0].ActualWidth, item.ActualWidth, 1));
             Assert.InRange(items.Sum(item => item.ActualWidth + item.Margin.Left + item.Margin.Right), tabs.ActualWidth - 2, tabs.ActualWidth + 2);
             CapturePreview(tabs, $"mode-tabs-{language}.png");

@@ -69,7 +69,7 @@ public sealed class OverlayResizeTests
         grip.RaiseEvent(new DragCompletedEventArgs(53.5, 17.25, true));
         Assert.Equal(original, new Rect(view.Left, view.Top, view.Width, view.Height));
         await main.SavePreferencesAsync();
-        Assert.Null(desktop.Store.Value.Overlay);
+        Assert.Equal(640, desktop.Store.Value.Overlay!.Width); Assert.Equal(140, desktop.Store.Value.Overlay.Height);
     });
 
     private static Task WithWindow(Func<MainWindow, CompactPedalWindow, SettingsAndTrayTests.FakeDesktop, Task> action)

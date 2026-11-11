@@ -39,7 +39,7 @@ internal sealed class CombinedPedalPlot : FrameworkElement
         }
         if (!ShowRaw && !ShowFiltered && !ShowOutput)
         {
-            Label(drawing, Localizer.Translate("Choose a signal in Settings → Pedal overlay."), area.Left + 16, area.Top + 16, AppColors.MutedBrush);
+            Label(drawing, Localizer.Translate("Choose a signal in the Pedal overlay tab."), area.Left + 16, area.Top + 16, AppColors.MutedBrush);
             return;
         }
         drawing.PushClip(new RectangleGeometry(area));

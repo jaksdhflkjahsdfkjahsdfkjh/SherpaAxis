@@ -23,6 +23,7 @@ internal sealed partial class CompactPedalWindow : Window
     {
         this.engine = engine; this.pauseReason = pauseReason; model = new(settings);
         InitializeComponent(); DataContext = model;
+        InitializePlacement();
         settings.PropertyChanged += OverlaySettingsChanged;
         SourceInitialized += (_, _) =>
         {
@@ -61,6 +62,8 @@ internal sealed partial class CompactPedalWindow : Window
     {
         if (closed) { return; }
         if (!updatingSize && args.PropertyName is (nameof(PedalOverlaySettingsViewModel.Width) or nameof(PedalOverlaySettingsViewModel.Height))) { ApplySize(); }
+        if (!capturingPlacement && !model.Settings.Loading && placementReady
+            && args.PropertyName is (nameof(PedalOverlaySettingsViewModel.Left) or nameof(PedalOverlaySettingsViewModel.Top) or nameof(PedalOverlaySettingsViewModel.Loading))) { RestorePlacement(); }
         if (args.PropertyName == nameof(PedalOverlaySettingsViewModel.GraphPaused) && model.Settings.GraphPaused)
         { model.GraphFrame = engine.TelemetrySnapshot(60, maximumPoints: 24008); }
         else if (args.PropertyName is nameof(PedalOverlaySettingsViewModel.GraphPaused) or nameof(PedalOverlaySettingsViewModel.WindowSeconds)) { RefreshGraph(); }
@@ -68,10 +71,8 @@ internal sealed partial class CompactPedalWindow : Window
 
     private void ApplySize()
     {
-        var area = SystemParameters.WorkArea;
-        Width = Math.Min(model.Settings.Width, area.Width); Height = Math.Min(model.Settings.Height, area.Height);
-        if (double.IsFinite(Left)) { Left = Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - Width)); }
-        if (double.IsFinite(Top)) { Top = Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height)); }
+        Width = model.Settings.Width; Height = model.Settings.Height;
+        if (placementReady && !model.Settings.Loading) { RestorePlacement(remember: true); }
     }
 
     private void RefreshGraph()

@@ -19,6 +19,8 @@ public partial class MainWindow
     private bool checkingGameProfiles;
     private long gameProcessesCheckedAt = long.MinValue / 2;
     private bool applyingGameProfile;
+    private IReadOnlySet<string> runningGameProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private GameBindingDialog? openGameBindingDialog;
 
     private async Task InitializeGameProfilesAsync()
     {
@@ -67,6 +69,8 @@ public partial class MainWindow
 
     internal void ObserveGameProcesses(IReadOnlySet<string> processes)
     {
+        runningGameProcesses = processes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        openGameBindingDialog?.UpdateRunningProcesses(runningGameProcesses);
         var saved = viewModel.ProfileTabs.Where(tab => tab.FilePath is not null).Select(tab => Path.GetFileName(tab.FilePath!)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         gameProfileSelection.Observe(gameBindings.Where(binding => saved.Contains(binding.ProfileFileName)), processes);
         var target = viewModel.ProfileTabs.FirstOrDefault(tab => string.Equals(Path.GetFileName(tab.FilePath), gameProfileSelection.Pending, StringComparison.OrdinalIgnoreCase));
@@ -113,9 +117,26 @@ public partial class MainWindow
 
     private async void GameBindingsClick(object sender, RoutedEventArgs e)
     {
-        if (!gameBindingsLoaded || !viewModel.CanTune || viewModel.SelectedProfile is null) { return; }
-        var dialog = CreateGameBindingDialog();
-        if (ShowTextEntryDialog(dialog.ShowDialog) == true) { await SetSelectedGameBindingsAsync(dialog.Processes, dialog.Transfers); }
+        if (!gameBindingsLoaded || !viewModel.CanTune || viewModel.SelectedProfile is null || textEntryDialogs > 0) { return; }
+        textEntryDialogs++;
+        try
+        {
+            if (desktop.GameProcesses is { } read) { ObserveGameProcesses(await Task.Run(read, lifetime.Token)); }
+        }
+        catch (OperationCanceledException) when (closing) { return; }
+        catch (Exception failure) when (OperationErrors.IsExpected(failure) || failure is System.ComponentModel.Win32Exception)
+        {
+            runningGameProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            desktop.Log?.Write("game-profiles", "Could not check running games for binding suggestions.", failure);
+        }
+        finally { textEntryDialogs--; }
+        if (closing || !viewModel.CanTune) { return; }
+        var dialog = CreateGameBindingDialog(); openGameBindingDialog = dialog;
+        try
+        {
+            if (ShowTextEntryDialog(dialog.ShowDialog) == true) { await SetSelectedGameBindingsAsync(dialog.Processes, dialog.Transfers); }
+        }
+        finally { openGameBindingDialog = null; dialog.Close(); }
     }
 
     internal GameBindingDialog CreateGameBindingDialog()
@@ -127,7 +148,7 @@ public partial class MainWindow
             .Select(binding => new GameBindingOwner(binding.ProfileFileName,
                 viewModel.ProfileTabs.FirstOrDefault(tab => string.Equals(Path.GetFileName(tab.FilePath), binding.ProfileFileName, StringComparison.OrdinalIgnoreCase))?.Name
                     ?? Path.GetFileNameWithoutExtension(binding.ProfileFileName), binding.Processes)).ToArray();
-        return new GameBindingDialog(this, selected.Name, names, owners);
+        return new GameBindingDialog(this, selected.Name, names, owners, runningGameProcesses);
     }
 
     internal Task SetSelectedGameBindingsAsync(string[] processes, IReadOnlyList<GameBindingTransfer>? transfers = null) => RunAsync(async () =>

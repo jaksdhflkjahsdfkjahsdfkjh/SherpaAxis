@@ -165,7 +165,6 @@
                             <CheckBox x:Name="AutoLoadProfileCheckBox" IsChecked="{Binding SelectedAutoLoad, Mode=OneWay}" Click="AutoLoadProfileClick" VerticalAlignment="Center" Margin="0" AutomationProperties.Name="{loc:Text T92BBC9769282}" AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}}" ToolTip="{loc:Text TADAAE5985C8B}" />
                         </StackPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0">
-                            <Button x:Name="CompactViewButton" Content="{loc:Text TE4BAE9A5CF3D}" Click="CompactViewClick" Padding="10,7" FontSize="12" Margin="0,0,8,0" ToolTip="{loc:Text T5F31ED3B408D}" />
                             <Button x:Name="GameBindingsButton" Content="{loc:Text T44AAA42FE836}" Click="GameBindingsClick" Padding="10,7" FontSize="12" Margin="0,0,8,0" ToolTip="{loc:Translate Value={Binding GameBindingInfo}}" />
                             <Button Content="" FontFamily="Segoe MDL2 Assets" Click="SaveLibraryClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text T0C8209E72EC8}" ToolTip="{loc:Text T48F3E3EAEAE7}" />
                             <Button x:Name="NewProfileButton" Content="" FontFamily="Segoe MDL2 Assets" Click="NewProfileClick" Width="34" Padding="7" Margin="0,0,5,0" AutomationProperties.Name="{loc:Text TFCF4F3F4D5F7}" ToolTip="{loc:Text TA636698302B5}" />
@@ -342,11 +341,12 @@
                         </Expander>
                     </Grid>
                 </ScrollViewer>
-                <Border Grid.Column="2" Background="{StaticResource EditorSurface}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                <Border x:Name="WorkspaceSidebarShell" Grid.Column="2" Background="{StaticResource EditorSurface}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
-                            <UniformGrid x:Name="PanelModeTabs" Columns="3">
-                                <Button x:Name="TuningModeButton" FontSize="13" Padding="8,9" MinHeight="42" HorizontalContentAlignment="Center" Margin="0,0,6,0" Content="{loc:Text T2ABEEFBA61DF}" Click="TuningModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T39D7388028F1}">
+                            <UniformGrid x:Name="PanelModeTabs" Columns="4">
+                                <Button x:Name="TuningModeButton" FontSize="12" Padding="5,8" MinHeight="46" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text T2ABEEFBA61DF}" Click="TuningModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T39D7388028F1}">
+                                    <Button.ContentTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" /></DataTemplate></Button.ContentTemplate>
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                             <Style.Triggers>
@@ -359,7 +359,22 @@
                                         </Style>
                                     </Button.Style>
                                 </Button>
-                                <Button x:Name="CalibrationModeButton" FontSize="13" Padding="8,9" MinHeight="42" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text T252526ECD431}" Click="CalibrationModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T8FE3696019F3}">
+                                <Button x:Name="PedalOverlayModeButton" FontSize="12" Padding="5,8" MinHeight="46" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text TE4BAE9A5CF3D}" Click="PedalOverlayModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T05BDFC956F13}">
+                                    <Button.ContentTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" /></DataTemplate></Button.ContentTemplate>
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPedalOverlayMode}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="CalibrationModeButton" FontSize="12" Padding="5,8" MinHeight="46" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text T252526ECD431}" Click="CalibrationModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text T8FE3696019F3}">
+                                    <Button.ContentTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" /></DataTemplate></Button.ContentTemplate>
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                             <Style.Triggers>
@@ -372,7 +387,8 @@
                                         </Style>
                                     </Button.Style>
                                 </Button>
-                                <Button x:Name="SettingsModeButton" FontSize="13" Padding="8,9" MinHeight="42" HorizontalContentAlignment="Center" Margin="6,0,0,0" Content="{loc:Text T74A883A037BC}" Click="SettingsModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TB26A8D41435C}">
+                                <Button x:Name="SettingsModeButton" FontSize="12" Padding="5,8" MinHeight="46" HorizontalContentAlignment="Center" Margin="3,0,3,0" Content="{loc:Text T74A883A037BC}" Click="SettingsModeClick" IsEnabled="{Binding CanEdit}" ToolTip="{loc:Text TB26A8D41435C}">
+                                    <Button.ContentTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" /></DataTemplate></Button.ContentTemplate>
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                             <Style.Triggers>
@@ -626,6 +642,37 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </DockPanel>
+                            <ScrollViewer x:Name="PedalOverlaySidePanel" Visibility="Hidden" Margin="14,12,14,14" IsEnabled="{Binding CanEdit}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel DataContext="{Binding Preferences.Overlay}" Margin="0,0,12,0">
+                                    <TextBlock FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" Text="{loc:Text TE4BAE9A5CF3D}" />
+                                    <GroupBox x:Name="OverlayEnabledGroup" Header="{loc:Text T7448611D5F93}">
+                                        <StackPanel>
+                                            <CheckBox x:Name="OverlayEnabledCheck" Content="{loc:Text TB0E1604563D6}" IsChecked="{Binding IsVisible, Mode=OneWay}" Click="EnableOverlayClick" Margin="0" />
+                                            <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T6190554403B5}" Margin="0,8,0,0" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                    <GroupBox x:Name="OverlaySettingsGroup" Header="{loc:Text T32AB018FD38A}">
+                                        <StackPanel>
+                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding WindowSeconds, StringFormat={}{0:0} s}" /><TextBlock Text="{loc:Text T5B389E0029C2}" /></DockPanel>
+                                                <Slider x:Name="OverlayWindowSlider" Style="{StaticResource OverlaySlider}" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding WindowSeconds, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T5B389E0029C2}" />
+                                                <CheckBox x:Name="OverlayRawCheck" Content="{loc:Text TB4CE7A9B6093}" IsChecked="{Binding ShowRaw, Mode=TwoWay}" Margin="0,0,0,9" />
+                                                <CheckBox x:Name="OverlayFilteredCheck" Content="{loc:Text T66B9D0EED2A4}" IsChecked="{Binding ShowFiltered, Mode=TwoWay}" Margin="0,0,0,9" />
+                                                <CheckBox x:Name="OverlayOutputCheck" Content="{loc:Text TC4EB4549A27A}" IsChecked="{Binding ShowOutput, Mode=TwoWay}" Margin="0,0,0,9" />
+                                                <CheckBox x:Name="OverlayPauseCheck" Content="{loc:Text TF89AF32D631F}" IsChecked="{Binding GraphPaused, Mode=TwoWay}" Margin="0,0,0,16" ToolTip="{loc:Text TC86914C371B3}" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                    <GroupBox x:Name="OverlaySizeGroup" Header="{loc:Text T69ABEB4E8083}">
+                                        <StackPanel>
+                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Width, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text T534B1DC6864B}" /></DockPanel>
+                                                <Slider x:Name="OverlayWidthSlider" Style="{StaticResource OverlaySlider}" Minimum="360" Maximum="1000" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Width, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T534B1DC6864B}" />
+                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Height, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text TDC8DAA7BBA01}" /></DockPanel>
+                                                <Slider x:Name="OverlayHeightSlider" Style="{StaticResource OverlaySlider}" Minimum="110" Maximum="220" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Height, Mode=TwoWay}" Margin="0,2,0,12" AutomationProperties.Name="{loc:Text TDC8DAA7BBA01}" />
+                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T125E117EA15A}" />
+                                            <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T69FCCB6AB080}" Margin="0,8,0,0" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                </StackPanel>
+                            </ScrollViewer>
                             <Grid x:Name="CalibrationSidePanel" Visibility="Hidden" Margin="14,12,14,14">
                                 <Grid x:Name="CalibrationWelcome">
                                     <StackPanel>
@@ -666,26 +713,6 @@
                                     </Grid>
                                     <TextBlock Text="{loc:Text T17639DCEDDA3}" Style="{StaticResource SectionNote}" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" x:Name="SettingsSearchEmpty" />
                                     <StackPanel x:Name="SettingsGroups">
-                                        <GroupBox x:Name="OverlaySettingsGroup" Header="{loc:Text TE4BAE9A5CF3D}" Tag="overlay graph telemetry RAW filters curve window pedals оверлей графік педалі">
-                                            <StackPanel DataContext="{Binding Overlay}">
-                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T6F1F28F5C88A}" />
-                                                <WrapPanel Margin="0,0,0,12">
-                                                    <Button x:Name="ShowOverlayButton" Content="{loc:Text TA22EEC4A3CF3}" Click="ShowOverlayClick" IsEnabled="{Binding CanShow}" Padding="10,7" FontSize="12" />
-                                                    <Button x:Name="HideOverlayButton" Content="{loc:Text T81C360FFE5CD}" Click="HideOverlayClick" IsEnabled="{Binding CanHide}" Padding="10,7" FontSize="12" />
-                                                </WrapPanel>
-                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding WindowSeconds, StringFormat={}{0:0} s}" /><TextBlock Text="{loc:Text T5B389E0029C2}" /></DockPanel>
-                                                <Slider x:Name="OverlayWindowSlider" Style="{StaticResource OverlaySlider}" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding WindowSeconds, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T5B389E0029C2}" />
-                                                <CheckBox x:Name="OverlayRawCheck" Content="{loc:Text TB4CE7A9B6093}" IsChecked="{Binding ShowRaw, Mode=TwoWay}" Margin="0,0,0,9" />
-                                                <CheckBox x:Name="OverlayFilteredCheck" Content="{loc:Text T66B9D0EED2A4}" IsChecked="{Binding ShowFiltered, Mode=TwoWay}" Margin="0,0,0,9" />
-                                                <CheckBox x:Name="OverlayOutputCheck" Content="{loc:Text TC4EB4549A27A}" IsChecked="{Binding ShowOutput, Mode=TwoWay}" Margin="0,0,0,9" />
-                                                <CheckBox x:Name="OverlayPauseCheck" Content="{loc:Text TF89AF32D631F}" IsChecked="{Binding GraphPaused, Mode=TwoWay}" Margin="0,0,0,16" ToolTip="{loc:Text TC86914C371B3}" />
-                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Width, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text T534B1DC6864B}" /></DockPanel>
-                                                <Slider x:Name="OverlayWidthSlider" Style="{StaticResource OverlaySlider}" Minimum="360" Maximum="1000" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Width, Mode=TwoWay}" Margin="0,2,0,10" AutomationProperties.Name="{loc:Text T534B1DC6864B}" />
-                                                <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding Height, StringFormat={}{0:0}}" /><TextBlock Text="{loc:Text TDC8DAA7BBA01}" /></DockPanel>
-                                                <Slider x:Name="OverlayHeightSlider" Style="{StaticResource OverlaySlider}" Minimum="110" Maximum="220" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Height, Mode=TwoWay}" Margin="0,2,0,12" AutomationProperties.Name="{loc:Text TDC8DAA7BBA01}" />
-                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T125E117EA15A}" />
-                                            </StackPanel>
-                                        </GroupBox>
                                         <GroupBox Tag="language interface English Ukrainian мова" Header="{loc:Text TA4FE65264EF7}" x:Name="LanguageSettingsGroup">
                                             <StackPanel>
                                                 <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T2268EE03BC26}" />

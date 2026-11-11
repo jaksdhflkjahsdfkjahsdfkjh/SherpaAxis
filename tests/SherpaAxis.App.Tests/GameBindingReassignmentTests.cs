@@ -13,6 +13,7 @@ namespace SherpaAxis.App.Tests;
 [Collection("WPF UI")]
 public sealed class GameBindingReassignmentTests
 {
+    private static readonly string[] IRacingProcesses = ["iRacingSim64DX11"];
     [Theory]
     [InlineData("acs")]
     [InlineData("ACS_X86.exe")]
@@ -62,18 +63,14 @@ public sealed class GameBindingReassignmentTests
                     Arrange();
                     var card = Assert.IsType<UniformGrid>(dialog.FindName("PresetGames")).Children.OfType<CheckBox>().Single(check => Equals(check.Content, "Assetto Corsa Competizione"));
                     card.ApplyTemplate();
-                    Assert.Contains("Dry", Assert.IsType<TextBlock>(card.Template.FindName("NotSelected", card)).Text, StringComparison.Ordinal);
-                    var move = Assert.IsType<Button>(card.Template.FindName("ReassignButton", card));
-                    Assert.Equal(Visibility.Visible, move.Visibility);
-                    Assert.Equal(Localizer.Translate("Reassign here"), move.Content);
-                    Assert.True(move.ActualWidth <= card.ActualWidth - 90);
+                    Assert.Contains("Dry", Assert.IsType<TextBlock>(card.Template.FindName("BindingOwner", card)).Text, StringComparison.Ordinal);
+                    Assert.Equal(Visibility.Collapsed, Assert.IsType<Button>(card.Template.FindName("ReassignButton", card)).Visibility);
                     var suffix = language + (width < 600 ? "-small" : "");
                     UiRefinementTests.CapturePreview(root, "game-reassign-before-" + suffix + ".png");
-                    move.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    card.IsChecked = true;
                     Arrange();
                     Assert.True(card.IsChecked);
-                    Assert.Equal(Visibility.Collapsed, move.Visibility);
-                    Assert.Equal(Localizer.Translate("Will be bound to this profile"), Assert.IsType<TextBlock>(card.Template.FindName("Selected", card)).Text);
+                    Assert.Equal(Localizer.Translate("Bind to: Rain"), Assert.IsType<TextBlock>(card.Template.FindName("BindingOwner", card)).Text);
                     Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(library.DirectoryPath, ".game-bindings")));
                     Assert.Equal(originalProfile, await File.ReadAllBytesAsync(oldPath));
                     Assert.Equal(targetProfile, await File.ReadAllBytesAsync(targetPath));
@@ -159,6 +156,70 @@ public sealed class GameBindingReassignmentTests
         }
         Assert.Contains("new-game", result.Single(binding => binding.ProfileFileName == Path.GetFileName(thirdPath)).Processes);
     });
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    public Task RunningOtherGameIsTheOnlyReassignmentSuggestion(bool hasDifferentBinding, bool accRunning, bool suggested)
+        => WithProfiles(async (main, _, _, _, _, _) =>
+        {
+            var selected = hasDifferentBinding ? IRacingProcesses : [];
+            var processes = accRunning ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "ac2-win64-shipping" } : [];
+            var dialog = new GameBindingDialog(main, "iRacing", selected,
+                [new("acc.json", "ACC", ["AC2-Win64-Shipping"])], processes);
+            try
+            {
+                var root = (FrameworkElement)dialog.Content;
+                root.Measure(new Size(684, 702)); root.Arrange(new Rect(0, 0, 684, 702)); root.UpdateLayout();
+                var cards = Assert.IsType<UniformGrid>(dialog.FindName("PresetGames")).Children.OfType<CheckBox>().ToArray();
+                var acc = cards.Single(card => Equals(card.Content, "Assetto Corsa Competizione"));
+                var iracing = cards.Single(card => Equals(card.Content, "iRacing"));
+                acc.ApplyTemplate(); iracing.ApplyTemplate();
+                Assert.Equal(suggested ? Visibility.Visible : Visibility.Collapsed,
+                    Assert.IsType<Button>(acc.Template.FindName("ReassignButton", acc)).Visibility);
+                Assert.Equal(Visibility.Collapsed, Assert.IsType<Button>(iracing.Template.FindName("ReassignButton", iracing)).Visibility);
+                Assert.False(acc.IsChecked); Assert.Empty(dialog.SelectedTransfers());
+                Assert.Contains("ACC", Assert.IsType<TextBlock>(acc.Template.FindName("BindingOwner", acc)).Text, StringComparison.Ordinal);
+                Assert.Null(dialog.FindName("ExecutableNames")); Assert.Empty(WorkspaceSpacingTests.Descendants(dialog).OfType<TextBox>());
+                UiRefinementTests.CapturePreview(root, "game-bindings-running-" + hasDifferentBinding + "-" + accRunning + ".png");
+            }
+            finally { dialog.Close(); }
+            await Task.CompletedTask;
+        });
+
+    [Fact]
+    public Task SuggestionTracksTheRunningGameAndOnlyPreparesAMoveAfterAnExplicitClick()
+        => WithProfiles(async (main, library, _, _, _, _) =>
+        {
+            await main.SetSelectedGameBindingsAsync(["iRacingSim64DX11"]);
+            main.ObserveGameProcesses(new HashSet<string> { "iRacingSim64DX11" });
+            var dialog = main.CreateGameBindingDialog();
+            try
+            {
+                var before = await File.ReadAllBytesAsync(Path.Combine(library.DirectoryPath, ".game-bindings"));
+                var root = (FrameworkElement)dialog.Content;
+                void Arrange() { root.Measure(new Size(684, 702)); root.Arrange(new Rect(0, 0, 684, 702)); root.UpdateLayout(); }
+                Arrange();
+                var acc = Assert.IsType<UniformGrid>(dialog.FindName("PresetGames")).Children.OfType<CheckBox>()
+                    .Single(card => Equals(card.Content, "Assetto Corsa Competizione"));
+                acc.ApplyTemplate(); var move = Assert.IsType<Button>(acc.Template.FindName("ReassignButton", acc));
+                Assert.Equal(Visibility.Collapsed, move.Visibility);
+                dialog.UpdateRunningProcesses(new HashSet<string> { "AC2-Win64-Shipping" }); Arrange();
+                Assert.Equal(Visibility.Visible, move.Visibility);
+                dialog.UpdateRunningProcesses(new HashSet<string>()); Arrange();
+                Assert.Equal(Visibility.Collapsed, move.Visibility);
+                dialog.UpdateRunningProcesses(new HashSet<string> { "AC2-Win64-Shipping" }); Arrange();
+                move.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Arrange();
+                Assert.True(acc.IsChecked); Assert.Equal(Visibility.Collapsed, move.Visibility);
+                Assert.Contains("iRacingSim64DX11", dialog.SelectedProcesses());
+                Assert.Contains("AC2-Win64-Shipping", dialog.SelectedProcesses());
+                Assert.Single(dialog.SelectedTransfers());
+                Assert.Equal(before, await File.ReadAllBytesAsync(Path.Combine(library.DirectoryPath, ".game-bindings")));
+            }
+            finally { dialog.Close(); }
+        });
 
     private static Task WithProfiles(Func<MainWindow, ProfileLibrary, GameBindingStore, string, string, string, Task> action)
         => HardwarePedalUiTests.OnUiAsync(async () =>

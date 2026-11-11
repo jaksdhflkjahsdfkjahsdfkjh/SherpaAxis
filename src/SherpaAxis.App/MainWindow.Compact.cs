@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using SherpaAxis.App.Models;
 using SherpaAxis.App.ViewModels;
 
 namespace SherpaAxis.App;
@@ -8,10 +9,9 @@ public partial class MainWindow
 {
     private CompactPedalWindow? compactView;
     private readonly DispatcherTimer overlaySaveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
-    private void CompactViewClick(object sender, RoutedEventArgs e) => ToggleCompactView();
     private void ToggleCompactView() => Run(() => { if (compactView is null) { OpenCompactView(); } else { CloseCompactView(); } });
-    private void ShowOverlayClick(object sender, RoutedEventArgs e) => Run(() => OpenCompactView());
-    private void HideOverlayClick(object sender, RoutedEventArgs e) => Run(CloseCompactView);
+    private async void PedalOverlayModeClick(object sender, RoutedEventArgs e) => await RequestPanelModeAsync(SidePanelMode.PedalOverlay);
+    private void EnableOverlayClick(object sender, RoutedEventArgs e) => ToggleCompactView();
 
     private void InitializeOverlaySettings()
     {
@@ -21,7 +21,8 @@ public partial class MainWindow
             if (!preferencesLoaded || closing || viewModel.Preferences.Overlay.Loading) { return; }
             if (args.PropertyName is not (nameof(PedalOverlaySettingsViewModel.WindowSeconds) or nameof(PedalOverlaySettingsViewModel.Width)
                 or nameof(PedalOverlaySettingsViewModel.Height) or nameof(PedalOverlaySettingsViewModel.ShowRaw)
-                or nameof(PedalOverlaySettingsViewModel.ShowFiltered) or nameof(PedalOverlaySettingsViewModel.ShowOutput))) { return; }
+                or nameof(PedalOverlaySettingsViewModel.ShowFiltered) or nameof(PedalOverlaySettingsViewModel.ShowOutput)
+                or nameof(PedalOverlaySettingsViewModel.Left) or nameof(PedalOverlaySettingsViewModel.Top))) { return; }
             overlaySaveTimer.Stop(); overlaySaveTimer.Start();
         };
     }

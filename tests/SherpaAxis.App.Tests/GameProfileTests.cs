@@ -320,8 +320,9 @@ public sealed class GameProfileTests
             panel.Arrange(new Rect(0, 0, width, height)); panel.UpdateLayout();
             var tiles = Assert.IsType<UniformGrid>(dialog.FindName("PresetGames"));
             Assert.True(tiles.Children.OfType<CheckBox>().Single(check => Equals(check.Content, "Assetto Corsa")).IsChecked);
-            Assert.Contains("custom game.exe", Assert.IsType<TextBox>(dialog.FindName("CustomExecutables")).Text, StringComparison.Ordinal);
-            Assert.False(Assert.IsType<Expander>(dialog.FindName("ExecutableNames")).IsExpanded);
+            Assert.Contains("custom game", dialog.SelectedProcesses());
+            Assert.Null(dialog.FindName("CustomExecutables"));
+            Assert.Null(dialog.FindName("ExecutableNames"));
             var save = Assert.IsType<Button>(dialog.FindName("SaveButton"));
             Assert.True(save.ActualHeight >= 36);
             Assert.InRange(save.TranslatePoint(new Point(0, save.ActualHeight), panel).Y, 0, height);
@@ -366,11 +367,10 @@ public sealed class GameProfileTests
             dialog.AddExecutable(@"D:\Racing\new-game.exe");
             dialog.AddExecutable(@"D:\Racing\NEW-GAME.exe");
             Assert.Equal(1, dialog.SelectedProcesses().Count(name => name == "new-game"));
-            var custom = Assert.IsType<TextBox>(dialog.FindName("CustomExecutables"));
-            custom.Text = "*.exe";
-            dialog.AddExecutable(@"D:\Racing\another-game.exe"); // An unfinished invalid entry does not crash the file picker.
-            Assert.Contains("another-game.exe", custom.Text, StringComparison.Ordinal);
-            Assert.Throws<InvalidDataException>(dialog.SelectedProcesses);
+            Assert.Throws<InvalidDataException>(() => dialog.AddExecutable(@"D:\Racing\not-a-game.txt"));
+            dialog.AddExecutable(@"D:\Racing\another-game.exe");
+            Assert.Contains("another-game", dialog.SelectedProcesses());
+            Assert.Null(dialog.FindName("CustomExecutables"));
         }
         finally { dialog.Close(); }
         await Task.CompletedTask;

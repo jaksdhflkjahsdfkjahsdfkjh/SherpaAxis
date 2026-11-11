@@ -60,6 +60,13 @@ public sealed class WorkspaceUiTests
             Assert.Equal(Localizer.Translate("Response and deadzones"), response.Header);
             UiRefinementTests.CapturePreview(root, $"workspace-tuning-{language}-{width}.png");
             var curveSelector = main.FindName("SelectedCurvePresetSelector");
+            var overlaySlider = main.FindName("OverlayWindowSlider");
+            await main.RequestPanelModeAsync(SidePanelMode.PedalOverlay);
+            main.UpdateLayout();
+            Assert.True(Assert.IsType<ScrollViewer>(main.FindName("PedalOverlaySidePanel")).IsVisible);
+            main.OpenCompactView();
+            main.UpdateLayout();
+            UiRefinementTests.CapturePreview(Assert.IsType<Border>(main.FindName("WorkspaceSidebarShell")), $"overlay-tab-{language}-{width}.png");
             await main.RequestPanelModeAsync(SidePanelMode.Calibration);
             main.UpdateLayout();
             var host = Assert.IsType<ContentControl>(main.FindName("CalibrationHost"));
@@ -72,14 +79,16 @@ public sealed class WorkspaceUiTests
             await main.RequestPanelModeAsync(SidePanelMode.Settings);
             main.UpdateLayout();
             var groups = Assert.IsType<StackPanel>(main.FindName("SettingsGroups")).Children.OfType<GroupBox>().ToArray();
-            Assert.Equal(7, groups.Length);
-            Assert.Single(groups, group => group.Name == "OverlaySettingsGroup");
+            Assert.Equal(6, groups.Length);
+            Assert.DoesNotContain(groups, group => group.Name == "OverlaySettingsGroup");
             Assert.All(groups, group => Assert.True(group.ActualWidth > 300));
             UiRefinementTests.CapturePreview(root, $"workspace-settings-{language}-{width}.png");
             await main.RequestPanelModeAsync(SidePanelMode.Tuning);
             Assert.Same(curveSelector, main.FindName("SelectedCurvePresetSelector"));
             await main.RequestPanelModeAsync(SidePanelMode.Calibration);
             Assert.Same(view, host.Content);
+            await main.RequestPanelModeAsync(SidePanelMode.PedalOverlay);
+            Assert.Same(overlaySlider, main.FindName("OverlayWindowSlider"));
             Assert.Equal(0, hardwareConnections);
         }
         finally { Localizer.Instance.Language = "en"; if (Directory.Exists(directory)) { Directory.Delete(directory, true); } }

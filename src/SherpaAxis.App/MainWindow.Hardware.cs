@@ -202,6 +202,7 @@ public partial class MainWindow
         viewModel.PanelMode = mode;
         // Hidden panels retain their layout; the graph and cards change source in this same dispatcher turn.
         TuningSidePanel.Visibility = mode == SidePanelMode.Tuning ? Visibility.Visible : Visibility.Hidden;
+        PedalOverlaySidePanel.Visibility = mode == SidePanelMode.PedalOverlay ? Visibility.Visible : Visibility.Hidden;
         CalibrationSidePanel.Visibility = mode == SidePanelMode.Calibration ? Visibility.Visible : Visibility.Hidden;
         SettingsSidePanel.Visibility = mode == SidePanelMode.Settings ? Visibility.Visible : Visibility.Hidden;
         if (graphSourceChanged)

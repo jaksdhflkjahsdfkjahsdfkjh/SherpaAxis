@@ -1163,6 +1163,15 @@
   "Overlay height": "Висота оверлею",
   "Drag the middle to move; drag an edge or corner to resize. Use a windowed or borderless game mode.": "Перетягуйте середину для переміщення, край або кут — для зміни розміру. Використовуйте віконний або безрамковий режим гри.",
   "Graph paused": "Графік призупинено",
-  "Choose a signal in Settings → Pedal overlay.": "Виберіть сигнал у Налаштування → Оверлей педалей.",
-  "TELEMETRY": "ТЕЛЕМЕТРІЯ"
+  "TELEMETRY": "ТЕЛЕМЕТРІЯ",
+  "Configure the pedal overlay.": "Налаштувати оверлей педалей.",
+  "Visibility": "Відображення",
+  "Enable pedal overlay": "Увімкнути оверлей педалей",
+  "Show the pedal indicators and graph above your game.": "Показувати індикатори педалей і графік поверх гри.",
+  "Size and position": "Розмір і положення",
+  "Position, size and graph settings are remembered when you reopen the overlay.": "Положення, розмір і налаштування графіка зберігаються для наступного відкриття оверлею.",
+  "Choose a signal in the Pedal overlay tab.": "Виберіть сигнал на вкладці Оверлей педалей.",
+  "Bind to: {0}": "Прив’язати до: {0}",
+  "Not bound": "Не прив’язано",
+  "Choose a game executable (.exe).": "Виберіть виконуваний файл гри (.exe)."
 }

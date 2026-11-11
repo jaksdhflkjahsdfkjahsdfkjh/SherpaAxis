@@ -119,7 +119,7 @@ public sealed class PedalOverlaySettingsTests
     [Theory]
     [InlineData("en")]
     [InlineData("uk")]
-    public Task MainSettingsControlTheDisplayAndTheToolbarTogglesIt(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
+    public Task OverlayTabControlsTheDisplayAndCheckboxTracksVisibility(string language) => HardwarePedalUiTests.OnUiAsync(async () =>
     {
         var desktop = new SettingsAndTrayTests.FakeDesktop(); var folder = TempFolder();
         try
@@ -128,15 +128,14 @@ public sealed class PedalOverlaySettingsTests
             var engine = new DashboardEngine();
             await using var main = new MainWindow(engine, desktopServices: desktop.Services, profileLibrary: new(folder));
             await main.InitializeForLaunchAsync(); Localizer.Instance.Language = language;
-            await main.RequestPanelModeAsync(SidePanelMode.Settings);
+            await main.RequestPanelModeAsync(SidePanelMode.PedalOverlay);
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
-            var show = Assert.IsType<Button>(main.FindName("ShowOverlayButton"));
-            var hide = Assert.IsType<Button>(main.FindName("HideOverlayButton"));
+            var enabled = Assert.IsType<CheckBox>(main.FindName("OverlayEnabledCheck"));
             var settings = ((DashboardViewModel)main.DataContext).Preferences.Overlay;
-            Assert.True(show.IsEnabled); Assert.False(hide.IsEnabled);
-            show.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(enabled.IsChecked);
+            enabled.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
-            Assert.True(settings.IsVisible); Assert.True(hide.IsEnabled);
+            Assert.True(settings.IsVisible); Assert.True(enabled.IsChecked);
             var view = main.OpenCompactView();
             Assert.Equal(WindowStyle.None, view.WindowStyle); Assert.False(view.ShowActivated);
             Assert.Empty(WorkspaceSpacingTests.Descendants(view).OfType<System.Windows.Controls.Primitives.ButtonBase>());
@@ -150,13 +149,12 @@ public sealed class PedalOverlaySettingsTests
             Assert.True(settings.ShowRaw);
             var group = Assert.IsType<GroupBox>(main.FindName("OverlaySettingsGroup"));
             group.Measure(new Size(390, double.PositiveInfinity)); group.Arrange(new Rect(0, 0, 390, group.DesiredSize.Height)); group.UpdateLayout();
-            Assert.Equal(Localizer.Translate("Pedal overlay"), group.Header);
+            Assert.Equal(Localizer.Translate("Graph"), group.Header);
             UiRefinementTests.CapturePreview(group, "overlay-settings-" + language + ".png");
-            hide.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.False(settings.IsVisible);
-            var toolbar = Assert.IsType<Button>(main.FindName("CompactViewButton"));
-            toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.True(settings.IsVisible);
-            toolbar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Assert.False(settings.IsVisible);
+            enabled.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+            Assert.False(settings.IsVisible); Assert.False(enabled.IsChecked);
+            main.OpenCompactView(); Assert.True(enabled.IsChecked);
+            main.OpenCompactView().Close(); Assert.False(enabled.IsChecked);
         }
         finally { Localizer.Instance.Language = "en"; Directory.Delete(folder, true); }
     });
@@ -193,7 +191,7 @@ public sealed class PedalOverlaySettingsTests
             checkbox.PerformClick(); Assert.False(checkbox.Checked);
             Assert.False(main.GetTrayState().OverlayVisible); Assert.False(main.IsVisible);
             Assert.False(view.IsVisible);
-            Assert.IsType<Button>(main.FindName("CompactViewButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.IsType<CheckBox>(main.FindName("OverlayEnabledCheck")).RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
             Assert.True(Checkbox().Checked);
             main.OpenCompactView().Close();
             Assert.False(Checkbox().Checked);

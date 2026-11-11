@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using SherpaAxis.App.Localization;
 using SherpaAxis.App.Services.Desktop;
 using SherpaAxis.App.Services.Persistence;
+using SherpaAxis.App.ViewModels;
 
 namespace SherpaAxis.App;
 
@@ -14,15 +15,21 @@ internal sealed partial class GameBindingDialog : Window
 {
     private readonly List<(CheckBox Check, GamePreset Game)> presets = [];
     private bool ready;
+    private readonly List<string> customExecutables = [];
+    private readonly string profileName;
+    private readonly HashSet<string> initialProcesses;
     private readonly IReadOnlyList<GameBindingOwner> owners;
     internal string[] Processes { get; private set; } = [];
     internal GameBindingTransfer[] Transfers { get; private set; } = [];
 
-    internal GameBindingDialog(Window owner, string profileName, IReadOnlyList<string> processes, IReadOnlyList<GameBindingOwner>? otherOwners = null)
+    internal GameBindingDialog(Window owner, string profileName, IReadOnlyList<string> processes, IReadOnlyList<GameBindingOwner>? otherOwners = null,
+        IReadOnlySet<string>? runningProcesses = null)
     {
         owners = otherOwners ?? [];
+        this.profileName = profileName;
         InitializeComponent();
         processes = processes.Select(GameBindingStore.NormalizeProcess).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        initialProcesses = processes.ToHashSet(StringComparer.OrdinalIgnoreCase);
         Owner = owner;
         SourceInitialized += (_, _) => WindowTheme.Apply(this);
         MaxHeight = SystemParameters.WorkArea.Height;
@@ -37,8 +44,9 @@ internal sealed partial class GameBindingDialog : Window
             var check = new CheckBox
             {
                 Content = game.Name,
-                DataContext = new GameTileState(game.Name, LoadIcon(game.IconFile),
-                    owners.Where(candidate => candidate.Processes.Intersect(game.Processes, StringComparer.OrdinalIgnoreCase).Any()).Select(candidate => candidate.Name).Distinct().ToArray()),
+                DataContext = new GameTileState(game.Name, LoadIcon(game.IconFile), profileName, game.Processes.Any(initialProcesses.Contains), initialProcesses.Count > 0,
+                    owners.Where(candidate => candidate.Processes.Intersect(game.Processes, StringComparer.OrdinalIgnoreCase).Any()).Select(candidate => candidate.Name)
+                        .Concat(game.Processes.Any(name => processes.Contains(name, StringComparer.OrdinalIgnoreCase)) ? [profileName] : []).Distinct().ToArray()),
                 Style = (Style)FindResource("GameTile"),
                 IsChecked = game.Processes.All(name => processes.Contains(name, StringComparer.OrdinalIgnoreCase)),
                 ToolTip = string.Join(", ", game.Processes.Select(name => name + ".exe"))
@@ -49,7 +57,9 @@ internal sealed partial class GameBindingDialog : Window
         }
         // Keep partial preset bindings as custom entries rather than silently adding executable names.
         var covered = presets.Where(item => item.Check.IsChecked == true).SelectMany(item => item.Game.Processes).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        CustomExecutables.Text = string.Join(Environment.NewLine, processes.Where(name => !covered.Contains(name)).Select(name => name + ".exe"));
+        customExecutables.AddRange(processes.Where(name => !covered.Contains(name)).Select(name => name + ".exe"));
+        foreach (var (check, _) in presets) { ((GameTileState)check.DataContext).Selected = check.IsChecked == true; }
+        UpdateRunningProcesses(runningProcesses ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         ready = true;
         UpdateCustomGames();
         Localizer.Instance.PropertyChanged += LanguageChanged;
@@ -76,20 +86,25 @@ internal sealed partial class GameBindingDialog : Window
         var remaining = names.Where(name => !preset.Processes.Any(process => string.Equals(name, process, StringComparison.OrdinalIgnoreCase)
             || string.Equals(name, process + ".exe", StringComparison.OrdinalIgnoreCase))).ToArray();
         // An explicit tile choice replaces legacy custom aliases, so deselecting it really removes that game.
-        if (remaining.Length != names.Length) { CustomExecutables.Text = string.Join(Environment.NewLine, remaining); }
-        else { UpdateSummary(); }
+        customExecutables.Clear(); customExecutables.AddRange(remaining);
+        ((GameTileState)((CheckBox)sender).DataContext).Selected = ((CheckBox)sender).IsChecked == true;
+        UpdateCustomGames();
+    }
+
+    private string[] CustomNames() => customExecutables.ToArray();
+
+    internal void UpdateRunningProcesses(IReadOnlySet<string> processes)
+    {
+        var running = processes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var (check, game) in presets) { ((GameTileState)check.DataContext).Running = game.Processes.Any(running.Contains); }
     }
 
     private void ReassignGameClick(object sender, RoutedEventArgs e)
     {
         var state = (GameTileState)((FrameworkElement)sender).DataContext;
-        presets.First(item => item.Game.Name == state.Name).Check.IsChecked = true;
+        if (state.ShowReassign) { presets.First(item => item.Game.Name == state.Name).Check.IsChecked = true; }
         e.Handled = true;
     }
-    private void CustomGamesChanged(object sender, TextChangedEventArgs e) { if (ready) { UpdateCustomGames(); } }
-
-    private string[] CustomNames() => CustomExecutables.Text.Split(['\r', '\n', ';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
     private void UpdateCustomGames()
     {
@@ -111,7 +126,7 @@ internal sealed partial class GameBindingDialog : Window
                 ToolTip = Localizer.Translate("Remove game")
             };
             AutomationProperties.SetName(remove, Localizer.Translate("Remove game") + ": " + name);
-            remove.Click += (_, _) => CustomExecutables.Text = string.Join(Environment.NewLine, CustomNames().Where(item => item != name));
+            remove.Click += (_, _) => { customExecutables.Remove(name); UpdateCustomGames(); };
             DockPanel.SetDock(remove, Dock.Right); row.Children.Add(remove);
             var known = GameProfileDetection.Presets.FirstOrDefault(game => game.Processes.Any(process => string.Equals(process + ".exe", name, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(process, name, StringComparison.OrdinalIgnoreCase)));
@@ -139,25 +154,15 @@ internal sealed partial class GameBindingDialog : Window
             var transfers = normalized is null ? [] : GameBindingAssignments.Conflicts([normalized], owners);
             var conflicts = owners.Where(candidate => transfers.Any(transfer => string.Equals(transfer.FromProfileFileName, candidate.FileName, StringComparison.OrdinalIgnoreCase)))
                 .Select(candidate => candidate.Name).Distinct().ToArray();
-            if (conflicts.Length > 0)
+            label.Children.Add(new TextBlock
             {
-                label.Children.Add(new TextBlock
-                {
-                    Text = Localizer.Translate("Bound to: " + string.Join(", ", conflicts)),
-                    FontSize = 12,
-                    Foreground = SherpaAxis.App.Themes.AppColors.MutedBrush,
-                    Margin = new Thickness(0, 4, 0, 0),
-                    TextWrapping = TextWrapping.Wrap
-                });
-                label.Children.Add(new TextBlock
-                {
-                    Text = Localizer.Translate("Will be bound to this profile"),
-                    FontSize = 12,
-                    Foreground = SherpaAxis.App.Themes.AppColors.AccentForegroundBrush,
-                    Margin = new Thickness(0, 4, 0, 0),
-                    TextWrapping = TextWrapping.Wrap
-                });
-            }
+                Text = Localizer.Translate((normalized is not null && initialProcesses.Contains(normalized) ? "Bound to: " : "Bind to: ") + profileName),
+                FontSize = 11,
+                Foreground = SherpaAxis.App.Themes.AppColors.MutedBrush,
+                Margin = new Thickness(0, 4, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
+                ToolTip = conflicts.Length > 0 ? Localizer.Translate("Bound to: " + string.Join(", ", conflicts)) : null
+            });
             row.Children.Add(label);
             AdditionalGames.Children.Add(row);
         }
@@ -173,17 +178,22 @@ internal sealed partial class GameBindingDialog : Window
     private void BrowseGameClick(object sender, RoutedEventArgs e)
     {
         var picker = new OpenFileDialog { Filter = Localizer.Translate("Game executable (*.exe)|*.exe"), Title = Localizer.Translate("Choose game executable") };
-        if (picker.ShowDialog(this) == true) { AddExecutable(picker.FileName); }
+        if (picker.ShowDialog(this) != true) { return; }
+        try { AddExecutable(picker.FileName); }
+        catch (InvalidDataException failure) { ErrorLabel.Text = Localizer.Translate(failure.Message); ErrorLabel.Visibility = Visibility.Visible; }
     }
 
     internal void AddExecutable(string path)
     {
+        if (!string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase))
+        { throw new InvalidDataException("Choose a game executable (.exe)."); }
         var name = GameBindingStore.NormalizeProcess(Path.GetFileName(path));
         var preset = presets.FirstOrDefault(item => item.Game.Processes.Contains(name, StringComparer.OrdinalIgnoreCase));
         if (preset.Check is not null) { preset.Check.IsChecked = true; return; }
         if (CustomNames().Any(item => string.Equals(item, name, StringComparison.OrdinalIgnoreCase)
             || string.Equals(item, name + ".exe", StringComparison.OrdinalIgnoreCase))) { return; }
-        CustomExecutables.Text = string.Join(Environment.NewLine, CustomNames().Append(name + ".exe"));
+        customExecutables.Add(name + ".exe");
+        UpdateCustomGames();
     }
 
     internal string[] SelectedProcesses() => presets.Where(item => item.Check.IsChecked == true).SelectMany(item => item.Game.Processes)
@@ -197,17 +207,20 @@ internal sealed partial class GameBindingDialog : Window
         catch (InvalidDataException failure)
         {
             ErrorLabel.Text = Localizer.Translate(failure.Message); ErrorLabel.Visibility = Visibility.Visible;
-            ExecutableNames.IsExpanded = true;
-            CustomExecutables.Focus();
+            SaveButton.Focus();
         }
     }
 
-    private sealed class GameTileState(string name, BitmapImage icon, string[] boundProfiles)
+    private sealed class GameTileState(string name, BitmapImage icon, string targetProfile, bool alreadyBoundHere, bool profileHasBindings, string[] boundProfiles) : ObservableObject
     {
+        private bool selected, running;
         public string Name { get; } = name;
         public BitmapImage Icon { get; } = icon;
-        public bool HasConflict => boundProfiles.Length > 0;
-        public string AvailabilityStatus => HasConflict ? "Bound to: " + string.Join(", ", boundProfiles) : "Select game";
-        public string SelectionStatus => HasConflict ? "Will be bound to this profile" : "Selected";
+        public bool Selected { get => selected; set { if (Set(ref selected, value)) { Changed(nameof(OwnerStatus)); Changed(nameof(ShowReassign)); } } }
+        public bool Running { get => running; set { if (Set(ref running, value)) { Changed(nameof(ShowReassign)); } } }
+        public bool ShowReassign => Running && profileHasBindings && !alreadyBoundHere && !Selected;
+        public string OwnerStatus => Selected && !alreadyBoundHere
+            ? "Bind to: " + targetProfile
+            : boundProfiles.Length > 0 ? "Bound to: " + string.Join(", ", boundProfiles) : "Not bound";
     }
 }

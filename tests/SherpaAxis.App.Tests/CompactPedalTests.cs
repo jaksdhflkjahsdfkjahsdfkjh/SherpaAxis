@@ -18,8 +18,9 @@ public sealed class CompactPedalTests
     public Task CompactViewIsSingleInstanceSurvivesMainHideAndClosesWithTheApp() => WithMain(async (main, _, _, _) =>
     {
         Assert.Empty(Application.Current?.Windows.OfType<CompactPedalWindow>() ?? []);
-        var button = Assert.IsType<Button>(main.FindName("CompactViewButton"));
-        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await main.RequestPanelModeAsync(SidePanelMode.PedalOverlay);
+        var button = Assert.IsType<CheckBox>(main.FindName("OverlayEnabledCheck"));
+        button.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
         var compact = main.OpenCompactView();
         Assert.Same(compact, main.OpenCompactView());
         Assert.True(compact.Topmost); Assert.False(compact.ShowInTaskbar); Assert.Null(compact.Owner);
@@ -152,7 +153,7 @@ public sealed class CompactPedalTests
                 Assert.Equal(Orientation.Vertical, meter.Orientation);
             }
             Assert.Equal(Localizer.Translate("Bite point: 40% · Limited range"), Localizer.Translate(((CompactPedalViewModel)compact.DataContext).BitePointInfo));
-            Assert.Contains(Localizer.Translate("Pedal overlay"), Assert.IsType<Button>(main.FindName("CompactViewButton")).Content.ToString(), StringComparison.Ordinal);
+            Assert.Contains(Localizer.Translate("Pedal overlay"), Assert.IsType<Button>(main.FindName("PedalOverlayModeButton")).Content.ToString(), StringComparison.Ordinal);
             UiRefinementTests.CapturePreview(root, "compact-view-" + language + ".png");
             var content = (FrameworkElement)main.Content;
             content.Measure(new Size(1056, 680)); content.Arrange(new Rect(0, 0, 1056, 680)); content.UpdateLayout();
