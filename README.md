@@ -334,10 +334,17 @@ you need before choosing it.
 
 ## Found a problem?
 
-[Open a GitHub issue](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues)
-with your app version, Windows version, pedal firmware and the steps to reproduce
-the problem. Include what you expected and what happened instead.
-**Settings → Export diagnostic report** creates a ZIP you can review and attach.
+Use **Settings → Help → Report a problem…**, or **Report a bug** in the footer.
+SherpaAxis saves a diagnostic ZIP, selects it in File Explorer and opens a GitHub
+issue draft with version and system details. Describe the problem and the steps to
+reproduce it, review the ZIP, then attach it to the issue before submitting.
+
+The ZIP is saved under `%LOCALAPPDATA%\SherpaAxis\SupportReports` and includes a
+technical report, recent application logs and the prepared draft as `issue.md`.
+Profiles, pedal recordings, firmware images and calibration backups are excluded.
+The existing **Export diagnostic report…** button remains available for offline use.
+
+You can also [open a GitHub issue manually](https://github.com/jaksdhflkjahsdfkjahsdfkjh/SherpaAxis/issues).
 
 ## License
 

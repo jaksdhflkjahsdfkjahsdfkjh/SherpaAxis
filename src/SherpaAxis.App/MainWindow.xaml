@@ -830,6 +830,8 @@
                                                     <Button x:Name="GettingStartedButton" Content="{loc:Text T831D0F72D242}" Click="GettingStartedClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TCFF1F2ADAB7F}" />
                                                     <Button x:Name="SetupGuideButton" Content="{loc:Text TF91058B1DFBD}" Click="SetupGuideClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TB4F4D21D34BC}" />
                                                 </StackPanel>
+                                                <Button x:Name="ReportProblemButton" Content="{loc:Text T574106585E48}" Click="ReportProblemClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" />
+                                                <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text T4D7F8599690D}" />
                                                 <Button x:Name="ExportDiagnosticsButton" Content="{loc:Text T5F946534EF5C}" Click="ExportDiagnosticsClick" HorizontalAlignment="Stretch" Margin="0,0,0,8" ToolTip="{loc:Text TF5FAEE188006}" />
                                             </StackPanel>
                                         </GroupBox>

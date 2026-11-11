@@ -27,7 +27,7 @@ public sealed record DesktopServices(IApplicationPreferencesStore Preferences, I
     DiagnosticLog? Log = null, ProfileDraftStore? Drafts = null,
     Func<CorrectedCalibration, CancellationToken, Task>? SaveCorrectedCalibration = null, HidHideVisibility? InputVisibility = null,
     Func<bool>? VendorControlRunning = null, AppUpdateChecker? Updates = null, AppUpdateServices? AppUpdates = null,
-    Func<IReadOnlySet<string>>? GameProcesses = null)
+    Func<IReadOnlySet<string>>? GameProcesses = null, ProblemReportServices? ProblemReports = null)
 {
     public static DesktopServices Default()
     {
@@ -35,6 +35,6 @@ public sealed record DesktopServices(IApplicationPreferencesStore Preferences, I
         return new(new ApplicationPreferencesStore(ApplicationPreferencesStore.DefaultPath),
         new WindowsStartupRegistration(System.IO.Path.Combine(AppContext.BaseDirectory, "SherpaAxis.App.exe")), state => new ApplicationTray(state),
             source => new WindowsButtonInput(source), PedalRuntimeServices.Default(vjoy), StartupHardwareRecovery.Default(), DeviceDiagnostics.Default(vjoy), FirmwareUpdater.Default(), DiagnosticLog.Default, ProfileDraftStore.Default(),
-            new CorrectedCalibrationWriter(PedalControllerConnection.OpenAsync, HardwareRecoveryStore.DefaultDirectory).SaveAsync, WindowsHidHide.Default(vjoy), VendorControl.IsRunning, AppUpdateChecker.Default(), AppUpdateServices.Default(), GameProfileDetection.RunningProcesses);
+            new CorrectedCalibrationWriter(PedalControllerConnection.OpenAsync, HardwareRecoveryStore.DefaultDirectory).SaveAsync, WindowsHidHide.Default(vjoy), VendorControl.IsRunning, AppUpdateChecker.Default(), AppUpdateServices.Default(), GameProfileDetection.RunningProcesses, ProblemReportServices.Default());
     }
 }

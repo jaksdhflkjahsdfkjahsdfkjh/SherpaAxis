@@ -99,10 +99,10 @@ public partial class MainWindow
     private void VJoyConfigurationClick(object sender, RoutedEventArgs e) => OpenDiagnosticTool(
         Path.Combine(Path.GetDirectoryName(VJoyController.DefaultLibraryPath)!, "vJoyConf.exe"));
     private void SetupGuideClick(object sender, RoutedEventArgs e) => CreateSetupGuideWindow().ShowDialog();
-    private void ReportBugNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    private async void ReportBugNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
         e.Handled = true;
-        OpenDiagnosticTool(ViewModels.DashboardViewModel.IssuesUri.AbsoluteUri);
+        await PrepareProblemReportAsync();
     }
     internal Window CreateSetupGuideWindow()
     {
@@ -208,7 +208,7 @@ public partial class MainWindow
         };
         if (ShowTextEntryDialog(() => dialog.ShowDialog(this)) == true) { await RunAsync(() => ExportDiagnosticsAsync(dialog.FileName)); }
     }
-    internal Task ExportDiagnosticsAsync(string path)
+    private Dictionary<string, string> CaptureDiagnosticStatus()
     {
         var status = new Dictionary<string, string>
         {
@@ -220,6 +220,11 @@ public partial class MainWindow
             ["language"] = viewModel.Preferences.Language
         };
         foreach (var check in viewModel.Diagnostics.Checks) { status[check.Title] = check.Detail; }
+        return status;
+    }
+    internal Task ExportDiagnosticsAsync(string path)
+    {
+        var status = CaptureDiagnosticStatus();
         return ExportCoreAsync();
         async Task ExportCoreAsync()
         {

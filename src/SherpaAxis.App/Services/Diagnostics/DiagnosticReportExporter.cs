@@ -8,7 +8,7 @@ namespace SherpaAxis.App.Services.Diagnostics;
 public sealed class DiagnosticReportExporter(DiagnosticLog log)
 {
     private static readonly JsonSerializerOptions ReportOptions = new() { WriteIndented = true };
-    public void Export(string path, IReadOnlyDictionary<string, string> status)
+    public void Export(string path, IReadOnlyDictionary<string, string> status, string? issueMarkdown = null)
     {
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -33,6 +33,11 @@ public sealed class DiagnosticReportExporter(DiagnosticLog log)
                 {
                     using var writer = new StreamWriter(archive.CreateEntry("logs/" + name).Open());
                     writer.Write(DiagnosticLog.Sanitize(content));
+                }
+                if (issueMarkdown is not null)
+                {
+                    using var writer = new StreamWriter(archive.CreateEntry("issue.md").Open());
+                    writer.Write(DiagnosticLog.Sanitize(issueMarkdown));
                 }
             }
             File.Move(temporary, path, true);

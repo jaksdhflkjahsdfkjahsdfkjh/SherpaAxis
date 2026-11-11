@@ -1175,5 +1175,12 @@
   "Not bound": "Не прив’язано",
   "Choose a game executable (.exe).": "Виберіть виконуваний файл гри (.exe).",
   "Lock pedal overlay": "Закріпити оверлей педалей",
-  "Locked: mouse clicks reach the game. Unlock here or in the tray to move or resize.": "У закріпленому режимі натискання миші проходять у гру. Для переміщення чи зміни розміру зніміть закріплення тут або в треї."
+  "Locked: mouse clicks reach the game. Unlock here or in the tray to move or resize.": "У закріпленому режимі натискання миші проходять у гру. Для переміщення чи зміни розміру зніміть закріплення тут або в треї.",
+  "Report a problem…": "Повідомити про проблему…",
+  "Creates a diagnostic ZIP and opens a GitHub issue draft. Review and attach the ZIP before submitting.": "Створює ZIP зі звітом і відкриває чернетку Issue на GitHub. Перевірте й додайте ZIP перед надсиланням.",
+  "Problem reporting is unavailable in this build.": "Повідомлення про проблему недоступне в цій збірці.",
+  "Diagnostic ZIP ready: {0}. Review it and attach it to the GitHub issue.": "Діагностичний ZIP готовий: {0}. Перевірте його й додайте до Issue на GitHub.",
+  "Could not open the report folder.": "Не вдалося відкрити папку зі звітом.",
+  "Could not open GitHub in the browser.": "Не вдалося відкрити GitHub у браузері.",
+  "{0} Diagnostic ZIP saved: {1}. You can share it manually.": "{0:t} Діагностичний ZIP збережено: {1}. Ви можете надіслати його вручну."
 }
