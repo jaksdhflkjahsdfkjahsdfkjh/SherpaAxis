@@ -198,12 +198,25 @@ public sealed partial class DashboardEngine
             var status = activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Auto ? value.Automatic.Status : value.DriftStatus;
             if (!IsFresh(value)) { status = "Waiting for fresh pedal input"; }
             if (reference is null) { status = "Original raw calibration is unavailable. Calibrate this pedal in SherpaAxis first."; }
-            if (activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Off) { status = "Automatic drift correction is off. Hold Fix drift to correct it manually."; }
+            if (activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Off && reference is not null && IsFresh(value))
+            { status = "Automatic drift correction is off. Hold Fix drift to correct it manually."; }
             var raw = value.Current?.Processing.Input;
-            var ready = reference is not null && IsFresh(value) && value.BaselineApproved && value.Session.BaselineCorrection == value.Session.TargetCorrection
+            var canFix = reference is not null && IsFresh(value);
+            var checking = canFix && (fixRequested == axis || value.ManualCapture || value.BindingReady && value.BindingWasDown && !value.ButtonCaptured);
+            var adjusting = canFix && (value.ManualAdjusting || value.ButtonCaptured);
+            var settled = value.Session.BaselineCorrection == value.Session.TargetCorrection;
+            var stage = checking ? DriftCheckStage.Checking : adjusting ? settled ? DriftCheckStage.Complete : DriftCheckStage.Applying : DriftCheckStage.None;
+            var ready = reference is not null && IsFresh(value) && value.BaselineApproved && settled
                 && !value.ManualCapture && !value.ManualAdjusting && !(value.BindingWasDown && !value.ButtonCaptured)
                 && Math.Abs(offset) >= .5 && raw is { } input && Math.Abs(input - (reference.Minimum + offset)) <= (reference.Maximum - (double)reference.Minimum) * .002;
-            return new(true, status, raw, offset, range.Minimum + offset, range.Maximum + offset, ready, reference?.Minimum, reference?.Maximum);
+            var saveReason = ready ? "" : !canFix ? status
+                : checking ? "Finish the drift check before saving."
+                : !settled ? "Wait for the correction to finish before saving."
+                : adjusting ? "Release the drift button before saving."
+                : !value.BaselineApproved || Math.Abs(offset) < .5 ? "No drift correction to save."
+                : "Take your foot off the pedal before saving.";
+            return new(true, status, raw, offset, range.Minimum + offset, range.Maximum + offset, ready, reference?.Minimum, reference?.Maximum,
+                canFix, stage, canFix ? value.ReleaseWindow.StableSeconds : 0, saveReason);
         }
     }
 

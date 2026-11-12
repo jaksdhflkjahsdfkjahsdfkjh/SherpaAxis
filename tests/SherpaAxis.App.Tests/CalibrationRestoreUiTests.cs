@@ -34,6 +34,7 @@ public sealed class CalibrationRestoreUiTests
         Assert.Equal(target, test.Controller.State);
         Assert.Equal(Device.Original, test.Controller.Persisted);
         Assert.True(test.Model.HasSession && test.Model.CanSave);
+        Assert.Empty(test.Model.SaveDisabledReason);
         Assert.True(test.Runtime.IsPaused);
         test.Main.UpdateLayout();
         var saveGroup = Assert.IsType<GroupBox>(test.View.FindName("CalibrationSaveGroup"));
@@ -44,6 +45,14 @@ public sealed class CalibrationRestoreUiTests
         await test.Main.StartHardwareOperationAsync(HardwareCalibrationAction.Save);
         Assert.Equal(target, test.Controller.Persisted);
         Assert.False(test.Model.CanSave);
+        Assert.Equal("No calibration changes to save.", test.Model.SaveDisabledReason);
+        test.Main.UpdateLayout();
+        UiRefinementTests.CapturePreview(saveGroup, "calibration-already-saved.png");
+        test.Model.Busy = true;
+        Assert.Equal("Wait for the current controller operation to finish.", test.Model.SaveDisabledReason);
+        test.Main.UpdateLayout();
+        UiRefinementTests.CapturePreview(saveGroup, "calibration-busy.png");
+        test.Model.Busy = false;
         await test.Main.RequestPanelModeAsync(SidePanelMode.Tuning);
         Assert.Equal(target, test.Controller.State);
         await test.UntilLiveAsync();
@@ -71,6 +80,8 @@ public sealed class CalibrationRestoreUiTests
         await test.StartAsync();
         await test.Main.StartHardwareOperationAsync(HardwareCalibrationAction.Capture);
         Assert.True(test.Model.IsCapturing);
+        Assert.Equal("Finish or cancel capture before saving.", test.Model.SaveDisabledReason);
+        Assert.Empty(test.Model.CaptureActionHint);
         await test.Main.RestoreHardwareBackupFromFileAsync(await test.WriteBackupAsync(Device.Target));
         Assert.Equal(1, test.Opens);
         Assert.False(test.Model.IsCapturing);

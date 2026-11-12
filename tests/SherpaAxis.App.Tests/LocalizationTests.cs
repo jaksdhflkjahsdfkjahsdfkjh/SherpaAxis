@@ -93,8 +93,8 @@ public sealed class LocalizationTests
                 Assert.Equal("uk", Localizer.Instance.Language);
                 Assert.Equal("Параметри", Assert.IsType<Button>(main.FindName("SettingsModeButton")).Content);
                 Assert.Equal("Калібрування", Assert.IsType<Button>(main.FindName("CalibrationModeButton")).Content);
-                Assert.Equal("Виправити дрейф", Assert.IsType<TextBlock>(Assert.IsType<Button>(main.FindName("FixDriftButton")).Content).Text);
-                Assert.Equal("Зберегти калібрування", Assert.IsType<TextBlock>(Assert.IsType<Button>(main.FindName("SaveCorrectedCalibrationButton")).Content).Text);
+                Assert.Equal("Утримуйте для виправлення", Assert.IsType<TextBlock>(Assert.IsType<Button>(main.FindName("FixDriftButton")).Content).Text);
+                Assert.Equal("Зберегти на контролері", Assert.IsType<TextBlock>(Assert.IsType<Button>(main.FindName("SaveCorrectedCalibrationButton")).Content).Text);
                 Assert.Contains("утиліта", main.Title, StringComparison.Ordinal);
                 Assert.Equal(profile, ProfileJson.Serialize(viewModel.ValidateEditors().Profile));
                 Assert.Equal("Throttle", viewModel.ProfileName);

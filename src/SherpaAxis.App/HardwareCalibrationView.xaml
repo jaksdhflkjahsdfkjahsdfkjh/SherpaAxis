@@ -23,6 +23,7 @@
                                 <Button x:Name="CaptureButton" Content="{loc:Translate Value={Binding CaptureButtonText}}" Click="CaptureClick" IsEnabled="{Binding CanCapture}" FontSize="12" Padding="10,8" MinHeight="36" ToolTip="{loc:Text T4734182D9BE3}" Style="{DynamicResource Primary}" Margin="0,0,6,0" HorizontalContentAlignment="Center" />
                                 <Button Content="{loc:Text TC0F6037104C5}" Click="CancelCaptureClick" IsEnabled="{Binding CanSetMargins}" FontSize="12" Padding="10,8" MinHeight="36" Margin="6,0,0,0" ToolTip="{loc:Text TF054B8ADB271}" x:Name="CancelCaptureButton" />
                             </UniformGrid>
+                            <TextBlock x:Name="CaptureActionHint" Style="{StaticResource ActionHint}" Text="{loc:Translate Value={Binding CaptureActionHint}}" />
                         </StackPanel>
                     </GroupBox>
                     <GroupBox x:Name="CalibrationRangeGroup" Header="{loc:Text TD4BF70AD6CAD}" Tag="">
@@ -108,6 +109,7 @@
                             <Button Content="{loc:Text T2E2D70A29871}" Click="SaveClick" IsEnabled="{Binding CanSave}" FontSize="12" Padding="10,8" ToolTip="{loc:Text T83C2C8B380FB}" x:Name="SaveControllerCalibrationButton" Style="{DynamicResource Primary}" Margin="0,0,6,0" HorizontalContentAlignment="Center" />
                             <Button Content="{loc:Text TF9BFA3DC7C8F}" Click="RestoreClick" IsEnabled="{Binding CanRestore}" FontSize="12" Padding="10,8" Margin="6,0,0,0" ToolTip="{loc:Text TAA64E0C79A8B}" x:Name="DiscardControllerCalibrationButton" HorizontalContentAlignment="Center" />
                         </UniformGrid>
+                        <TextBlock x:Name="SaveControllerActionHint" Style="{StaticResource ActionHint}" Text="{loc:Translate Value={Binding SaveDisabledReason}}" />
                         <Button Content="{loc:Text T124299E85D3E}" Click="AbandonClick" IsEnabled="{Binding CanAbandon}" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Left" ToolTip="{loc:Text TC83A608C1706}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">

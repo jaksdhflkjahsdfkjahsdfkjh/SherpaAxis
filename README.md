@@ -115,7 +115,7 @@ completely off for manual checks: steady foot pressure can also look stable.
 Manual correction has no travel-percentage limit: both the original raw range and
 the calibrated range must still fit within the sensor limits after shifting. The
 one-second stability check still applies. Automatic mode retains its stricter limits.
-Corrections last for the current session unless you choose **Save calibration**.
+Corrections last for the current session unless you choose **Save to controller**.
 The original hardware calibration is backed up before a corrected calibration is saved.
 
 ### Save a setup for each car or game

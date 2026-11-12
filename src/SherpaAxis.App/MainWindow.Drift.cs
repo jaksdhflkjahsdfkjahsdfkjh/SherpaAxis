@@ -23,7 +23,7 @@ public partial class MainWindow
     }
     private void BeginDriftHold() => Run(() =>
     {
-        if (!viewModel.CanTune || heldDriftAxis is not null) { return; }
+        if (!viewModel.CanFixDrift || heldDriftAxis is not null) { return; }
         viewModel.FixDrift();
         heldDriftAxis = viewModel.SelectedAxis;
     });

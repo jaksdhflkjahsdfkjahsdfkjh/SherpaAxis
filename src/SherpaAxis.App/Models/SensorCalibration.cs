@@ -34,5 +34,7 @@ public sealed record SensorCalibration(string SerialNumber, PedalCalibration Bou
 
 public sealed record CorrectedCalibration(string SerialNumber, PedalCalibration Original, PedalCalibration Corrected,
     PedalAxis Axis, HardwareCalibrationRange RawOriginal);
+public enum DriftCheckStage { None, Checking, Applying, Complete }
 public sealed record DriftSnapshot(bool RawAvailable, string Status, double? Input, double Offset, double? Minimum, double? Maximum, bool CanSave,
-    double? RawMinimum = null, double? RawMaximum = null);
+    double? RawMinimum = null, double? RawMaximum = null, bool CanFix = false,
+    DriftCheckStage CheckStage = DriftCheckStage.None, double StableSeconds = 0, string SaveDisabledReason = "");

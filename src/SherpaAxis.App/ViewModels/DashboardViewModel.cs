@@ -36,7 +36,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     public IReadOnlyList<AxisCardViewModel> Cards { get; } = PedalDisplayOrder.Select(axis => new AxisCardViewModel(axis)).ToArray();
     public static IReadOnlyList<PedalAxis> AxisNames { get; } = Enum.GetValues<PedalAxis>();
     private bool canEdit = true;
-    public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); } } }
+    public bool CanEdit { get => canEdit; set { if (Set(ref canEdit, value)) { Changed(nameof(CanTune)); NotifyDriftAvailability(); Changed(nameof(CanUpdateApplication)); } } }
     private SidePanelMode panelMode;
     private bool isSwitchingMode;
     private sealed record DisplaySnapshot(string Mode, string Legend, IReadOnlyList<PedalHistory> Histories, string SampleInfo);
@@ -48,7 +48,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         set
         {
             if (Set(ref panelMode, value))
-            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(IsPedalOverlayMode)); Changed(nameof(CanTune)); Changed(nameof(CanUpdateApplication)); NotifyDisplay(); }
+            { Changed(nameof(IsCalibrationMode)); Changed(nameof(IsSettingsMode)); Changed(nameof(IsTuningMode)); Changed(nameof(IsPedalOverlayMode)); Changed(nameof(CanTune)); NotifyDriftAvailability(); Changed(nameof(CanUpdateApplication)); NotifyDisplay(); }
         }
     }
     public bool IsCalibrationMode { get => PanelMode == SidePanelMode.Calibration; set => PanelMode = value ? SidePanelMode.Calibration : SidePanelMode.Tuning; }
@@ -71,6 +71,7 @@ public sealed partial class DashboardViewModel : ObservableObject
             transitionDisplay = value ? new(DisplayGraphMode, DisplayGraphLegend, DisplayHistories, DisplaySampleInfo) : null;
             Set(ref isSwitchingMode, value);
             Changed(nameof(CanTune));
+            NotifyDriftAvailability();
             Changed(nameof(CanUpdateApplication));
             if (!value) { NotifyDisplay(); }
         }

@@ -57,9 +57,10 @@ public sealed class WorkspaceSpacingTests
             Assert.Equal(0, mapping.Margin.Top);
             mapping.IsExpanded = true;
             main.UpdateLayout();
-            var mappingGroup = Assert.IsType<GroupBox>(main.FindName("AdvancedMappingGroup"));
-            AssertInset(mappingGroup);
-            UiRefinementTests.CapturePreview(mappingGroup, $"spacing-mapping-{language}-{sidebar}.png");
+            Assert.Equal(16, mapping.Padding.Left);
+            Assert.Equal(16, mapping.Padding.Right);
+            Assert.Null(main.FindName("AdvancedMappingGroup"));
+            UiRefinementTests.CapturePreview(mapping, $"spacing-mapping-{language}-{sidebar}.png");
 
             var curves = Assert.IsType<Expander>(main.FindName("CurvesSection"));
             var body = Assert.IsType<Border>(curves.Template.FindName("ExpandedBody", curves));

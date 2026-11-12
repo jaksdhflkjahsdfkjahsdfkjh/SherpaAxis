@@ -69,6 +69,15 @@ public sealed class HardwarePedalViewModel : ObservableObject
     public bool CanEditMargins => !Busy && configuration?.NeedsRecovery != true;
     public bool CanAbandon => !Busy && configuration?.NeedsRecovery == true;
     public string CaptureButtonText => IsCapturing ? "Finish capture" : "Start capture";
+    public string CaptureActionHint => Busy ? "Wait for the current controller operation to finish."
+        : configuration?.NeedsRecovery == true ? "Restore the original calibration before starting another capture."
+        : configuration?.PersistenceUncertain == true ? "Resolve the previous save before starting another capture."
+        : !IsCapturing ? "Cancel is available during capture." : "";
+    public string SaveDisabledReason => CanSave ? "" : Busy ? "Wait for the current controller operation to finish."
+        : configuration?.NeedsRecovery == true ? "Restore the original calibration before saving."
+        : IsCapturing ? "Finish or cancel capture before saving."
+        : !HasSession ? "Start capture or restore a backup before saving to the controller."
+        : "No calibration changes to save.";
     public string SaveState => !HasSession ? "Preview only. Start capture to change controller calibration."
         : configuration?.NeedsRecovery == true ? "Recovery is required before calibration can be saved."
         : IsCapturing ? "Capture is running. Move the pedal through its full travel, then finish capture."
@@ -222,7 +231,8 @@ public sealed class HardwarePedalViewModel : ObservableObject
     private void NotifyState()
     {
         foreach (var name in new[] { nameof(IsCapturing), nameof(CanSelect), nameof(CanCapture), nameof(CanSave), nameof(CanRestore),
-            nameof(CanSetMargins), nameof(CanEditMargins), nameof(CanAbandon), nameof(CanBackup), nameof(CaptureButtonText), nameof(SaveState) }) { Changed(name); }
+            nameof(CanSetMargins), nameof(CanEditMargins), nameof(CanAbandon), nameof(CanBackup), nameof(CaptureButtonText), nameof(SaveState),
+            nameof(CaptureActionHint), nameof(SaveDisabledReason) }) { Changed(name); }
     }
 
     private static int Integer(string value) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)

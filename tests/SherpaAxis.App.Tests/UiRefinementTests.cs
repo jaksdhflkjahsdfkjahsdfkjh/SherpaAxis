@@ -66,6 +66,7 @@ public sealed class UiRefinementTests
                 engine.Accept(new(PedalConnectionState.Connected, TimeSpan.FromSeconds(time), 1, new(1000, 2900500, 1000)));
                 time += .01;
             }
+            model.Refresh();
         }
         Samples(2);
         fix.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent });

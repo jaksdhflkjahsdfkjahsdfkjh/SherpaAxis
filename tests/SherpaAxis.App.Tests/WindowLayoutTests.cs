@@ -48,7 +48,7 @@ public sealed class WindowLayoutTests
                     Assert.Equal(expectedOrder, model.Cards.Select(card => card.Axis));
                     UiRefinementTests.CapturePreview(content, $"pedal-order-{width}-{height}.png");
                     model.SetCurvePreset(PedalAxis.Throttle, "Progressive");
-                    var clear = Descendants(content).OfType<Button>().Single(b => Equals(b.Content, "Clear curve")
+                    var clear = Descendants(content).OfType<Button>().Single(b => Equals(b.Content, "Reset to linear")
                         && b.DataContext is PedalCurveViewModel { Axis: PedalAxis.Throttle });
                     clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Assert.Equal("Linear", model.ValidateEditors().Profile.Axes[PedalAxis.Throttle].Curve.Kind, ignoreCase: true);
