@@ -1212,5 +1212,9 @@
   "Calibrate once in SherpaAxis first. Auto waits for five consistent press/release cycles. For a manual fix, take your foot off and hold the drift button until the correction finishes. A bound button works the same way. Save to controller keeps the correction in the pedals.": "Спочатку виконайте калібрування в SherpaAxis. Авто чекає п’ять узгоджених циклів натискання та відпускання. Для ручного виправлення приберіть ногу й утримуйте кнопку дрейфу до завершення. Призначена кнопка працює так само. «Зберегти на контролері» залишить виправлення в педалях.",
   "Wait for the current operation to finish.": "Дочекайтеся завершення поточної операції.",
   "Keep the pedal released · {0}/1.0 s stable": "Не натискайте педаль · {0}/1.0 с стабільності",
-  "Keep holding while the correction is applied.": "Утримуйте кнопку, доки застосовується виправлення."
+  "Keep holding while the correction is applied.": "Утримуйте кнопку, доки застосовується виправлення.",
+  "Clutch settings": "Налаштування зчеплення",
+  "Brake settings": "Налаштування гальма",
+  "Throttle settings": "Налаштування газу",
+  "Selected for editing": "Вибрано для налаштування"
 }

@@ -13,12 +13,14 @@ public sealed class AxisCardViewModel(PedalAxis axis) : ObservableObject
     private string filtered = "No samples";
     private double outputPercent;
     private bool isFresh;
+    private bool isSelected;
     private string inputLabel = "Device input: ";
     public string Input { get => input; private set => Set(ref input, value); }
     public string OutputText { get => outputText; private set => Set(ref outputText, value); }
     public string Filtered { get => filtered; private set => Set(ref filtered, value); }
     public double OutputPercent { get => outputPercent; private set => Set(ref outputPercent, value); }
     public bool IsFresh { get => isFresh; private set => Set(ref isFresh, value); }
+    public bool IsSelected { get => isSelected; internal set => Set(ref isSelected, value); }
     public string InputLabel { get => inputLabel; private set => Set(ref inputLabel, value); }
 
     public void UpdateControllerInput(int? counts, bool sensorCounts)

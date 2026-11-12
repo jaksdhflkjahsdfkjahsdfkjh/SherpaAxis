@@ -27,6 +27,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         Firmware.PropertyChanged += (_, _) => Changed(nameof(CanUpdateApplication));
         Recovery.PropertyChanged += (_, _) => Changed(nameof(CanUpdateApplication));
         Load(applied);
+        UpdateSelectedCards();
         selectedProfile!.Recoverable = false;
         MarkSelectedSaved();
         ShowMessage("Connecting to the pedals automatically. Select a profile or tune the pedals; hardware calibration is separate.");
@@ -102,6 +103,7 @@ public sealed partial class DashboardViewModel : ObservableObject
             if (selectedAxis == value) { return; }
             engine.RevokeRelease();
             selectedAxis = value;
+            UpdateSelectedCards();
             CancelCalibration();
             Changed();
             Changed(nameof(Editor));
@@ -114,7 +116,11 @@ public sealed partial class DashboardViewModel : ObservableObject
     }
 
     public AxisEditor Editor => editors[selectedAxis];
-    public string AxisTitle => SelectedAxis + " processing";
+    public string AxisTitle => SelectedAxis + " settings";
+    private void UpdateSelectedCards()
+    {
+        foreach (var card in Cards) { card.IsSelected = card.Axis == SelectedAxis; }
+    }
     public string ActiveProfileInfo => "Applied: " + applied.Name;
     private string sourceName = "No source selected";
     public string SourceName { get => sourceName; set => Set(ref sourceName, value); }

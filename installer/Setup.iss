@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "1.6.9"
+  #define AppVersion "1.6.10"
 #endif
 #ifndef AppSource
   #define AppSource "..\publish\v" + AppVersion + "\app"

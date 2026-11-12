@@ -262,7 +262,28 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Tag="{Binding Axis}" AutomationProperties.Name="{loc:Translate Value={Binding Name}}" Click="SelectAxisClick" Padding="12,8" Margin="0,0,10,0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" HorizontalContentAlignment="Stretch" ToolTip="{loc:Text T33DB6F075B3E}">
+                                    <Button Tag="{Binding Axis}" AutomationProperties.Name="{loc:Translate Value={Binding Name}}" Click="SelectAxisClick" Padding="12,8" Margin="0,0,10,0" HorizontalContentAlignment="Stretch" ToolTip="{loc:Text T33DB6F075B3E}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                <Setter Property="IsEnabled" Value="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter Property="AutomationProperties.ItemStatus" Value="{loc:Text T71E3657AAA17}" />
+                                                    </DataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding DataContext.IsCalibrationMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                            <Condition Binding="{Binding DataContext.HardwareDisplay.CanSelect, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
                                         <StackPanel>
                                             <DockPanel>
                                                 <TextBlock Text="{loc:Translate Value={Binding Name}}" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
@@ -418,7 +439,7 @@
                         <Grid>
                             <DockPanel x:Name="TuningSidePanel" IsEnabled="{Binding CanTune}" TextBox.TextChanged="TuningValuesChanged" CheckBox.Checked="TuningValuesChanged" CheckBox.Unchecked="TuningValuesChanged" ComboBox.SelectionChanged="TuningValuesChanged">
                                 <StackPanel DockPanel.Dock="Top" Margin="14,12,14,0">
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text T9F2F2951F1CB}" />
+                                    <TextBlock x:Name="SelectedPedalHeading" Text="{loc:Translate Value={Binding AxisTitle}}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,10" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />

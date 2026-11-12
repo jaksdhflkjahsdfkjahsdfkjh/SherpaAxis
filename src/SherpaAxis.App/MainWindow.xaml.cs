@@ -98,6 +98,7 @@ public partial class MainWindow : Window, IAsyncDisposable
 
     private void SelectAxisClick(object sender, RoutedEventArgs e)
     {
+        if (!viewModel.CanEdit || viewModel.IsSwitchingMode || viewModel.IsCalibrationMode && viewModel.HardwareDisplay?.CanSelect == false) { return; }
         StopHold();
         if (sender is Button { Tag: PedalAxis axis })
         {
