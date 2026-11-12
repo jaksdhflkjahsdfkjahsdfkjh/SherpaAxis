@@ -411,7 +411,7 @@ public sealed class HardwarePedalUiTests
                     Assert.True(manualBackup.IsManualBackup);
                     Assert.Equal(device.State, manualBackup.Saved);
                     Assert.Equal(writesBeforeBackup, device.Writes.Count);
-                    var tools = Assert.IsType<StackPanel>(Descendants(content).OfType<Expander>().Single(expander => Equals(expander.Header, "Device tools")).Content);
+                    var tools = Assert.IsType<StackPanel>(Assert.IsType<GroupBox>(window.FindName("CalibrationToolsGroup")).Content);
                     Assert.Contains(Assert.IsType<Button>(window.FindName("BackupHardwareButton")), tools.Children.OfType<Button>());
                     Assert.Contains(Assert.IsType<Button>(window.FindName("RestoreHardwareBackupButton")), tools.Children.OfType<Button>());
                     Assert.DoesNotContain(tools.Children.OfType<Button>(), button => button.Content is "LED on" or "LED off");

@@ -70,11 +70,11 @@
                     <GroupBox x:Name="CalibrationToolsGroup" Header="{loc:Text T0D77E275EA8B}" Tag="">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionNote}" Text="{loc:Text TABEF09AA12CF}" />
-                            <Expander Header="{loc:Text T657C06283294}">
+                            <Button x:Name="BackupHardwareButton" Content="{loc:Text T37AD2E2B4214}" Click="BackupHardwareClick" IsEnabled="{Binding CanBackup}" Style="{DynamicResource DeviceToolButton}" ToolTip="{loc:Text T7B21A98A294F}" />
+                            <Button x:Name="RestoreHardwareBackupButton" Content="{loc:Text TBE2126C42895}" Click="RestoreBackupClick" IsEnabled="{Binding CanRestore}" Style="{DynamicResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text T7BD619768842}" />
+                            <Expander Header="{loc:Text T9F088DBEBD6C}">
                                 <StackPanel>
                                     <Button Content="{loc:Text TE81A0AD5F059}" Click="DefaultsClick" IsEnabled="{Binding CanSelect}" Style="{DynamicResource DeviceToolButton}" ToolTip="{loc:Text T5E217BACC283}" />
-                                    <Button x:Name="BackupHardwareButton" Content="{loc:Text T37AD2E2B4214}" Click="BackupHardwareClick" IsEnabled="{Binding CanBackup}" Style="{DynamicResource DeviceToolButton}" ToolTip="{loc:Text T7B21A98A294F}" />
-                                    <Button x:Name="RestoreHardwareBackupButton" Content="{loc:Text TBE2126C42895}" Click="RestoreBackupClick" IsEnabled="{Binding CanRestore}" Style="{DynamicResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text T7BD619768842}" />
                                 </StackPanel>
                             </Expander>
                             <Expander Header="{loc:Text TBE2F8120E4D9}">

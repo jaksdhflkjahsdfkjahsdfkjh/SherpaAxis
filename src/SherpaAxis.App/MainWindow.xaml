@@ -713,12 +713,8 @@
                                         </GroupBox>
                                         <GroupBox Tag="" Header="{loc:Text T012A9624F716}" x:Name="CalibrationBackupGroup">
                                             <StackPanel>
-                                                <Expander Header="{loc:Text T657C06283294}">
-                                                    <StackPanel>
-                                                        <Button Content="{loc:Text T37AD2E2B4214}" Click="BackupHardwareClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TB892F58AFCED}" />
-                                                        <Button Content="{loc:Text TBE2126C42895}" Click="RestoreHardwareBackupClick" Style="{StaticResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text T3945F6DB7120}" />
-                                                    </StackPanel>
-                                                </Expander>
+                                                <Button Content="{loc:Text T37AD2E2B4214}" Click="BackupHardwareClick" Style="{StaticResource DeviceToolButton}" ToolTip="{loc:Text TB892F58AFCED}" />
+                                                <Button Content="{loc:Text TBE2126C42895}" Click="RestoreHardwareBackupClick" Style="{StaticResource DeviceToolButton}" Margin="0" ToolTip="{loc:Text T3945F6DB7120}" />
                                                 <TextBlock Text="{loc:Translate Value={Binding HardwareInfo}}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0" />
                                             </StackPanel>
                                         </GroupBox>
