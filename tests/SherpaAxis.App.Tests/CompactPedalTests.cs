@@ -15,6 +15,37 @@ namespace SherpaAxis.App.Tests;
 public sealed class CompactPedalTests
 {
     [Fact]
+    public Task PercentLabelsKeepTheMeterValuesAndShowOnlyWholePercentages() => WithMain(async (main, engine, clock, _) =>
+    {
+        engine.Begin(new("live-device-axis"));
+        Feed(engine, clock, 0, 1131, 16777000, 16384);
+        Feed(engine, clock, 10, 1131, 16777000, 16384);
+        var overlay = main.OpenCompactView();
+        overlay.RefreshNow(); overlay.UpdateLayout();
+        UiRefinementTests.CapturePreview(Assert.IsAssignableFrom<FrameworkElement>(overlay.Content), "overlay-percentages.png");
+        var cards = Assert.IsType<CompactPedalViewModel>(overlay.DataContext).Cards;
+        Assert.InRange(cards.Single(card => card.Axis == PedalAxis.Throttle).OutputPercent, 6.9, 7);
+        Assert.InRange(cards.Single(card => card.Axis == PedalAxis.Brake).OutputPercent, 99.9, 100);
+        Assert.Equal(100, cards.Single(card => card.Axis == PedalAxis.Clutch).OutputPercent);
+        foreach (var label in WorkspaceSpacingTests.Descendants(overlay).OfType<TextBlock>().Where(text => text.FontSize == 12 && text.DataContext is AxisCardViewModel))
+        {
+            var card = (AxisCardViewModel)label.DataContext;
+            Assert.Equal(card.Axis switch { PedalAxis.Clutch => "100", PedalAxis.Brake => "99", _ => "6" }, label.Text);
+        }
+        Feed(engine, clock, 20, 16384, checked((int)DashboardEngine.DeviceMaximum(PedalAxis.Brake)), 0);
+        overlay.RefreshNow(); overlay.UpdateLayout();
+        foreach (var label in WorkspaceSpacingTests.Descendants(overlay).OfType<TextBlock>().Where(text => text.FontSize == 12 && text.DataContext is AxisCardViewModel))
+        {
+            Assert.Equal(((AxisCardViewModel)label.DataContext).Axis == PedalAxis.Clutch ? "0" : "100", label.Text);
+        }
+        clock.Ticks += 1000;
+        overlay.RefreshNow(); overlay.UpdateLayout();
+        Assert.All(WorkspaceSpacingTests.Descendants(overlay).OfType<TextBlock>().Where(text => text.FontSize == 12 && text.DataContext is AxisCardViewModel),
+            label => Assert.Equal("—", label.Text));
+        await Task.CompletedTask;
+    });
+
+    [Fact]
     public Task CompactViewIsSingleInstanceSurvivesMainHideAndClosesWithTheApp() => WithMain(async (main, _, _, _) =>
     {
         Assert.Empty(Application.Current?.Windows.OfType<CompactPedalWindow>() ?? []);
