@@ -12,9 +12,10 @@ Windows 10 / 11 · x64 · FEEL-VR Pedals One · English & Ukrainian
 
 </div>
 
-![SherpaAxis overview showing a pedal graph, profile controls, individual curves and tuning settings](docs/screenshots/app-overview.png)
+![Current SherpaAxis UI with the selected brake card, Brake settings heading, four workspace tabs, signal graph and response curves](docs/screenshots/app-overview.png)
 
-*An example profile with recorded pedal input and a Progressive brake curve.
+*The current dark UI with a recorded pedal-input example and a Progressive brake curve.
+The highlighted Brake card matches the Brake settings panel.
 Dashed grey is filtered input; orange is the output after the curve. The pedal
 card and the right edge of the graph show the same recorded moment.*
 
@@ -26,10 +27,24 @@ own curve, deadzones and filtering settings.
 
 **Tuning** groups response presets, deadzones, filtering and drift correction for
 the selected pedal. Changes apply immediately; **Save profile** keeps them.
-**Calibration** guides you through capturing the range, reviewing it and saving
-to the controller. **Settings** groups app preferences and device tools and includes
-search. Drag the divider to resize the controls pane; double-click it to restore
-the default width.
+**Pedal overlay** has the in-game display controls. **Calibration** guides you
+through capturing the range, reviewing it and saving to the controller. **Settings**
+groups app preferences and device tools, with search to find a setting quickly.
+Drag the divider to resize the controls pane; double-click it to restore the default width.
+
+<details>
+<summary><strong>See the calibration and settings tabs</strong></summary>
+
+![Current Calibration tab showing range capture, range review and directly accessible calibration backup and restore buttons](docs/screenshots/calibration.png)
+
+*Calibration preview: capture and review the pedal range, or use the visible backup
+and restore buttons. Hardware changes start only when you choose an action.*
+
+![Current Settings tab with settings search, language selection and window and startup preferences](docs/screenshots/settings.png)
+
+*Search settings or browse the grouped app preferences and device tools.*
+
+</details>
 
 | What you want to do | How SherpaAxis helps |
 | --- | --- |
@@ -46,9 +61,10 @@ Start with a preset, then drag points to adjust it. Double-click to add a point;
 right-click to remove one. Changes apply automatically, so you can watch the output
 as you tune. Save the profile when you want to keep your changes.
 
-![Individual throttle, brake and clutch curves with gentle progressive, progressive and S curve presets](docs/screenshots/pedal-curves.png)
+![Current response-curve editor showing clutch, brake and throttle with S curve, Progressive and Gentle progressive presets](docs/screenshots/pedal-curves.png)
 
-*Three example curves: Gentle progressive throttle, Progressive brake and S curve clutch.
+*Left to right: S curve clutch, Progressive brake and Gentle progressive throttle.
+Each editor has the same **Reset to linear** action used in the tuning panel.
 The brake curve maps 50% input to 25% output, giving more input travel to control the lower output range.*
 
 ### See what filtering changes
@@ -73,10 +89,15 @@ start of a race. One binding handles both switching the assist on and off and
 holding it during a launch.
 
 In **Tuning → Clutch**, choose a **Bite point mode**, set **Bite point output (%)**
-and click **Bind** to assign your button. Double-tap the button to enable or
+and click **Assign button…** to choose your button. Double-tap it to enable or
 disable the assist, or use the **Enabled** checkbox. Hold it for at least **250 ms**
 to activate the selected mode's held behavior; releasing applies its released
 behavior immediately.
+
+![Current clutch bite-point settings with Hold full range at 40 percent, an assigned controller button and the assist enabled](docs/screenshots/clutch-settings.png)
+
+*Hold full range configured at 40%, with controller button 4 assigned. Mode,
+percentage and binding are saved in the profile.*
 
 | Mode | While holding the button | After releasing the button |
 | --- | --- | --- |
@@ -107,7 +128,7 @@ shift both calibration endpoints together while preserving the range and deadzon
 
 - **Auto** waits for five consistent press-and-release cycles before correcting downward drift.
 - **By button** checks for a stable release while you hold a keyboard key or wheel/gamepad button.
-- **Fix drift** provides the same manual check directly in the app. Keep your foot off and hold it for at least one stable second, until correction finishes.
+- **Hold to fix drift** provides the same manual check directly in the app. Keep your foot off and hold it for at least one stable second, until correction finishes.
 
 First calibrate the affected pedal in SherpaAxis so the app can retain its original
 raw range. If the checks disagree, no new correction is applied. Keep your foot
@@ -135,6 +156,11 @@ Click a game card to select it; a highlighted card and check mark show your choi
 Game icons are included with the app and work offline. Use **Add game…** to select
 another game’s `.exe`. Added games appear in a separate list with a remove button.
 Choose **Save** to keep the selection.
+
+![Current Game bindings dialog with Assetto Corsa Competizione assigned to the GT3 example profile and an Add game button for other executables](docs/screenshots/game-bindings.png)
+
+*The example profile is bound to ACC. Select a game card or add another game's
+executable, then save the assignment.*
 
 A small label at the bottom of each card shows its current profile binding.
 **Reassign here** appears only for another game that is currently running while
@@ -286,12 +312,13 @@ See the [installation and device guide](docs/setup.md) for more detail.
 <details>
 <summary><strong>Can I back up calibration and update pedal firmware?</strong></summary>
 
-Use **Calibration → Device tools** for hardware calibration backups and restoration.
+Use **Calibration → Backups and recovery** for calibration backups and restoration.
+Both buttons are visible without expanding the **Advanced** section.
 After restoring a file, review the ranges and choose **Save to controller** to keep
 them, or **Discard changes** to return to the previous calibration. A different
 USB port is supported when the controller identity and HID capabilities match.
 
-In **Settings → Firmware update**, you can check firmware, back up calibration,
+In **Settings → Firmware and controller**, you can check firmware, back up calibration,
 open update logs or update the supported firmware.
 
 Choose **Update firmware**, select a bundled image and click **Flash**. Keep the
@@ -319,7 +346,7 @@ Changed application files can prevent an automatic update; use a manual update
 if you have modified the packaged files. Your profiles, settings and bindings
 are retained. Close games and FEEL-VR Control before starting an update.
 
-**Settings → Updates** offers **Check now**, a manual release-page link, update
+**Settings → App updates** offers **Check now**, a manual release-page link, update
 logs and an option to disable startup checks. No pedal data or profiles are sent.
 Manual installation through a newer `Setup.exe` remains available.
 
@@ -334,7 +361,7 @@ you need before choosing it.
 
 ## Found a problem?
 
-Use **Settings → Help → Report a problem…**, or **Report a bug** in the footer.
+Use **Settings → Help and diagnostics → Report a problem…**, or **Report a bug** in the footer.
 SherpaAxis saves a diagnostic ZIP, selects it in File Explorer and opens a GitHub
 issue draft with version and system details. Describe the problem and the steps to
 reproduce it, review the ZIP, then attach it to the issue before submitting.
