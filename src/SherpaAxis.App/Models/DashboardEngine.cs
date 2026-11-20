@@ -208,12 +208,6 @@ public sealed partial class DashboardEngine
                     result = values.Session.Process(raw, elapsed, connection, false);
                 }
                 if (values.Automatic.Learning && values.Session.BaselineCorrection == values.Session.TargetCorrection) { values.Automatic.Complete(); }
-                if ((values.ManualAdjusting || values.ButtonCaptured) && values.Session.BaselineCorrection == values.Session.TargetCorrection)
-                {
-                    values.ManualAdjusting = false;
-                    values.DriftStatus = Math.Abs(values.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
-                        : "Drift fixed for this session. Save corrected calibration to keep it in the controller";
-                }
                 if (result.ResetReason != AxisSessionResetReason.None)
                 {
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap) { SuspendOutput("sampling gap"); }
@@ -223,7 +217,7 @@ public sealed partial class DashboardEngine
                     values.AuthorizedAt = null;
                     if (result.ResetReason == AxisSessionResetReason.SamplingGap)
                     {
-                        values.ReleaseWindow.Reset(); values.BaselineApproved = false; values.ManualCapture = values.ManualAdjusting = false;
+                        values.BaselineApproved = false; values.ManualCapture = values.ManualCaptured = values.ButtonCaptured = values.BindingReady = values.BindingWasDown = false; values.ManualStarted = null;
                         values.DriftStatus = "Input interrupted; drift check cancelled";
                     }
                 }
@@ -312,8 +306,8 @@ public sealed partial class DashboardEngine
                 var down = buttons.IsDown(button);
                 if (!down)
                 {
-                    if (value.ManualCapture || value.ManualAdjusting) { continue; }
-                    if (value.BindingWasDown && !value.ManualCapture && !value.ManualAdjusting)
+                    if (value.ManualCapture || value.ManualCaptured) { continue; }
+                    if (value.BindingWasDown && !value.ManualCapture && !value.ManualCaptured)
                     {
                         value.DriftStatus = value.BaselineApproved && value.Session.BaselineCorrection == value.Session.TargetCorrection
                             ? Math.Abs(value.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
@@ -321,11 +315,11 @@ public sealed partial class DashboardEngine
                             : value.Session.BaselineCorrection == 0 ? "Drift check cancelled; no correction applied" : "Drift correction paused; capture again to continue";
                         value.ManualStarted = null;
                     }
-                    value.BindingReady = true; value.BindingWasDown = false; value.AuthorizedAt = null; value.ReleaseWindow.Reset(); value.ButtonCaptured = false;
+                    value.BindingReady = true; value.BindingWasDown = false; value.AuthorizedAt = null; value.ButtonCaptured = false;
                     continue;
                 }
                 if (!value.BindingReady || !IsFresh(value) || sensorCalibration is null) { continue; }
-                if (!value.BindingWasDown) { value.ReleaseWindow.Reset(); value.ButtonCaptured = false; if (!value.ManualCapture) { value.ManualStarted = null; } }
+                if (!value.BindingWasDown) { value.ButtonCaptured = false; if (!value.ManualCapture) { value.ManualStarted = null; } }
                 value.BindingWasDown = true;
                 value.AuthorizedAt = clock.GetTimestamp();
             }
@@ -545,6 +539,7 @@ public sealed partial class DashboardEngine
     private void ClearConnection()
     {
         ResetTelemetryHistory();
+        fixRequested = null;
         gameProfileReleasedSince = gameProfileLastSample = null;
         bitePoint.Release();
         InvalidateCalibration("Connection changed. Start calibration again.");
@@ -557,10 +552,10 @@ public sealed partial class DashboardEngine
             axis.Session.Reset();
             axis.Automatic.Reset();
             axis.BindingReady = axis.BindingWasDown = false;
-            axis.ReleaseWindow.Reset(); axis.ButtonCaptured = axis.BaselineApproved = axis.ManualCapture = axis.ManualAdjusting = false;
+            axis.ButtonCaptured = axis.BaselineApproved = axis.ManualCapture = axis.ManualCaptured = false;
             axis.CarryCorrection = null;
-            axis.ManualStarted = axis.ManualCandidate = null;
-            axis.DriftStatus = "Ready. Use Fix drift or hold the bound button to check the released pedal";
+            axis.ManualStarted = null;
+            axis.DriftStatus = "Ready. Hold Fix drift or the bound button for 1 second to set the release point.";
             axis.Current = null;
             axis.AuthorizedAt = null;
             axis.LastSampleAt = null;
@@ -576,15 +571,13 @@ public sealed partial class DashboardEngine
         public AxisSession Session { get; } = session;
         public AxisProcessor ReleaseGuard { get; } = releaseGuard;
         public AutomaticBaseline Automatic { get; } = new();
-        public StableReleaseWindow ReleaseWindow { get; } = new();
         public bool ButtonCaptured { get; set; }
         public bool BaselineApproved { get; set; }
         public bool ManualCapture { get; set; }
-        public bool ManualAdjusting { get; set; }
+        public bool ManualCaptured { get; set; }
         public double? ManualStarted { get; set; }
-        public double? ManualCandidate { get; set; }
         public double? CarryCorrection { get; set; }
-        public string DriftStatus { get; set; } = "Ready. Use Fix drift or hold the bound button to check the released pedal";
+        public string DriftStatus { get; set; } = "Ready. Hold Fix drift or the bound button for 1 second to set the release point.";
         public bool BindingReady { get; set; }
         public bool BindingWasDown { get; set; }
         public AxisSessionResult? Current { get; set; }

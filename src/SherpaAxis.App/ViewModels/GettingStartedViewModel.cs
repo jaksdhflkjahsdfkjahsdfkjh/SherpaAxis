@@ -26,7 +26,7 @@ public sealed class GettingStartedViewModel : ObservableObject
             "Scroll to zoom, drag to select a range or double-click to reset. Pedal output keeps running.", "SignalGraphSection"),
         new("Correct pedal drift", "Tuning · Pedal drift correction",
             "Calibrate once in SherpaAxis first. Auto checks five matching press/release cycles before correcting drift. Mismatched cycles leave the range unchanged.",
-            "For a manual fix, take your foot off and hold the drift button until the correction finishes. Save to controller keeps the fix in the pedals.", "DriftCorrectionPanel"),
+            "Release the pedal and hold the drift button for 1 second. The current sensor reading sets the release point and the range shifts instantly. Save to controller keeps the fix in the pedals.", "DriftCorrectionPanel"),
         new("Calibrate the controller", "Calibration · side panel",
             "Calibration measures each pedal’s released and fully pressed positions. The tour does not start a capture.",
             "Close games and FEEL-VR Control first. Saving calibration writes to the pedals; saving a profile keeps curves and filters.", "CalibrationModeButton"),

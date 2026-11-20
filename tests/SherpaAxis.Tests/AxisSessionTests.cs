@@ -6,6 +6,27 @@ namespace SherpaAxis.Tests;
 public sealed class AxisSessionTests
 {
     [Theory]
+    [InlineData(SignalFilterKind.Exponential)]
+    [InlineData(SignalFilterKind.TwoStageExponential)]
+    [InlineData(SignalFilterKind.MovingAverage)]
+    [InlineData(SignalFilterKind.Median)]
+    [InlineData(SignalFilterKind.MedianExponential)]
+    public void ManualBaselineAppliesImmediatelyAndClearsOldFilterValues(SignalFilterKind kind)
+    {
+        var session = new AxisSession(new(100, 200), new(.001, .001), maximumBaselineCorrection: 100,
+            filterSettings: new(.1, kind: kind, windowSamples: 5));
+        session.Process(180, 0, 1);
+        session.Process(180, .01, 1);
+        session.ApplyManualBaselineCorrection(50);
+        var corrected = session.Process(150, .02, 1);
+        Assert.Equal(50, corrected.TargetCorrection);
+        Assert.Equal(50, corrected.Processing.BaselineCorrection);
+        Assert.Equal(0, corrected.Processing.Output);
+        Assert.False(corrected.CorrectionSuspended);
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.ApplyManualBaselineCorrection(101));
+    }
+
+    [Theory]
     [InlineData(-400)]
     [InlineData(400)]
     public void ExplicitAuthorizationAllowsShiftsLargerThanTheCalibrationTravel(double correction)

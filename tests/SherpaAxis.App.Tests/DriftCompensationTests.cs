@@ -40,8 +40,11 @@ public sealed class DriftCompensationTests
         for (var sample = 0; sample < 90; sample++)
         { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
         Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
-        for (var sample = 0; sample < 12000; sample++)
+        for (var sample = 0; sample < 10; sample++)
         { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, raw.Minimum + drift); }
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        engine.ProcessCorrectionButtons(buttons);
+        Sample(engine, ref time, raw.Minimum + drift);
         Assert.Equal(drift, engine.DriftState(PedalAxis.Brake).Offset, 5);
         Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
         var corrected = engine.CorrectedHardwareCalibration(PedalAxis.Brake);
@@ -175,7 +178,7 @@ public sealed class DriftCompensationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnstableChecksTimeOutForBothFixDriftAndAHeldBinding(bool held)
+    public void ManualHoldIgnoresSensorMovementAndAppliesOnlyOnce(bool held)
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         using var buttons = new ButtonStateBuffer();
@@ -192,9 +195,9 @@ public sealed class DriftCompensationTests
             engine.ProcessCorrectionButtons(buttons);
             Sample(engine, ref time, Hardware.Brake.Minimum - 200000 + sample % 2 * 10000);
         }
-        Assert.Contains("not stable", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
-        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
-        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.Contains("Drift fixed", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+        Assert.Equal(-200000, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
     }
 
     [Fact]
@@ -205,7 +208,7 @@ public sealed class DriftCompensationTests
         Sample(engine, ref time, Hardware.Brake.Minimum);
         engine.RequestFixDrift(PedalAxis.Brake);
         Hold(engine, ref time, Hardware.Brake.Minimum, 50);
-        Assert.Contains("Checking", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
+        Assert.Contains("Hold to set", engine.DriftState(PedalAxis.Brake).Status, StringComparison.Ordinal);
         var (profile, limits) = Settings(BaselineCorrectionMode.ByButton, new(.01, .01));
         engine.Configure(profile, limits);
         Sample(engine, ref time, Hardware.Brake.Minimum);
@@ -362,7 +365,7 @@ public sealed class DriftCompensationTests
     [Theory]
     [InlineData(-300000)]
     [InlineData(200000)]
-    public void FixDriftRequiresAStableSecondAndSupportsLargeDriftInEitherDirection(int drift)
+    public void FixDriftRequiresOneSecondAndDoesNotGateSavingOnPedalPosition(int drift)
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         double time = 0;
@@ -374,20 +377,27 @@ public sealed class DriftCompensationTests
         Assert.Equal(drift, engine.DriftState(PedalAxis.Brake).Offset, 5);
         Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
         Sample(engine, ref time, Hardware.Brake.Minimum + drift + 750000);
-        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
+        Assert.Equal(drift, engine.DriftState(PedalAxis.Brake).Offset);
         Assert.Equal(.5, Brake(engine).Processing.Output, 10);
     }
 
     [Fact]
-    public void AnUnstableManualCaptureDoesNotChangeCalibrationOrTheCurrentOffset()
+    public void ManualFixUsesTheCurrentReadingAtTheEndOfTheHold()
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         double time = 0;
         Sample(engine, ref time, Hardware.Brake.Minimum - 300000);
         engine.RequestFixDrift(PedalAxis.Brake);
-        for (var sample = 0; sample < 1200; sample++) { Sample(engine, ref time, Hardware.Brake.Minimum - 300000 + sample % 2 * 10000); }
+        for (var sample = 0; sample < 100; sample++) { Sample(engine, ref time, Hardware.Brake.Minimum - 300000 + sample % 2 * 10000); }
         Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
-        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        Sample(engine, ref time, Hardware.Brake.Minimum + 230000);
+        Assert.Equal(230000, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.Equal(0, Brake(engine).Processing.Output);
+        Assert.True(engine.DriftState(PedalAxis.Brake).CanSave);
+        Hold(engine, ref time, Hardware.Brake.Minimum + 980000, 200);
+        Assert.Equal(230000, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.Equal(.5, Brake(engine).Processing.Output, 10);
     }
 
     [Fact]
@@ -422,7 +432,7 @@ public sealed class DriftCompensationTests
     }
 
     [Fact]
-    public void BoundButtonNeedsAReleaseAndAnEntireStableSecond()
+    public void BoundButtonNeedsAReleaseAndAFixedOneSecondHold()
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         using var buttons = new ButtonStateBuffer();
@@ -458,7 +468,7 @@ public sealed class DriftCompensationTests
     }
 
     [Fact]
-    public void ReleasingManualHoldBeforeAStableSecondCancelsTheCapture()
+    public void ReleasingManualHoldBeforeOneSecondCancelsTheCapture()
     {
         var engine = Configured(BaselineCorrectionMode.ByButton);
         double time = 0;
@@ -469,6 +479,51 @@ public sealed class DriftCompensationTests
         Hold(engine, ref time, Hardware.Brake.Minimum - 300000, 400);
         Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
         Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InputGapsCancelTheHoldAndRequireAnotherExplicitAction(bool bound)
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        using var buttons = new ButtonStateBuffer();
+        var button = new CorrectionButton("keyboard", 65);
+        double time = 0;
+        Sample(engine, ref time, Hardware.Brake.Minimum - 300000);
+        engine.ProcessCorrectionButtons(buttons);
+        if (bound) { buttons.Set(button, true); }
+        else { engine.RequestFixDrift(PedalAxis.Brake); }
+        for (var i = 0; i < 50; i++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, Hardware.Brake.Minimum - 300000); }
+        time += 1;
+        for (var i = 0; i < 200; i++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, Hardware.Brake.Minimum - 300000); }
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        Assert.False(engine.DriftState(PedalAxis.Brake).CanSave);
+        if (bound)
+        { buttons.Set(button, false); engine.ProcessCorrectionButtons(buttons); buttons.Set(button, true); }
+        else { engine.RequestFixDrift(PedalAxis.Brake); }
+        for (var i = 0; i < 102; i++)
+        { engine.ProcessCorrectionButtons(buttons); Sample(engine, ref time, Hardware.Brake.Minimum - 300000); }
+        Assert.Equal(-300000, engine.DriftState(PedalAxis.Brake).Offset);
+    }
+
+    [Fact]
+    public void CancellingBeforeTheNextReportOrDisconnectingCannotApplyAPendingFix()
+    {
+        var engine = Configured(BaselineCorrectionMode.ByButton);
+        double time = 0;
+        Sample(engine, ref time, Hardware.Brake.Minimum - 300000);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        engine.CancelFixDrift(PedalAxis.Brake);
+        Assert.Contains("cancelled", engine.DriftState(PedalAxis.Brake).Status);
+        Hold(engine, ref time, Hardware.Brake.Minimum - 300000, 150);
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
+        engine.RequestFixDrift(PedalAxis.Brake);
+        engine.Accept(new(PedalConnectionState.Disconnected, TimeSpan.FromSeconds(time), 1));
+        Hold(engine, ref time, Hardware.Brake.Minimum - 300000, 150);
+        Assert.Equal(0, engine.DriftState(PedalAxis.Brake).Offset);
     }
 
     private static DashboardEngine Configured(BaselineCorrectionMode mode)

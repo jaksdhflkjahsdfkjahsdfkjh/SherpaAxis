@@ -33,7 +33,7 @@ public sealed partial class DashboardViewModel
         RefreshUnsavedState();
         engine.RequestFixDrift(SelectedAxis);
         RefreshDrift();
-        ShowMessage("Keep your foot off and hold until the fix finishes. Save to controller to keep the correction.");
+        ShowMessage("Hold for 1 second to shift the range instantly. Save to controller to keep the correction.");
     }
 
     private void RefreshDrift()
@@ -41,25 +41,23 @@ public sealed partial class DashboardViewModel
         var state = engine.DriftState(SelectedAxis);
         DriftStatus = state.CheckStage switch
         {
-            DriftCheckStage.Checking => FormattableString.Invariant($"Keep the pedal released · {state.StableSeconds:0.0}/1.0 s stable"),
-            DriftCheckStage.Applying => "Keep holding while the correction is applied.",
+            DriftCheckStage.Holding => FormattableString.Invariant($"Hold to set the release point · {state.HoldSeconds:0.0}/1.0 s"),
             _ => state.Status
         };
         CanSaveCorrectedCalibration = state.CanSave;
         Set(ref driftInputReady, state.CanFix, nameof(CanFixDrift));
-        DriftFixHint = state.CanFix ? "Take your foot off the pedal and keep holding until the correction finishes." : state.Status;
+        DriftFixHint = state.CanFix ? "Hold for 1 second to use the current sensor reading as the release point. The range shifts once." : state.Status;
         DriftSaveHint = state.CanSave ? "" : !state.RawAvailable ? "Sensor data is required before saving a correction." : state.SaveDisabledReason;
         ShowDriftProgress = state.CheckStage != DriftCheckStage.None;
         DriftCheckProgress = state.CheckStage switch
         {
-            DriftCheckStage.Checking => Math.Clamp(state.StableSeconds, 0, 1),
-            DriftCheckStage.Applying or DriftCheckStage.Complete => 1,
+            DriftCheckStage.Holding => Math.Clamp(state.HoldSeconds, 0, 1),
+            DriftCheckStage.Complete => 1,
             _ => 0
         };
         FixDriftLabel = state.CheckStage switch
         {
-            DriftCheckStage.Checking => "Checking release…",
-            DriftCheckStage.Applying => "Applying correction…",
+            DriftCheckStage.Holding => "Keep holding…",
             DriftCheckStage.Complete => Math.Abs(state.Offset) < .5 ? "No drift found" : "Drift corrected",
             _ => "Hold to fix drift"
         };

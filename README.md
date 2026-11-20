@@ -127,15 +127,17 @@ If a pedal's resting sensor value changes over time, **Pedal drift correction** 
 shift both calibration endpoints together while preserving the range and deadzones.
 
 - **Auto** waits for five consistent press-and-release cycles before correcting downward drift.
-- **By button** checks for a stable release while you hold a keyboard key or wheel/gamepad button.
-- **Hold to fix drift** provides the same manual check directly in the app. Keep your foot off and hold it for at least one stable second, until correction finishes.
+- **By button** uses the current sensor reading as the release point after a fixed one-second hold of a keyboard key or wheel/gamepad button.
+- **Hold to fix drift** does the same directly in the app. Release the pedal, then hold for one second: both endpoints shift immediately, once per hold.
 
 First calibrate the affected pedal in SherpaAxis so the app can retain its original
-raw range. If the checks disagree, no new correction is applied. Keep your foot
-completely off for manual checks: steady foot pressure can also look stable.
+raw range. Manual mode does not check foot pressure or require a stable signal:
+it uses the reading at the end of the hold, so release the pedal before using it.
+Holding longer does not repeat the correction or make it follow pedal movement.
 Manual correction has no travel-percentage limit: both the original raw range and
 the calibrated range must still fit within the sensor limits after shifting. The
-one-second stability check still applies. Automatic mode retains its stricter limits.
+one-second hold is an activation delay, not a stability check. Automatic mode retains
+its existing learning, release checks and gradual adjustment.
 Corrections last for the current session unless you choose **Save to controller**.
 The original hardware calibration is backed up before a corrected calibration is saved.
 

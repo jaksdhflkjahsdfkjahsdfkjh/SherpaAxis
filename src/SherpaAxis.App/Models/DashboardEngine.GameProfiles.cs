@@ -7,7 +7,7 @@ public sealed partial class DashboardEngine
     private bool HasReleasedGameProfileInput => sourceActive && source.Kind == "live-device-axis" && calibration is not { IsActive: true }
         && !bitePoint.Holding && axes.Values.All(axis => IsFresh(axis) && axis.Current is { } current
             && current.Processing.CorrectedNormalized <= .02 && current.Processing.FilteredNormalized <= .02
-            && !axis.ManualCapture && !axis.ManualAdjusting);
+            && !axis.ManualCapture && !axis.ManualCaptured);
 
     private void ObserveReleasedPedalsForProfiles()
     {

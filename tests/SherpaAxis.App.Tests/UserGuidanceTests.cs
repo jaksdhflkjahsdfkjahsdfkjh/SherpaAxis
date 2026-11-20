@@ -78,7 +78,7 @@ public sealed class UserGuidanceTests
             Samples(56);
             Assert.InRange(model.DriftCheckProgress, .54, .56);
             Assert.True(model.ShowDriftProgress);
-            Assert.Equal("Checking release…", model.FixDriftLabel);
+            Assert.Equal("Keep holding…", model.FixDriftLabel);
             Assert.False(model.CanSaveCorrectedCalibration);
             Capture("DriftCorrectionGroup", "drift-checking");
             engine.CancelFixDrift(PedalAxis.Brake);
@@ -89,14 +89,14 @@ public sealed class UserGuidanceTests
             model.FixDrift();
             Samples(56);
             Samples(1, 2920500);
-            Assert.Equal(0, model.DriftCheckProgress);
+            Assert.InRange(model.DriftCheckProgress, .55, .57);
             Samples(1);
-            Samples(110);
-            Assert.Equal("Applying correction…", model.FixDriftLabel);
+            Samples(43);
+            Assert.Equal("Drift corrected", model.FixDriftLabel);
             Assert.Equal(1, model.DriftCheckProgress);
-            Capture("DriftCorrectionGroup", "drift-applying");
+            Capture("DriftCorrectionGroup", "drift-instant");
             Samples(350);
-            Assert.Equal("Hold to fix drift", model.FixDriftLabel);
+            Assert.Equal("Drift corrected", model.FixDriftLabel);
             Assert.Contains("Drift fixed for this session", model.DriftStatus);
             Assert.True(model.CanSaveCorrectedCalibration);
             Capture("DriftCorrectionGroup", "drift-holding-complete");

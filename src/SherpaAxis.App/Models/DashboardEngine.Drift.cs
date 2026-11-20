@@ -52,7 +52,7 @@ public sealed partial class DashboardEngine
             { throw new InvalidOperationException("Original raw calibration is unavailable. Calibrate this pedal in SherpaAxis first."); }
             fixRequested = axis;
             fixRequestedAt = clock.GetTimestamp();
-            axes[axis].DriftStatus = "Keep your foot off the pedal while the release point is checked.";
+            axes[axis].DriftStatus = "Hold for 1 second to set the current sensor reading as the release point.";
         }
     }
 
@@ -60,14 +60,15 @@ public sealed partial class DashboardEngine
     {
         lock (sync)
         {
-            if (fixRequested == axis) { fixRequested = null; }
+            var requested = fixRequested == axis;
+            if (requested) { fixRequested = null; }
             var values = axes[axis];
-            if (!values.ManualCapture && !values.ManualAdjusting) { return; }
-            values.ManualCapture = values.ManualAdjusting = false;
-            values.ReleaseWindow.Reset();
+            if (!requested && !values.ManualCapture && !values.ManualCaptured) { return; }
+            values.ManualCapture = values.ManualCaptured = false;
             values.ManualStarted = null;
             values.DriftStatus = values.BaselineApproved && values.Session.BaselineCorrection == values.Session.TargetCorrection
-                ? "Drift fixed for this session. Save corrected calibration to keep it in the controller"
+                ? Math.Abs(values.Session.BaselineCorrection) < .5 ? "Released baseline matches calibration; no correction needed"
+                    : "Drift fixed for this session. Save corrected calibration to keep it in the controller"
                 : "Drift check cancelled; no new correction";
         }
     }
@@ -112,62 +113,45 @@ public sealed partial class DashboardEngine
             if (clock.GetElapsedTime(fixRequestedAt) >= TimeSpan.FromSeconds(10))
             {
                 fixRequested = null;
-                values.DriftStatus = "Drift capture expired; release the pedal and try again";
+                values.DriftStatus = "Drift request expired. Release the button and try again.";
                 return false;
             }
-            values.ManualCapture = true; values.ManualAdjusting = false; values.ManualStarted = elapsed;
-            values.ReleaseWindow.Reset(); fixRequested = null;
+            values.ManualCapture = true; values.ManualCaptured = false; values.ManualStarted = elapsed;
+            fixRequested = null;
         }
         var held = values.BindingReady && values.BindingWasDown && values.AuthorizedAt is { } authorized
             && clock.GetElapsedTime(authorized) < TimeSpan.FromMilliseconds(150);
-        if (!values.ManualCapture && !values.ManualAdjusting && !held)
+        if (!values.ManualCapture && !values.ManualCaptured && !held)
         {
             if (values.BindingWasDown)
             {
                 values.BindingWasDown = values.BindingReady = false; values.AuthorizedAt = null;
-                values.ManualStarted = null; values.ReleaseWindow.Reset();
+                values.ManualStarted = null; values.ButtonCaptured = false;
                 values.DriftStatus = "Drift check stopped; release the bound button before trying again";
             }
             return false;
         }
-        if (held && !values.ButtonCaptured && !values.ManualAdjusting) { values.ManualStarted ??= elapsed; }
-        if ((values.ManualCapture || held && !values.ButtonCaptured) && elapsed - values.ManualStarted > 10)
-        {
-            values.ManualCapture = false;
-            values.BindingReady = values.BindingWasDown = false; values.AuthorizedAt = null; values.ManualStarted = null;
-            values.DriftStatus = "Baseline was not stable for one second; no new correction";
-            values.ReleaseWindow.Reset(); return false;
-        }
-        if ((values.ButtonCaptured || values.ManualAdjusting) && values.ManualCandidate is { } target)
-        {
-            if (Math.Abs(raw - target) > physical.Span * StableReleaseWindow.MaximumVariationFraction)
-            {
-                values.ManualAdjusting = false; values.ButtonCaptured = false; values.ReleaseWindow.Reset();
-                values.BindingReady = false; values.AuthorizedAt = null;
-                values.DriftStatus = "Pedal moved; correction paused. Release and capture again";
-                return false;
-            }
-            return true;
-        }
-        var captured = values.ReleaseWindow.Observe(raw, elapsed, physical.Span);
-        values.DriftStatus = FormattableString.Invariant($"Checking released baseline: {values.ReleaseWindow.StableSeconds:F1}/1.0 s stable. Keep your foot off");
-        if (captured is not { } released) { return false; }
-        var correction = released - physical.Minimum;
+        if (values.ManualCaptured || values.ButtonCaptured) { return false; }
+        values.ManualStarted ??= elapsed;
+        var heldSeconds = elapsed - values.ManualStarted.Value;
+        values.DriftStatus = FormattableString.Invariant($"Hold to set the release point: {Math.Clamp(heldSeconds, 0, 1):F1}/1.0 s");
+        if (heldSeconds + 1e-9 < 1) { return false; }
+        var correction = raw - physical.Minimum;
         if (!ValidShift(axis, correction))
         {
-            values.ManualCapture = false; values.ReleaseWindow.Reset(); values.BindingReady = false;
+            values.ManualCapture = false; values.ManualStarted = null;
+            values.BindingReady = false; values.ButtonCaptured = false;
             values.DriftStatus = "The shifted calibration would exceed the sensor range. Recalibrate this pedal.";
             return false;
         }
-        values.Session.ConfirmReleasedBaseline(ProfileForInput(axis, settings).Calibration.ReleasedReference + correction);
-        values.ManualCandidate = released;
-        values.ManualAdjusting = values.ManualCapture;
+        values.Session.ApplyManualBaselineCorrection(correction);
+        values.ManualCaptured = values.ManualCapture;
         values.ManualCapture = false;
         values.ButtonCaptured = held;
         values.BaselineApproved = true;
         values.DriftStatus = Math.Abs(correction) < .5 ? "Released baseline matches calibration; no correction needed"
-            : "Stable released baseline accepted; correction is temporary until saved to the controller";
-        return true;
+            : "Drift fixed for this session. Save corrected calibration to keep it in the controller";
+        return false;
     }
 
     private bool ValidShift(PedalAxis axis, double offset)
@@ -199,24 +183,24 @@ public sealed partial class DashboardEngine
             if (!IsFresh(value)) { status = "Waiting for fresh pedal input"; }
             if (reference is null) { status = "Original raw calibration is unavailable. Calibrate this pedal in SherpaAxis first."; }
             if (activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.Off && reference is not null && IsFresh(value))
-            { status = "Automatic drift correction is off. Hold Fix drift to correct it manually."; }
+            { status = "Automatic drift correction is off. Hold Fix drift for 1 second to correct it manually."; }
             var raw = value.Current?.Processing.Input;
             var canFix = reference is not null && IsFresh(value);
             var checking = canFix && (fixRequested == axis || value.ManualCapture || value.BindingReady && value.BindingWasDown && !value.ButtonCaptured);
-            var adjusting = canFix && (value.ManualAdjusting || value.ButtonCaptured);
+            var completed = canFix && (value.ManualCaptured || value.ButtonCaptured);
             var settled = value.Session.BaselineCorrection == value.Session.TargetCorrection;
-            var stage = checking ? DriftCheckStage.Checking : adjusting ? settled ? DriftCheckStage.Complete : DriftCheckStage.Applying : DriftCheckStage.None;
+            var stage = checking ? DriftCheckStage.Holding : completed ? DriftCheckStage.Complete : DriftCheckStage.None;
+            var manual = activeProfile.Axes[axis].CorrectionMode == BaselineCorrectionMode.ByButton;
             var ready = reference is not null && IsFresh(value) && value.BaselineApproved && settled
-                && !value.ManualCapture && !value.ManualAdjusting && !(value.BindingWasDown && !value.ButtonCaptured)
-                && Math.Abs(offset) >= .5 && raw is { } input && Math.Abs(input - (reference.Minimum + offset)) <= (reference.Maximum - (double)reference.Minimum) * .002;
+                && !value.ManualCapture && !(value.BindingWasDown && !value.ButtonCaptured)
+                && Math.Abs(offset) >= .5 && (manual || raw is { } input && Math.Abs(input - (reference.Minimum + offset)) <= (reference.Maximum - (double)reference.Minimum) * .002);
             var saveReason = ready ? "" : !canFix ? status
                 : checking ? "Finish the drift check before saving."
                 : !settled ? "Wait for the correction to finish before saving."
-                : adjusting ? "Release the drift button before saving."
                 : !value.BaselineApproved || Math.Abs(offset) < .5 ? "No drift correction to save."
                 : "Take your foot off the pedal before saving.";
             return new(true, status, raw, offset, range.Minimum + offset, range.Maximum + offset, ready, reference?.Minimum, reference?.Maximum,
-                canFix, stage, canFix ? value.ReleaseWindow.StableSeconds : 0, saveReason);
+                canFix, stage, canFix && value.ManualStarted is { } started ? Math.Clamp(elapsed - started, 0, 1) : 0, saveReason);
         }
     }
 
@@ -225,7 +209,7 @@ public sealed partial class DashboardEngine
         lock (sync)
         {
             if (!DriftState(axis).CanSave || sensorCalibration is null)
-            { throw new InvalidOperationException("Fix drift with the pedal fully released and wait for correction to settle before saving."); }
+            { throw new InvalidOperationException("Fix drift and wait for the correction to finish before saving."); }
             var shift = checked((int)Math.Round(axes[axis].Session.BaselineCorrection, MidpointRounding.AwayFromZero));
             var original = sensorCalibration.Range(axis);
             var corrected = sensorCalibration.Bounds.WithRange((PedalChannel)axis, new(checked(original.Minimum + shift), checked(original.Maximum + shift)));

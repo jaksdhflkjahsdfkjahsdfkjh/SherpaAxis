@@ -139,7 +139,7 @@ public partial class MainWindow
         AddGuideSection(document, "Firmware updates",
             "Setup includes firmware 017, ST DfuSe and its USB driver. In Settings, open Update firmware, select a version and choose Flash. Keep the pedals connected until the app asks otherwise. Calibration is backed up and restored automatically. The app checks the returned controller and calibration; byte readback is not performed. Open update logs for details.");
         AddGuideSection(document, "Pedal drift correction",
-            "Calibrate once in SherpaAxis first. Auto waits for five consistent press/release cycles. For a manual fix, take your foot off and hold the drift button until the correction finishes. A bound button works the same way. Save to controller keeps the correction in the pedals.");
+            "Calibrate once in SherpaAxis first. Auto waits for five consistent press/release cycles. For a manual fix, release the pedal and hold Fix drift or the assigned button for 1 second. The current reading sets the release point and the range shifts instantly, without foot-pressure or stability checks. Save to controller keeps the correction in the pedals.");
         AddGuideSection(document, "Recovery",
             "Resolve any interrupted-calibration warning before using virtual output. Check again after setup or reconnecting the pedals.");
         dialog.Content = new System.Windows.Controls.FlowDocumentScrollViewer

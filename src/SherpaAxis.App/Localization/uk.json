@@ -1216,5 +1216,19 @@
   "Clutch settings": "Налаштування зчеплення",
   "Brake settings": "Налаштування гальма",
   "Throttle settings": "Налаштування газу",
-  "Selected for editing": "Вибрано для налаштування"
+  "Selected for editing": "Вибрано для налаштування",
+  "Hold for 1 second to set the current sensor reading as the release point.": "Утримуйте 1 секунду, щоб використати поточний показник датчика як точку відпускання.",
+  "Hold to set the release point: {0}/1.0 s": "Утримуйте для встановлення нуля: {0}/1.0 с",
+  "Hold to set the release point · {0}/1.0 s": "Утримуйте для встановлення нуля · {0}/1.0 с",
+  "Keep holding…": "Утримуйте…",
+  "Hold for 1 second to shift the range instantly. Save to controller to keep the correction.": "Утримуйте 1 секунду для миттєвого зсуву діапазону. Збережіть на контролері, щоб залишити виправлення.",
+  "Hold for 1 second to use the current sensor reading as the release point. The range shifts once.": "Утримуйте 1 секунду, щоб встановити поточний показник датчика як нуль. Діапазон зміщується один раз.",
+  "Release the pedal, then hold the assigned button or Fix drift for 1 second. The current reading becomes the release point and the range shifts instantly.": "Відпустіть педаль та утримуйте призначену кнопку або «Виправити дрейф» 1 секунду. Поточний показник стає нулем, а діапазон зміщується миттєво.",
+  "Automatic drift correction is off. Hold Fix drift for 1 second to correct it manually.": "Автоматичне виправлення дрейфу вимкнено. Утримуйте «Виправити дрейф» 1 секунду для ручного виправлення.",
+  "Ready. Hold Fix drift or the bound button for 1 second to set the release point.": "Готово. Утримуйте «Виправити дрейф» або призначену кнопку 1 секунду для встановлення нуля.",
+  "Drift button hold progress": "Тривалість утримання кнопки дрейфу",
+  "Fix drift and wait for the correction to finish before saving.": "Виправте дрейф і дочекайтеся завершення перед збереженням.",
+  "Drift request expired. Release the button and try again.": "Час запиту минув. Відпустіть кнопку та спробуйте ще раз.",
+  "Release the pedal and hold the drift button for 1 second. The current sensor reading sets the release point and the range shifts instantly. Save to controller keeps the fix in the pedals.": "Відпустіть педаль та утримуйте кнопку дрейфу 1 секунду. Поточний показник датчика встановлює нуль, а діапазон зміщується миттєво. Збережіть на контролері, щоб залишити виправлення.",
+  "Calibrate once in SherpaAxis first. Auto waits for five consistent press/release cycles. For a manual fix, release the pedal and hold Fix drift or the assigned button for 1 second. The current reading sets the release point and the range shifts instantly, without foot-pressure or stability checks. Save to controller keeps the correction in the pedals.": "Спочатку виконайте калібрування в SherpaAxis. Авто чекає п’ять узгоджених циклів натискання та відпускання. Для ручного виправлення відпустіть педаль та утримуйте «Виправити дрейф» або призначену кнопку 1 секунду. Поточний показник встановлює нуль, а діапазон зміщується миттєво, без перевірок тиску ноги чи стабільності. Збережіть на контролері, щоб залишити виправлення."
 }

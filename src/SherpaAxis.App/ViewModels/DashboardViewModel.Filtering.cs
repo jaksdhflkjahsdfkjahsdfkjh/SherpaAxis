@@ -80,8 +80,8 @@ public sealed partial class DashboardViewModel
     public string CorrectionModeHint => Editor.CorrectionMode switch
     {
         BaselineCorrectionMode.Auto => "Calibrate once in SherpaAxis first. Auto checks five matching press/release cycles with stable releases. If the released value rises, use Fix drift. Calibration is not saved automatically.",
-        BaselineCorrectionMode.ByButton => "Take your foot off the pedal. Hold the bound button or Fix drift for at least one stable second. Keep holding until the fix finishes; release to stop.",
-        _ => "Automatic drift correction is off. Hold Fix drift to correct it manually."
+        BaselineCorrectionMode.ByButton => "Release the pedal, then hold the assigned button or Fix drift for 1 second. The current reading becomes the release point and the range shifts instantly.",
+        _ => "Automatic drift correction is off. Hold Fix drift for 1 second to correct it manually."
     };
     public string CorrectionBindingLabel => ButtonLabel(Editor.CorrectionButton);
     public void SetCorrectionMode(string mode)

@@ -62,6 +62,12 @@ public sealed class AxisSession
         BaselineCorrection = TargetCorrection = correction;
     }
 
+    public void ApplyManualBaselineCorrection(double correction)
+    {
+        RestoreBaselineCorrection(correction);
+        filter?.Reset();
+    }
+
     public void Reset()
     {
         previousTime = null;
